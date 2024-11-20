@@ -11,8 +11,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets LinguistTools Sql SerialPort)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Sql SerialPort)
 find_package(JKQTPlotter${QT_VERSION_MAJOR} REQUIRED)
+
 find_package(VTK REQUIRED)
-# Find external library
 
 set(TS_FILES ARIA_RDK_en_US.ts)
 
@@ -21,7 +21,7 @@ set(PROJECT_SOURCES
         mainwindow.cpp
         mainwindow.h
         mainwindow.ui
-#        ${TS_FILES}
+#	${TS_FILES}
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
