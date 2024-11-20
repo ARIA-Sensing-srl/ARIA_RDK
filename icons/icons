@@ -1,0 +1,21 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file>accounting-icon.png</file>
+        <file>add-date-calendar-icon.png</file>
+        <file>ARIA_Logo.ico</file>
+        <file>ARIA_Logo_2019_solo_simbolo_250dpi.png</file>
+        <file>aria_rdk.qrc</file>
+        <file>booking-cancel-icon.png</file>
+        <file>calendar-plus-line-icon.png</file>
+        <file>cube-line-icon.png</file>
+        <file>file-question-icon.png</file>
+        <file>folder-favorite-icon.png</file>
+        <file>open-folder-outline-icon.png</file>
+        <file>podcast-icon.png</file>
+        <file>project-management-timeline-icon.png</file>
+        <file>radar-tracking-icon.png</file>
+        <file>shortcut-icon.png</file>
+        <file>speaking-bubbles-b-w-icon.png</file>
+        <file>tech-icon.png</file>
+    </qresource>
+</RCC>

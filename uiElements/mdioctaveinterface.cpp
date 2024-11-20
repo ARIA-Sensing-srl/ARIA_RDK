@@ -1,0 +1,1205 @@
+/*
+ *  ARIA Sensing 2024
+ *  Author: Cacciatori Alessio
+ *  This program is licensed under LGPLv3.0
+ */
+
+#include <QMessageBox>
+#include <QCloseEvent>
+#include <QPainter>
+#include <QMenu>
+#include <QFileDialog>
+
+#include "mdioctaveinterface.h"
+#include "wndoctavescript.h"
+#include "ui_mdioctaveinterface.h"
+#include "octaveinterface.h"
+#include "wndplot2d.h"
+#include <octave.h>
+#include <interpreter.h>
+
+extern QDir             ariasdk_modules_path;
+extern QDir             ariasdk_projects_path;
+extern QDir             ariasdk_scripts_path;
+extern QDir             ariasdk_antennas_path;
+extern QDir             ariasdk_antennaff_path;
+using namespace octave;
+
+extern octaveInterface         *interfaceData;
+
+QTextEdit*  mdiOctaveInterface::get_textoutput()
+{
+    return ui->outputCommands;
+}
+
+mdiOctaveInterface::mdiOctaveInterface(qDataThread* worker,  QWidget *parent) :
+    QDialog(parent),
+    ui(new Ui::mdiOctaveInterface),
+    _elabThread(worker),
+    _interfaceData(interfaceData),
+    _workspace(nullptr),
+    _scripts_children(),
+    _plot2d_children(),
+    _b_deleting(false)
+{
+    ui->setupUi(this);
+
+    // Connectin signals
+    connect(ui->lineEdit, &QLineEdit::editingFinished,this, &mdiOctaveInterface::newCommandLine);
+
+    // Workspace table
+    ui->workspaceList->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->workspaceList, &QTableWidget::customContextMenuRequested, this, &mdiOctaveInterface::workspaceTableRightClick);
+
+    connect(ui->btnOctaveScriptNew,    &QPushButton::clicked, this, &mdiOctaveInterface::newScript);
+    connect(ui->btnOctaveScriptLoad,   &QPushButton::clicked, this, &mdiOctaveInterface::openScript);
+    connect(ui->btnExport,             &QPushButton::clicked, this, &mdiOctaveInterface::saveWorkspaceData);
+
+    //-----------------------------------------------
+    // Update workspace table
+    QStringList columnHeader{"","Var","Size","Value"};
+    ui->workspaceList->setHorizontalHeaderLabels(columnHeader);
+    QStringList fileNames{":/icons/tech-icon.png",":/icons/shortcut-icon.png"};
+    for (int n=0; n<2; n++)
+    {
+        QColor iconColor("lightGray");
+        QPixmap px(fileNames.at(n));
+        QPainter painter(&px);
+        painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+        painter.setBrush(iconColor);
+        painter.setPen(iconColor);
+        painter.drawRect(px.rect());
+        switch (n)
+        {
+            case 0:
+                iconInternal.addPixmap(px);
+                break;
+            case 1:
+                iconOctave.addPixmap(px);
+                break;
+        }
+    }
+
+}
+
+void mdiOctaveInterface::update_octave_interface()
+{
+    connect(interfaceData, &octaveInterface::commandCompleted, this, &mdiOctaveInterface::octaveCompletedTask);
+    connect(interfaceData, &octaveInterface::workspaceUpdated, this, &mdiOctaveInterface::updateVarTable);
+    _interfaceData = interfaceData;
+    if (_interfaceData!=nullptr)
+        _workspace = _interfaceData->get_workspace();
+
+    updateVarTable();
+}
+
+mdiOctaveInterface::~mdiOctaveInterface()
+{
+    _b_deleting = true;
+    _plot2d_children.clear();
+    _scripts_children.clear();
+    delete ui;
+}
+
+
+void mdiOctaveInterface::closeEvent( QCloseEvent* event )
+{
+    this->showMinimized();
+    this->hide();
+    event->ignore();
+
+}
+
+
+void mdiOctaveInterface::newScript()
+{
+    wndOctaveScript* wndScript = new wndOctaveScript("",_interfaceData,this);
+    ui->mdiArea->addSubWindow(wndScript);
+    wndScript->showMaximized();
+}
+
+void mdiOctaveInterface::openProjectScript(octaveScript* script)
+{
+    for (auto &child: ui->mdiArea->subWindowList())
+    {
+        if (typeid(child).name()==typeid(wndOctaveScript).name())
+        {
+            if (((wndOctaveScript*)(child))->get_script()==script)
+            {
+                ((wndOctaveScript*)(child))->showMaximized();
+                return;
+            }
+        }
+    }
+
+    wndOctaveScript* wndScript = new wndOctaveScript(script,_interfaceData,this);
+    ui->mdiArea->addSubWindow(wndScript);
+    wndScript->showMaximized();
+
+}
+
+
+void mdiOctaveInterface::openScript()
+{
+
+    QStringList filesToRead = QFileDialog::getOpenFileNames(this,"Open script file",
+                                                      ariasdk_scripts_path.absolutePath()+QDir::separator(),
+                                                      tr("Octave files (*.m);;Text files (*.txt);; C/C++ files (*.c *.cpp);; All files (*.*)"),
+                                                      nullptr,
+                                                      QFileDialog::Options(QFileDialog::Detail|QFileDialog::DontUseNativeDialog));
+
+    for (int n=0; n < filesToRead.count(); n++)
+    {
+        QString fname = filesToRead.at(n);
+        wndOctaveScript* wndScript = new wndOctaveScript(fname,_interfaceData,this);
+        ui->mdiArea->addSubWindow(wndScript);
+        wndScript->showMaximized();
+    }
+
+    if (filesToRead.count()>0)
+        ariasdk_scripts_path.setPath(QFileInfo(filesToRead[0]).absolutePath());
+}
+
+void mdiOctaveInterface::saveScript()
+{
+    wndOctaveScript* wnd = (wndOctaveScript*)(ui->mdiArea->activeSubWindow());
+    if (wnd==nullptr) return;
+
+    if (_scripts_children.contains(wnd))
+        wnd->save_file();
+}
+
+void mdiOctaveInterface::closeScript()
+{
+    wndOctaveScript* wnd = (wndOctaveScript*)(ui->mdiArea->activeSubWindow());
+    if (wnd==nullptr) return;
+
+    if (_scripts_children.contains(wnd))
+    {
+        wnd->close();
+        delete wnd;
+    }
+}
+
+void mdiOctaveInterface::saveSctiptAs()
+{
+
+}
+
+void mdiOctaveInterface::error(QString errorString)
+{
+    QMessageBox::critical(this,"Error",errorString);
+}
+
+
+/*
+ * Send the new line to the command interpreter
+ */
+
+void mdiOctaveInterface::newCommandLine()
+{
+    QString strCommand = ui->lineEdit->text();
+    if (strCommand.isEmpty())
+        return;
+#ifdef OCTAVE_THREAD
+    //bool bRes =
+#endif
+    interfaceData->appendCommand(strCommand);
+#ifdef OCTAVE_THREAD
+    if (_elabThread->isPaused()) _elabThread->resume();
+#else
+//    if (!bRes) error(QString("Error while parsing \n")+strCommand);
+#endif
+    ui->lineEdit->setText("");
+
+}
+
+
+void mdiOctaveInterface::octaveCompletedTask(QString task, int errorcode)
+{
+    // Do we need to update the table?
+    if (_workspace==nullptr)
+        return;
+
+    //ui->outputCommands->append(_interfaceData->get_last_output());
+    ui->historyCommands->setTextColor( errorcode==0? QColor( "white" ):QColor("red") );
+    ui->historyCommands->append(task);
+
+}
+
+void mdiOctaveInterface::add_variable_row(int row, const std::string& name, const octave_value& val, bool internal)
+{
+    if (name.empty())
+        return;
+
+    QTableWidgetItem *iconItem = new QTableWidgetItem();
+    iconItem->setIcon(internal ? iconInternal : iconOctave);
+    ui->workspaceList->setItem(row,0,iconItem);
+
+    // Column 1: name
+    ui->workspaceList->setItem(row,1,new QTableWidgetItem(QString::fromStdString(name)));
+
+    // Column 2: size
+    dim_vector varsize = val.dims();
+    QString strSize="";
+    for (int sid = 0; sid < varsize.ndims(); sid++)
+    {
+        strSize += QString::number(varsize(sid));
+        if (sid < varsize.ndims()-1)
+            strSize += QString(" x ");
+    }
+
+    ui->workspaceList->setItem(row,2,new QTableWidgetItem(strSize));
+
+    // Column 3: value type
+
+    QString strVal = QString::fromStdString(val.class_name());
+
+    if (val.is_complex_scalar()||val.is_complex_matrix())
+        strVal = "complex";
+    ui->workspaceList->setItem(row,3,new QTableWidgetItem(strVal));
+}
+
+void  mdiOctaveInterface::updateVarTable()
+{
+    return;
+    ui->workspaceList->clear();
+    ui->workspaceList->setColumnCount(4);
+    ui->workspaceList->setHorizontalHeaderLabels(QStringList({"","name","size","type"}));
+
+    if (_workspace == nullptr)
+        return;
+
+
+    ui->workspaceList->setRowCount(_workspace->get_variable_count(true)+_workspace->get_variable_count(false));
+    int nrow = 0;
+    for (auto internal : {false, true})
+    {
+        int nmax = _workspace->get_variable_count(internal);
+        for (int n=0; n < nmax ; n++)
+        {
+            std::pair<std::string, octave_value> var = _workspace->get_variable(n,internal);
+            add_variable_row(nrow, var.first, var.second, internal);
+            nrow++;
+        }
+    }
+
+    for (const auto& child: _plot2d_children)
+        if (child!=nullptr)
+            child->update_workspace(_workspace);
+}
+
+
+void mdiOctaveInterface::workspaceTableRightClick(QPoint pos)
+{
+    QList<QTableWidgetItem *> selected = ui->workspaceList->selectedItems();
+    if (selected.empty())
+        return;
+
+    QMenu *menu = new QMenu(this);
+
+    QMenu *plot = menu->addMenu("Plot");
+    QMenu *scatter = menu->addMenu("Scatter");
+    QMenu *boxplot = menu->addMenu("Boxplot");
+    QMenu *area   = menu->addMenu("Area");
+    QMenu *barv   = menu->addMenu("Bar");
+    QMenu* dens   = menu->addMenu("Density");
+    QMenu* arrow  = menu->addMenu("Arrow plot");
+    QMenu* vector = menu->addMenu("2D Vector field");
+    //---------- PLOT --------------------------
+    QAction *plotNewPlot       = new QAction("New plot (each curve into own plot)");
+    QAction *plotNewSinglePlot = new QAction("New plot (all data into the same plot)");
+    QAction *plotNewSinglePlotXData = new QAction("New plot (x, y1,...yn)");
+
+    connect(plotNewPlot, SIGNAL(triggered()), this, SLOT(variablePlot()));
+    connect(plotNewSinglePlot, SIGNAL(triggered()), this, SLOT(variablePlotAllInOne()));
+    connect(plotNewSinglePlotXData, SIGNAL(triggered()), this, SLOT(variablePlotXData()));
+
+    plotNewSinglePlotXData->setEnabled(ui->workspaceList->selectionModel()->selectedRows().count()>=2);
+
+    plot->addAction(plotNewPlot);
+    plot->addAction(plotNewSinglePlot);
+    plot->addAction(plotNewSinglePlotXData);
+    //---------- SCATTER --------------------------
+    QAction *plotNewScatterPlot        = new QAction("New scatter-plot (each curve into own plot)");
+    QAction *plotNewSingleScatterPlot = new QAction("New scatter-plot (all data into the same plot)");
+    QAction *plotNewSingleScatterPlotXData   = new QAction("New scatter-plot (x, y1,...yn)");
+
+    scatter->addAction(plotNewScatterPlot);
+    scatter->addAction(plotNewSingleScatterPlot);
+    scatter->addAction(plotNewSingleScatterPlotXData);
+
+    connect(plotNewScatterPlot, SIGNAL(triggered()), this, SLOT(variableScatterPlot()));
+    connect(plotNewSingleScatterPlot, SIGNAL(triggered()), this, SLOT(variableScatterPlotAllInOne()));
+    connect(plotNewSingleScatterPlotXData, SIGNAL(triggered()), this, SLOT(variableScatterPlotXData()));
+    //---------- BOXPLOT --------------------------
+    QAction *plotNewBoxPlot        = new QAction("New Box-plot (each curve into own plot)");
+    QAction *plotNewSingleBoxPlot = new QAction("New Box-plot (all data into the same plot)");
+    QAction *plotNewSingleBoxPlotXData   = new QAction("New Box-plot (x, y1,...yn)");
+
+    boxplot->addAction(plotNewBoxPlot);
+    boxplot->addAction(plotNewSingleBoxPlot);
+    boxplot->addAction(plotNewSingleBoxPlotXData);
+
+    connect(plotNewBoxPlot, SIGNAL(triggered()), this, SLOT(variableBoxPlot()));
+    connect(plotNewSingleBoxPlot, SIGNAL(triggered()), this, SLOT(variableBoxPlotAllInOne()));
+    connect(plotNewSingleBoxPlotXData, SIGNAL(triggered()), this, SLOT(variableBoxPlotXData()));
+
+    //---------- AREA --------------------------
+    QAction *plotNewAreaPlot        = new QAction("New Area-plot (each curve into own plot)");
+    QAction *plotNewSingleAreaPlot = new QAction("New Area-plot (all data into the same plot)");
+    QAction *plotNewSingleAreaPlotXData   = new QAction("New Area-plot (x, y1,...yn)");
+
+    area->addAction(plotNewAreaPlot);
+    area->addAction(plotNewSingleAreaPlot);
+    area->addAction(plotNewSingleAreaPlotXData);
+
+    connect(plotNewAreaPlot, SIGNAL(triggered()), this, SLOT(variableAreaPlot()));
+    connect(plotNewSingleAreaPlot, SIGNAL(triggered()), this, SLOT(variableAreaPlotAllInOne()));
+    connect(plotNewSingleAreaPlotXData, SIGNAL(triggered()), this, SLOT(variableAreaPlotXData()));
+
+    //---------- BAR --------------------------
+    QAction *plotNewBarPlot        = new QAction("New vBar-plot (each curve into own plot)");
+    QAction *plotNewSingleBarPlot = new QAction("New vBar-plot (all data into the same plot)");
+    QAction *plotNewSingleBarPlotXData   = new QAction("New vBar-plot (x, y1,...yn)");
+
+    barv->addAction(plotNewBarPlot);
+    barv->addAction(plotNewSingleBarPlot);
+    barv->addAction(plotNewSingleBarPlotXData);
+
+    connect(plotNewBarPlot, SIGNAL(triggered()), this, SLOT(variableBarPlot()));
+    connect(plotNewSingleBarPlot, SIGNAL(triggered()), this, SLOT(variableBarPlotAllInOne()));
+    connect(plotNewSingleBarPlotXData, SIGNAL(triggered()), this, SLOT(variableBarPlotXData()));
+
+    //---------- ARROW-------------------------
+    QAction *plotNewArrowPlot        = new QAction("New vert. arrow plot (each curve into own plot)");
+    QAction *plotNewSingleArrowPlot = new QAction("New vert. arrow plot (all data into the same plot)");
+    QAction *plotNewSingleArrowPlotXData   = new QAction("New vert. arrow plot (x, y1,...yn)");
+
+    arrow->addAction(plotNewArrowPlot);
+    arrow->addAction(plotNewSingleArrowPlot);
+    arrow->addAction(plotNewSingleArrowPlotXData);
+
+    connect(plotNewArrowPlot, SIGNAL(triggered()), this, SLOT(variableArrowPlot()));
+    connect(plotNewSingleArrowPlot, SIGNAL(triggered()), this, SLOT(variableArrowPlotAllInOne()));
+    connect(plotNewSingleArrowPlotXData, SIGNAL(triggered()), this, SLOT(variableArrowPlotXData()));
+
+    //---------- DENSITY-------------------------
+    QAction *plotNewDensityPlot        = new QAction("New density plot (each image into own plot");
+    QAction *plotNewDensityPlotXData   = new QAction("New density plot (rows,cols, data_1,  ... rows_n, cols_n, data_xn, data_n)");
+
+    dens->addAction(plotNewDensityPlot);
+    dens->addAction(plotNewDensityPlotXData);
+
+    connect(plotNewDensityPlot, SIGNAL(triggered()), this, SLOT(variableDensityPlot()));
+    connect(plotNewDensityPlotXData, SIGNAL(triggered()), this, SLOT(variableDensityPlotXData()));
+    //---------- VECTOR-------------------------
+    QAction *plotNewVectorPlot      = new QAction("New vector plot (each quiver into own plot");
+    QAction *plotNewVectorPlotXData = new QAction("New vector plot (rows,cols, data_x1, data_y1, ... rows_n, rows_n, data_xn, data_yn");
+
+    vector->addAction(plotNewVectorPlot);
+    vector->addAction(plotNewVectorPlotXData);
+    connect(plotNewVectorPlot, SIGNAL(triggered()), this, SLOT(variableVectorPlot()));
+    connect(plotNewVectorPlotXData, SIGNAL(triggered()), this, SLOT(variableVectorPlotXData()));
+
+    menu->popup(ui->workspaceList->viewport()->mapToGlobal(pos));
+}
+
+// ---------------------------------------------------------------------------------
+// Plot callback
+
+void mdiOctaveInterface::variablePlot()
+{
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+
+    foreach (QModelIndex index, indexList)
+    {
+        int row = index.row();
+        // Get var name
+        QString varname = ui->workspaceList->item(row,1)->text();
+        wnd2d->add_plot(varname,"");
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+    }
+    return;
+}
+
+void mdiOctaveInterface::variablePlotAllInOne()
+{
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+    int plot = -1;
+    foreach (QModelIndex index, indexList)
+    {
+        int row = index.row();
+        // Get var name
+        QString varname = ui->workspaceList->item(row,1)->text();
+        wnd2d->add_plot(varname,"", plot);
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+        plot = 0;
+    }
+    return;
+}
+
+void mdiOctaveInterface::variablePlotXData()
+{
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+    if (indexList.count()<2)
+        return;
+
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    int plot = -1;
+    QString xname="";
+    foreach (QModelIndex index, indexList)
+    {
+        int row = index.row();
+        // Get var name
+        QString varname = ui->workspaceList->item(row,1)->text();
+
+        if (plot==-1)
+        {
+            xname = varname;
+            plot = 0;
+            continue;
+        }
+        wnd2d->add_plot(varname,xname, plot);
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+    }
+    return;
+}
+
+// ---------------------------------------------------------------------------------
+// Scatterplot callback
+
+void mdiOctaveInterface::variableScatterPlot()
+{
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+
+    _plot2d_children.append(wnd2d);
+
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+
+    foreach (QModelIndex index, indexList)
+    {
+        int row = index.row();
+        // Get var name
+        QString varname = ui->workspaceList->item(row,1)->text();
+        wnd2d->add_scatterplot(varname,"");
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+    }
+    return;
+}
+
+void mdiOctaveInterface::variableScatterPlotAllInOne()
+{
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+    int plot = -1;
+    foreach (QModelIndex index, indexList)
+    {
+        int row = index.row();
+        // Get var name
+        QString varname = ui->workspaceList->item(row,1)->text();
+        wnd2d->add_scatterplot(varname,"", plot);
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+        plot = 0;
+    }
+    return;
+}
+
+void mdiOctaveInterface::variableScatterPlotXData()
+{
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+    if (indexList.count()<2)
+        return;
+
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    int plot = -1;
+    QString xname="";
+    foreach (QModelIndex index, indexList)
+    {
+        int row = index.row();
+        // Get var name
+        QString varname = ui->workspaceList->item(row,1)->text();
+
+        if (plot==-1)
+        {
+            xname = varname;
+            plot = 0;
+            continue;
+        }
+        wnd2d->add_scatterplot(varname,xname, plot);
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+    }
+    return;
+}
+// ---------------------------------------------------------------------------------
+// Boxplot callback
+void mdiOctaveInterface::variableBarPlotAllInOne()
+{
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+    if (indexList.count()<2)
+        return;
+
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    int plot = -1;
+    QString xname="";
+    foreach (QModelIndex index, indexList)
+    {
+        int row = index.row();
+        // Get var name
+        QString varname = ui->workspaceList->item(row,1)->text();
+
+        if (plot==-1)
+        {
+            xname = varname;
+            plot = 0;
+            continue;
+        }
+        wnd2d->add_barplot(varname,xname, plot);
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+    }
+    return;
+}
+
+void mdiOctaveInterface::variableBarPlot()
+{
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+
+    foreach (QModelIndex index, indexList)
+    {
+        int row = index.row();
+        // Get var name
+        QString varname = ui->workspaceList->item(row,1)->text();
+        wnd2d->add_barplot(varname,"");
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+    }
+    return;
+}
+
+void mdiOctaveInterface::variableBarPlotXData()
+{
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+    if (indexList.count()<2)
+        return;
+
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    int plot = -1;
+    QString xname="";
+    foreach (QModelIndex index, indexList)
+    {
+        int row = index.row();
+        // Get var name
+        QString varname = ui->workspaceList->item(row,1)->text();
+
+        if (plot==-1)
+        {
+            xname = varname;
+            plot = 0;
+            continue;
+        }
+        wnd2d->add_barplot(varname,xname, plot);
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+    }
+    return;
+
+}
+// ---------------------------------------------------------------------------------
+// Boxplot callback
+void mdiOctaveInterface::variableBoxPlot()
+{
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+
+    foreach (QModelIndex index, indexList)
+    {
+        int row = index.row();
+        // Get var name
+        QString varname = ui->workspaceList->item(row,1)->text();
+        wnd2d->add_boxplot(varname,"");
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+    }
+    return;
+}
+
+void mdiOctaveInterface::variableBoxPlotAllInOne()
+{
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+    if (indexList.count()<2)
+        return;
+
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    int plot = -1;
+    QString xname="";
+    foreach (QModelIndex index, indexList)
+    {
+        int row = index.row();
+        // Get var name
+        QString varname = ui->workspaceList->item(row,1)->text();
+
+        if (plot==-1)
+        {
+            xname = varname;
+            plot = 0;
+            continue;
+        }
+        wnd2d->add_boxplot(varname,xname, plot);
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+    }
+    return;
+}
+
+void mdiOctaveInterface::variableBoxPlotXData()
+{
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+    if (indexList.count()<2)
+        return;
+
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    int plot = -1;
+    QString xname="";
+    foreach (QModelIndex index, indexList)
+    {
+        int row = index.row();
+        // Get var name
+        QString varname = ui->workspaceList->item(row,1)->text();
+
+        if (plot==-1)
+        {
+            xname = varname;
+            plot = 0;
+            continue;
+        }
+        wnd2d->add_boxplot(varname,xname, plot);
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+    }
+    return;
+}
+// ---------------------------------------------------------------------------------
+// Area callback
+void mdiOctaveInterface::variableAreaPlot()
+{
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+
+    foreach (QModelIndex index, indexList)
+    {
+        int row = index.row();
+        // Get var name
+        QString varname = ui->workspaceList->item(row,1)->text();
+        wnd2d->add_areaplot(varname,"");
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+    }
+    return;
+}
+
+void mdiOctaveInterface::variableAreaPlotAllInOne()
+{
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+    if (indexList.count()<2)
+        return;
+
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    int plot = -1;
+    QString xname="";
+    foreach (QModelIndex index, indexList)
+    {
+        int row = index.row();
+        // Get var name
+        QString varname = ui->workspaceList->item(row,1)->text();
+
+        if (plot==-1)
+        {
+            xname = varname;
+            plot = 0;
+            continue;
+        }
+        wnd2d->add_areaplot(varname,xname, plot);
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+    }
+    return;
+}
+
+void mdiOctaveInterface::variableAreaPlotXData()
+{
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+    if (indexList.count()<2)
+        return;
+
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    int plot = -1;
+    QString xname="";
+    foreach (QModelIndex index, indexList)
+    {
+        int row = index.row();
+        // Get var name
+        QString varname = ui->workspaceList->item(row,1)->text();
+
+        if (plot==-1)
+        {
+            xname = varname;
+            plot = 0;
+            continue;
+        }
+        wnd2d->add_areaplot(varname,xname, plot);
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+    }
+    return;
+}
+
+
+// ---------------------------------------------------------------------------------
+// Arrow callback
+void mdiOctaveInterface::variableArrowPlot()
+{
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+
+    foreach (QModelIndex index, indexList)
+    {
+        int row = index.row();
+        // Get var name
+        QString varname = ui->workspaceList->item(row,1)->text();
+        wnd2d->add_arrowplot(varname,"");
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+    }
+    return;
+}
+
+void mdiOctaveInterface::variableArrowPlotAllInOne()
+{
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+    if (indexList.count()<2)
+        return;
+
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    int plot = -1;
+    QString xname="";
+    foreach (QModelIndex index, indexList)
+    {
+        int row = index.row();
+        // Get var name
+        QString varname = ui->workspaceList->item(row,1)->text();
+
+        if (plot==-1)
+        {
+            xname = varname;
+            plot = 0;
+            continue;
+        }
+        wnd2d->add_arrowplot(varname,xname, plot);
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+    }
+    return;
+}
+
+void mdiOctaveInterface::variableArrowPlotXData()
+{
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+    if (indexList.count()<2)
+        return;
+
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    int plot = -1;
+    QString xname="";
+    foreach (QModelIndex index, indexList)
+    {
+        int row = index.row();
+        // Get var name
+        QString varname = ui->workspaceList->item(row,1)->text();
+
+        if (plot==-1)
+        {
+            xname = varname;
+            plot = 0;
+            continue;
+        }
+        wnd2d->add_arrowplot(varname,xname, plot);
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+    }
+    return;
+}
+// ---------------------------------------------------------------------------------
+// 7. Density
+void mdiOctaveInterface::variableDensityPlot()
+{
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+
+    foreach (QModelIndex index, indexList)
+    {
+        int row = index.row();
+        // Get var name
+        QString varname = ui->workspaceList->item(row,1)->text();
+        wnd2d->add_density_plot(varname,"");
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+    }
+    return;
+}
+
+
+void mdiOctaveInterface::variableDensityPlotXData()
+{
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+    if (indexList.count()%3!=0)
+    {
+        QMessageBox::critical(this, "Error", "Multiple of 3 selection is needed");
+        return;
+    }
+
+
+    for (int n=0; n < indexList.count(); n+=3)
+    {
+
+        // Get var and indep var names
+        QString namex   = ui->workspaceList->item(indexList.at(n).row(),1)->text();
+        QString namey   = ui->workspaceList->item(indexList.at(n+1).row(),1)->text();
+
+        QString varname = ui->workspaceList->item(indexList.at(n+2).row(),1)->text();
+        wnd2d->add_density_plot(varname,namex,namey);
+
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+    }
+    return;
+}
+// ---------------------------------------------------------------------------------
+// 8. Vector plot
+void mdiOctaveInterface::variableVectorPlot()
+{
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+    if (indexList.count()%2!=0)
+    {
+        QMessageBox::critical(this, "Error", "Even number of data is needed ");
+        return;
+    }
+
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    QString varx="",vary="";
+
+    for (int n=0; n< indexList.count(); n+=2)
+    {
+        varx = ui->workspaceList->item(indexList.at(n).row(),1)->text();
+        vary = ui->workspaceList->item(indexList.at(n+1).row(),1)->text();
+        wnd2d->add_vector_plot(varx,vary);
+
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+    }
+
+    return;
+}
+
+
+
+void mdiOctaveInterface::variableVectorPlotXData()
+{
+    QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+    if (indexList.count()%4!=0)
+    {
+        QMessageBox::critical(this, "Error", "Multiple of 4 selection is needed ");
+        return;
+    }
+
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    ui->mdiArea->addSubWindow(wnd2d);
+    wnd2d->showMaximized();
+    _plot2d_children.append(wnd2d);
+
+    QString varx="",vary="";
+    QString namex="", namey="";
+
+    for (int n=0; n< indexList.count(); n+=4)
+    {
+        namex= ui->workspaceList->item(indexList.at(n).row(),1)->text();
+        namey= ui->workspaceList->item(indexList.at(n+1).row(),1)->text();
+
+        varx = ui->workspaceList->item(indexList.at(n+2).row(),1)->text();
+        vary = ui->workspaceList->item(indexList.at(n+3).row(),1)->text();
+        wnd2d->add_vector_plot(varx,vary,namex,namey);
+
+        QString last_error = wnd2d->last_error();
+        if (!last_error.isEmpty())
+        {
+            QMessageBox::critical(this,"Error creating plot",last_error);
+            //return;
+        }
+    }
+
+    return;
+}
+// ---------------------------------------------------------------------------------
+void mdiOctaveInterface::updatedSingleVar(const std::string& varname)
+{
+    if (varname.empty()) return;
+    QString vname = QString::fromStdString(varname);
+
+    octave_value var = _workspace->var_value(varname);
+    bool internal = _workspace->is_internal(varname);
+    for (int n=0; n< ui->workspaceList->rowCount(); n++)
+    {
+        QString varTable = ui->workspaceList->item(n,1)->text();
+        if (vname != varTable) continue;
+
+        // Column 2: size
+        dim_vector varsize = var.dims();
+        QString strSize="";
+        for (int sid = 0; sid < varsize.ndims(); sid++)
+        {
+            strSize += QString::number(varsize(sid));
+            if (sid < varsize.ndims()-1)
+                strSize += QString(" x ");
+        }
+
+        // Column 3
+        QString strVal = QString::fromStdString(var.class_name());
+
+        if (var.is_complex_scalar()||var.is_complex_matrix())
+            strVal = "complex";
+        ui->workspaceList->setItem(n,3,new QTableWidgetItem(strVal));
+
+        for (const auto& child: _plot2d_children)
+            if (child!=nullptr)
+                //if (child->isFullScreen())
+                child->update_workspace(_workspace);
+        return;
+    }
+
+    // Need to add a new row
+    int nrow = ui->workspaceList->rowCount();
+    ui->workspaceList->setRowCount(nrow+1);
+    add_variable_row(nrow,varname,var,internal);
+
+}
+// ---------------------------------------------------------------------------------
+void mdiOctaveInterface::updatedVars(const std::set<std::string>& varlist)
+{
+    if (varlist.empty()) return;
+    for (auto &v : varlist)
+        updatedSingleVar(v);
+
+    for (const auto& child: _plot2d_children)
+        if (child!=nullptr)
+            child->update_workspace(_workspace);
+
+    for (const auto& child: _plot2d_children)
+        if (child!=nullptr)
+            child->update_workspace(_workspace);
+
+}
+
+// ---------------------------------------------------------------------------------
+// Mesh callback
+void    mdiOctaveInterface::delete_children(wndOctaveScript* child)
+{
+    _scripts_children.removeAll(child);
+}
+// ---------------------------------------------------------------------------------
+void    mdiOctaveInterface::delete_children(wndPlot2d* child)
+{
+    if (_b_deleting) return;
+    _plot2d_children.removeAll(child);
+}
+// ---------------------------------------------------------------------------------
+void mdiOctaveInterface::saveWorkspaceData()
+{
+    QDateTime date = QDateTime::currentDateTime();
+    QString formatted_date_tme = date.toString("yyyy_MM_dd_hh_mm_ss");
+
+    QString projectFile = QFileDialog::getSaveFileName(this,"Workspace file",
+                                                       ariasdk_projects_path.absolutePath()+QDir::separator()+QString("data_")+formatted_date_tme,
+                                                       tr("Data workspace(*.mat);;All files (*.*)"),
+                                                       nullptr,
+                                                       QFileDialog::Options(QFileDialog::Detail|QFileDialog::DontUseNativeDialog));
+    if (projectFile.isEmpty())
+        return;
+
+    _workspace->save_to_file(projectFile.toStdString());
+}

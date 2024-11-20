@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1176</width>
+    <height>756</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>ARIA - Radar Development Kit</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="icons/aria_rdk.qrc">
+    <normaloff>:/icons/ARIA_Logo_2019_solo_simbolo_250dpi.png</normaloff>:/icons/ARIA_Logo_2019_solo_simbolo_250dpi.png</iconset>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="0" column="0">
+     <widget class="QSplitter" name="splitter">
+      <property name="orientation">
+       <enum>Qt::Orientation::Horizontal</enum>
+      </property>
+      <widget class="QTreeWidget" name="treeProject">
+       <attribute name="headerVisible">
+        <bool>true</bool>
+       </attribute>
+       <column>
+        <property name="text">
+         <string>Project</string>
+        </property>
+       </column>
+      </widget>
+      <widget class="QMdiArea" name="mdiArea"/>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1176</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuRadar_Module">
+    <property name="title">
+     <string>Radar Devices and Modules</string>
+    </property>
+    <widget class="QMenu" name="menuRadar_Modules">
+     <property name="title">
+      <string>Radar Modules</string>
+     </property>
+     <addaction name="actionNew_Radar_Module"/>
+     <addaction name="actionConfigure_RadarModule"/>
+     <addaction name="actionImport_Radar_Module"/>
+     <addaction name="actionDelete_Radar_Module"/>
+     <addaction name="actionSave_2"/>
+    </widget>
+    <addaction name="actionNew_Device"/>
+    <addaction name="actionDelete_Device"/>
+    <addaction name="actionScan"/>
+    <addaction name="actionFW_Upload"/>
+    <addaction name="actionConfigure"/>
+    <addaction name="separator"/>
+    <addaction name="separator"/>
+    <addaction name="menuRadar_Modules"/>
+   </widget>
+   <widget class="QMenu" name="menuOctave">
+    <property name="title">
+     <string>Octave</string>
+    </property>
+    <widget class="QMenu" name="menuOctaveScripts">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="tearOffEnabled">
+      <bool>true</bool>
+     </property>
+     <property name="title">
+      <string>Scripts</string>
+     </property>
+     <addaction name="actionOctaveScriptNew"/>
+     <addaction name="actionOctaveScriptSave"/>
+     <addaction name="actionOctaveScriptSave_as"/>
+     <addaction name="actionOctaveScriptClose"/>
+    </widget>
+    <addaction name="actionOctaveInterface"/>
+    <addaction name="separator"/>
+    <addaction name="menuOctaveScripts"/>
+    <addaction name="separator"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuAbout">
+    <property name="title">
+     <string>About</string>
+    </property>
+    <addaction name="actionAbout"/>
+   </widget>
+   <widget class="QMenu" name="menuAntenna">
+    <property name="title">
+     <string>Antenna</string>
+    </property>
+    <addaction name="actionEvaluate_Antenna"/>
+    <addaction name="separator"/>
+   </widget>
+   <widget class="QMenu" name="menuProject">
+    <property name="title">
+     <string>Project</string>
+    </property>
+    <addaction name="actionNew"/>
+    <addaction name="actionOpem"/>
+    <addaction name="actionSave"/>
+    <addaction name="actionClose"/>
+    <addaction name="actionClone"/>
+    <addaction name="separator"/>
+   </widget>
+   <widget class="QMenu" name="menuScheduler">
+    <property name="title">
+     <string>Scheduler</string>
+    </property>
+    <addaction name="actionNew_Scheduler"/>
+    <addaction name="actionDelete_Scheduler"/>
+    <addaction name="actionConfigure_Scheduler"/>
+   </widget>
+   <addaction name="menuProject"/>
+   <addaction name="menuRadar_Module"/>
+   <addaction name="menuOctave"/>
+   <addaction name="menuScheduler"/>
+   <addaction name="menuAntenna"/>
+   <addaction name="menuHelp"/>
+   <addaction name="menuAbout"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionScan">
+   <property name="text">
+    <string>Scan</string>
+   </property>
+   <property name="toolTip">
+    <string>Scan for Modules Connected to a Serial Port</string>
+   </property>
+  </action>
+  <action name="actionConnect">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Connect</string>
+   </property>
+   <property name="toolTip">
+    <string>Connect current module</string>
+   </property>
+  </action>
+  <action name="actionOctaveSetup">
+   <property name="text">
+    <string>Setup</string>
+   </property>
+  </action>
+  <action name="actionOctaveInterface">
+   <property name="text">
+    <string>Open interface...</string>
+   </property>
+  </action>
+  <action name="actionOctaveScriptNew">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>New</string>
+   </property>
+   <property name="toolTip">
+    <string>Create new octave script</string>
+   </property>
+  </action>
+  <action name="actionOctaveScriptSave">
+   <property name="text">
+    <string>Save</string>
+   </property>
+  </action>
+  <action name="actionOctaveScriptSave_as">
+   <property name="text">
+    <string>Save as...</string>
+   </property>
+  </action>
+  <action name="actionOctaveScriptClose">
+   <property name="text">
+    <string>Close</string>
+   </property>
+  </action>
+  <action name="actionRun">
+   <property name="text">
+    <string>Run</string>
+   </property>
+  </action>
+  <action name="actionFW_Upload">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>FW Upload</string>
+   </property>
+  </action>
+  <action name="actionScan_blank_modules">
+   <property name="text">
+    <string>Scan blank modules</string>
+   </property>
+  </action>
+  <action name="actionUpload_firmware">
+   <property name="text">
+    <string>Upload firmware</string>
+   </property>
+  </action>
+  <action name="actionConfigure">
+   <property name="text">
+    <string>Configure</string>
+   </property>
+  </action>
+  <action name="actionDataNewVariable">
+   <property name="text">
+    <string>New Data Container</string>
+   </property>
+  </action>
+  <action name="actionEvaluate_Antenna">
+   <property name="text">
+    <string>Evaluate Antenna</string>
+   </property>
+  </action>
+  <action name="actionDesign_array">
+   <property name="text">
+    <string>Design array</string>
+   </property>
+  </action>
+  <action name="actionNew">
+   <property name="text">
+    <string>New</string>
+   </property>
+  </action>
+  <action name="actionSave">
+   <property name="text">
+    <string>Save</string>
+   </property>
+  </action>
+  <action name="actionClose">
+   <property name="text">
+    <string>Close</string>
+   </property>
+  </action>
+  <action name="actionClone">
+   <property name="text">
+    <string>Clone</string>
+   </property>
+  </action>
+  <action name="actionOpem">
+   <property name="text">
+    <string>Open</string>
+   </property>
+  </action>
+  <action name="actionFolder">
+   <property name="text">
+    <string>Folder</string>
+   </property>
+  </action>
+  <action name="actionScript">
+   <property name="text">
+    <string>Script</string>
+   </property>
+  </action>
+  <action name="actionRadar_module_definition">
+   <property name="text">
+    <string>Radar module definition</string>
+   </property>
+  </action>
+  <action name="actionAntenna_model">
+   <property name="text">
+    <string>Antenna model</string>
+   </property>
+  </action>
+  <action name="actionNew_Radar_Module">
+   <property name="text">
+    <string>New Radar Module</string>
+   </property>
+  </action>
+  <action name="actionImport_Radar_Module">
+   <property name="text">
+    <string>Import Radar Module...</string>
+   </property>
+  </action>
+  <action name="actionDelete_Radar_Module">
+   <property name="text">
+    <string>Delete Radar Module</string>
+   </property>
+  </action>
+  <action name="actionSave_2">
+   <property name="text">
+    <string>Save Current Radar Module</string>
+   </property>
+  </action>
+  <action name="actionDiscard">
+   <property name="text">
+    <string>Discard</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About...</string>
+   </property>
+  </action>
+  <action name="actionNew_Scheduler">
+   <property name="text">
+    <string>New</string>
+   </property>
+  </action>
+  <action name="actionNew_Device">
+   <property name="text">
+    <string>New Device</string>
+   </property>
+  </action>
+  <action name="actionDelete_Scheduler">
+   <property name="text">
+    <string>Delete</string>
+   </property>
+  </action>
+  <action name="actionDelete_Device">
+   <property name="text">
+    <string>Delete</string>
+   </property>
+  </action>
+  <action name="actionConfigure_RadarModule">
+   <property name="text">
+    <string>Configure</string>
+   </property>
+  </action>
+  <action name="actionConfigure_Scheduler">
+   <property name="text">
+    <string>Configure</string>
+   </property>
+  </action>
+ </widget>
+ <resources>
+  <include location="icons/aria_rdk.qrc"/>
+ </resources>
+ <connections/>
+</ui>

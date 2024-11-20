@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>QDlgEditLimits</class>
+ <widget class="QDialog" name="QDlgEditLimits">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>711</width>
+    <height>747</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Values editor</string>
+  </property>
+  <property name="modal">
+   <bool>true</bool>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="3" column="0">
+    <widget class="QLabel" name="lblMin">
+     <property name="text">
+      <string>Min Value</string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="0" colspan="4">
+    <widget class="QTableWidget" name="tblVector"/>
+   </item>
+   <item row="1" column="2" colspan="2">
+    <widget class="QComboBox" name="cbLimitType">
+     <item>
+      <property name="text">
+       <string>Min - Max</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>List of available values</string>
+      </property>
+     </item>
+    </widget>
+   </item>
+   <item row="3" column="3">
+    <widget class="QLineEdit" name="leMax"/>
+   </item>
+   <item row="3" column="2">
+    <widget class="QLabel" name="lblMax">
+     <property name="text">
+      <string>Max Value</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok|QDialogButtonBox::Reset</set>
+     </property>
+     <property name="centerButtons">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QLineEdit" name="leMin"/>
+   </item>
+   <item row="1" column="0">
+    <widget class="QLabel" name="lblTitle">
+     <property name="text">
+      <string>Min max  / set of available values</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="0" colspan="2">
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Editor</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
