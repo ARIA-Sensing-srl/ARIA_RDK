@@ -17,11 +17,15 @@ Prerequisites
 -------------------------------------------------------
 ARIA RDK requires the following components to be compiled and installed in your system:
     • Qt6 (>= 6.7.2)
+    
     • VTK: The Visualization Toolkit (https://vtk.org/)
-    • JKQTPlotter: an extensive Qt5 & Qt6 Plotter Framework  
-                                      (https://jkriege2.github.io/JKQtPlotter/index.html)
+    
+    • JKQTPlotter: an extensive Qt5 & Qt6 Plotter Framework  (https://jkriege2.github.io/JKQtPlotter/index.html)
+    
     • Eigen: C++ template library for linear algebra (>= 3.4.0) (https://eigen.tuxfamily.org/)
+    
     • Octave (>=9.2.0): a scientific programming language environment
+    
 Please refer to respective build/install instruction.
 
 ARIA-RDK is designed to be compiled with CMake®. Currently it has been compiled and tested under Clear Linux SO.
