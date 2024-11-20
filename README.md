@@ -16,6 +16,7 @@ ARIA RDK includes four main components:
 Prerequisites 
 -------------------------------------------------------
 ARIA RDK requires the following components to be compiled and installed in your system:
+
     • Qt6 (>= 6.7.2)
     
     • VTK: The Visualization Toolkit (https://vtk.org/)
