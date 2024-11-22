@@ -60,11 +60,9 @@ public:
     bool            appendVariable();
     QString         appendVariable(QString name, const octave_value& val, bool internal, bool toOctave=false, QStringList indep=QStringList(), QStringList dep=QStringList());
 
-
     void            refreshWorkspace();
     octave_value_list execute_feval(QString command, octave_value_list& in, int n_outputs);
     int             findFunc(QString funcName,bool wait);
-
 
     void              append_variable(QString name, const octave_value& val, bool internal= false);
     void              refresh_workspace();
