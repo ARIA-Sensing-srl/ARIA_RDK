@@ -162,7 +162,7 @@ target_link_libraries(ARIA_RDK PRIVATE "/usr/lib64/octave/9.2.0/liboctinterp.so"
 
 
 # Armadillo
-target_link_libraries(ARIA_RDK PRIVATE ${PROJECT_SOURCE_DIR}/../armadillo-12.6.7/package/lib64/libarmadillo.so)
+#target_link_libraries(ARIA_RDK PRIVATE ${PROJECT_SOURCE_DIR}/../armadillo-12.6.7/package/lib64/libarmadillo.so)
 
 # Graphic plot
 target_link_libraries(ARIA_RDK PRIVATE JKQTPlotter${QT_VERSION_MAJOR}::JKQTPlotter${QT_VERSION_MAJOR})
