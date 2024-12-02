@@ -40,25 +40,31 @@ void         interfaceProtocol::set_stop(char stop)
 void         interfaceProtocol::set_stuff(char stuff)
 {
     _stuff_char = stuff;
-    _stuffed_stuff_seq = QByteArray({_stuff_char, _alternate_stuff});
-    _stuffed_start_seq = QByteArray({_stuff_char, _alternate_start});
-    _stuffed_stop_seq = QByteArray({_stuff_char, _alternate_stop});
+    char stuff_seq[] = {_stuff_char, _alternate_stuff};
+    char start_seq[] = {_stuff_char, _alternate_start};
+    char stop_seq[] = {_stuff_char, _alternate_stop};
+    _stuffed_stuff_seq = QByteArray(stuff_seq,2);
+    _stuffed_start_seq = QByteArray(start_seq,2);
+    _stuffed_stop_seq = QByteArray(stop_seq,2);
 }
 void         interfaceProtocol::set_alternate_start_char(char alternate)
 {
     _alternate_start = alternate;
-    _stuffed_start_seq = QByteArray({_stuff_char, _alternate_start});
+    char start_seq[] ={_stuff_char, _alternate_start};
+    _stuffed_start_seq = QByteArray(start_seq,2);
 
 }
 void         interfaceProtocol::set_alternate_stop_char(char alternate)
 {
     _alternate_stop = alternate;
-    _stuffed_stop_seq = QByteArray({_stuff_char, _alternate_stop});
+    char stop_seq[] = {_stuff_char, _alternate_stop};
+    _stuffed_stop_seq = QByteArray(stop_seq,2);;
 }
 void         interfaceProtocol::set_alternate_stuff_char(char alternate)
 {
     _alternate_stuff = alternate;
-    _stuffed_stuff_seq = QByteArray({_stuff_char, _alternate_stuff});
+    char stuff_seq[] = {_stuff_char, _alternate_stuff};
+    _stuffed_stuff_seq = QByteArray(stuff_seq,2);
 }
 
 char         interfaceProtocol::get_start(void) {return _start_command;}
