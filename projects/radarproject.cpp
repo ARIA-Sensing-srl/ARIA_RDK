@@ -404,9 +404,9 @@ void    projectItem::remove_all_children()
 //----------------------------------------------
 void    projectItem::remove_child(projectItem* item_to_remove)
 {
-    qlChild.removeAll(item_to_remove);
+
     item_to_remove->remove_all_children();
-    delete item_to_remove;
+    qlChild.removeAll(item_to_remove);
 }
 //----------------------------------------------
 const projectItem&  projectItem::operator = (const projectItem& item)
@@ -720,7 +720,12 @@ void    radarProject::add_radar_module(QString &filename, projectItem* pitem)
     if (!_radar_module->load_file(filename))
     {
         if (modules_home!=nullptr)
+        {
             modules_home->remove_child(_radar_module);
+
+            if (_radar_module!=nullptr)
+                delete _radar_module;
+        }
 
         return;
     }
@@ -801,9 +806,17 @@ bool    radarProject::remove_radar_module(radarModule* radar_module_to_remove, p
     }
     if (!pitem->has_child(radar_module_to_remove)) return false;
 
-    pitem->remove_child(radar_module_to_remove);
+    if (radar_module_to_remove!=nullptr)
+    {
+        pitem->remove_child(radar_module_to_remove);
+    }
 
     emit remove_item(pitem, radar_module_to_remove);
+
+    if (radar_module_to_remove!=nullptr)
+        delete radar_module_to_remove;
+
+    save_project_file();
 
     return true;
 }
@@ -836,9 +849,14 @@ bool    radarProject::remove_radar_module(QString &radar_module_name, projectIte
 
     if (!pitem->has_child(radar_to_del)) return false;
 
+    if (radar_to_del==nullptr) return true;
+
     pitem->remove_child(radar_to_del);
 
     emit remove_item(pitem, radar_to_del);
+
+    if (radar_to_del!=nullptr)
+        delete radar_to_del;
 
     return true;
 }
@@ -989,9 +1007,14 @@ void    radarProject::remove_script(std::shared_ptr<octaveScript> script_to_remo
 
     if (!pitem->has_child(script_to_del)) return;
 
+    if (script_to_del==nullptr) return;
+
     pitem->remove_child(script_to_del);
 
     emit remove_item(pitem, script_to_del);
+
+    if (script_to_del!=nullptr)
+        delete script_to_del;
 
 }
 //-----------------------------------------------
@@ -1011,9 +1034,14 @@ void    radarProject::remove_script(QString &radar_module_name, projectItem* pit
 
     if (!pitem->has_child(script_to_del))  return;
 
+    if (script_to_del==nullptr) return;
+
     pitem->remove_child(script_to_del);
 
     emit remove_item(pitem, script_to_del);
+
+    if (script_to_del!=nullptr)
+        delete script_to_del;
 
 
 }
@@ -1306,12 +1334,16 @@ void    radarProject::remove_radar_instance(radarInstance* radar_ptr, projectIte
         if (sched==nullptr) continue;
         if (sched->has_device(radar_ptr))
             sched->delete_radar(radar_ptr);
-
     }
+
+    if (radar_ptr==nullptr) return;
 
     pitem->remove_child(radar_ptr);
 
     emit remove_item(pitem, radar_ptr);
+
+    if (radar_ptr!=nullptr)
+        delete radar_ptr;
 
     save_project_file();
 }
@@ -1346,6 +1378,10 @@ void    radarProject::remove_radar_instance(QString radarName, projectItem* pite
             pitem->remove_child(radar_ptr);
 
             emit remove_item(pitem, radar_ptr);
+
+            if (radar_ptr !=nullptr)
+                delete radar_ptr;
+
             break;
         }
     save_project_file();
@@ -1523,8 +1559,10 @@ void     radarProject::add_scheduler(opScheduler* scheduler)
 //-----------------------------------------------
 void     radarProject::remove_scheduler(opScheduler* scheduler, projectItem* pitem)
 {
-    projectItem* folder = get_folder(cstr_handler);
-    if (folder==nullptr)
+    if (pitem == nullptr)
+        pitem = get_folder(cstr_handler);
+
+    if (pitem==nullptr)
         return;
 
     if (!pitem->has_child(scheduler)) return;
@@ -1532,6 +1570,9 @@ void     radarProject::remove_scheduler(opScheduler* scheduler, projectItem* pit
     pitem->remove_child(scheduler);
 
     emit remove_item(pitem, scheduler);
+
+    if (scheduler!=nullptr)
+        delete scheduler;
 
     save_project_file();
 }

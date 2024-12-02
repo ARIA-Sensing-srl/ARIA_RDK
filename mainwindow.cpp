@@ -1002,10 +1002,13 @@ void MainWindow::deleteScheduler()
     if (currentItem->get_type() != DT_SCHEDULER)
         return;
     opScheduler *scheduler= (opScheduler*)(currentItem);
+
+    if (scheduler == nullptr) return;
     if (QMessageBox::question(this, "Confirm", tr("Do you want to delete ")+scheduler->get_name()+tr(" ?"))==QMessageBox::No)
         return;
 
     project->remove_scheduler(scheduler);
+
 
     if (!project->get_last_error().isEmpty())
     {QMessageBox::critical(this,tr("Error"), project->get_last_error()); return;}

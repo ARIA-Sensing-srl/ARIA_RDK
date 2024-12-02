@@ -833,6 +833,19 @@ template<typename T> bool radarParameter<T>::split_values(const QByteArray& data
     return true;
 }
 */
+
+//------------------------------------------------------
+template<> QString radarParameter<uint8_t>::get_min_string()
+{
+    QVariant t=QVariant::fromValue<int>((int)_min);
+    return t.toString();
+}
+//------------------------------------------------------
+template<> QString radarParameter<uint8_t>::get_max_string()
+{
+    QVariant t=QVariant::fromValue<int>((int)_max);
+    return t.toString();
+}
 //------------------------------------------------------
 template<> unsigned int radarParameter<int8_t>::value_bytes_count()
 {

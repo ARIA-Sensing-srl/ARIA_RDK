@@ -215,6 +215,7 @@ radarModule&   radarModule::operator = (radarModule& m2)
 
     _inquiry_moduleid_command           = m2._inquiry_moduleid_command;
     _inquiry_moduleid_expected_value= m2._inquiry_moduleid_expected_value;
+    _inquiry_instanceid_command = m2._inquiry_instanceid_command;
     return *this;
 }
 //---------------------------------------------

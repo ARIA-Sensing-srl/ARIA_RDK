@@ -1062,10 +1062,15 @@ void wndRadarModuleEditor::remove_parameter()
 
     if (QMessageBox::question(this, "Confirm action",question)==QMessageBox::No)
         return;
-
-    if (p!=nullptr) p.reset();
-    _ptable.removeAt(row);
     ui->tblParamsEditor->removeRow(row);
+
+    if (p!=nullptr)
+    {
+        _ptable.removeAt(row);
+        p.reset();
+    }
+
+
 }
 
 //---------------------------------------
