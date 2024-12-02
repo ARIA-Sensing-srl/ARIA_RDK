@@ -2818,7 +2818,7 @@ void wndRadarModuleEditor::createDevice()
         return;
     }
     QVector<radarModule*> availableModules; availableModules.append(_source);
-        wndRadarInstanceEditor deviceEditor(new_device,availableModules,this);
+    wndRadarInstanceEditor deviceEditor(new_device,availableModules,this);
     if (deviceEditor.exec()==QMessageBox::Ok)
     {
 

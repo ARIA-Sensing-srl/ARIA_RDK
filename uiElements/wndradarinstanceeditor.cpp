@@ -50,7 +50,7 @@ wndRadarInstanceEditor::wndRadarInstanceEditor(radarInstance* radar, QVector<rad
     ui->setupUi(this);
     if (radar==nullptr)
     {
-        _radar_instance = new radarInstance();
+        _radar_instance = new radarInstance(available_models[0]);
         connect_serial_updates();
         for (auto module: available_models)
         {
@@ -718,7 +718,11 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
                 }
                 slider->setMinimum(imin);
                 slider->setMaximum(imax);
-                slider->setValue(current_value->value_to_variant()[0].toInt());
+                QVector<QVariant> var_array = current_value->value_to_variant();
+                if (var_array.size()>0)
+                    slider->setValue(var_array[0].toInt());
+                else
+                    slider->setValue(imin);
                 ui->tblParams->setCellWidget(row,COL_SETVALUE,slider);
                 RADARPARAMIOTYPE  io_type = current_value->get_io_type();
                 slider->setEnabled(io_type != RPT_IO_OUTPUT);
@@ -739,7 +743,11 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
                 }
                 slider->setMinimum(imin);
                 slider->setMaximum(imax);
-                slider->setValue(current_value->value_to_variant()[0].toInt());
+                QVector<QVariant> var_array = current_value->value_to_variant();
+                if (var_array.size()>0)
+                    slider->setValue(var_array[0].toInt());
+                else
+                    slider->setValue(imin);
                 RADARPARAMIOTYPE  io_type = current_value->get_io_type();
                 slider->setEnabled(io_type != RPT_IO_OUTPUT);
                 ui->tblParams->setCellWidget(row,COL_SETVALUE,slider);
@@ -760,7 +768,12 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
                 }
                 slider->setMinimum(imin);
                 slider->setMaximum(imax);
-                slider->setValue(current_value->value_to_variant()[0].toInt());
+                QVector<QVariant> var_array = current_value->value_to_variant();
+                if (var_array.size()>0)
+                    slider->setValue(var_array[0].toInt());
+                else
+                    slider->setValue(imin);
+
                 RADARPARAMIOTYPE  io_type = current_value->get_io_type();
                 slider->setEnabled(io_type != RPT_IO_OUTPUT);
                 ui->tblParams->setCellWidget(row,COL_SETVALUE,slider);
@@ -780,7 +793,11 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
                 }
                 slider->setMinimum(imin);
                 slider->setMaximum(imax);
-                slider->setValue(current_value->value_to_variant()[0].toInt());
+                QVector<QVariant> var_array = current_value->value_to_variant();
+                if (var_array.size()>0)
+                    slider->setValue(var_array[0].toInt());
+                else
+                    slider->setValue(imin);
                 RADARPARAMIOTYPE  io_type = current_value->get_io_type();
                 slider->setEnabled(io_type != RPT_IO_OUTPUT);
                 ui->tblParams->setCellWidget(row,COL_SETVALUE,slider);
@@ -800,7 +817,11 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
                 }
                 slider->setMinimum(imin);
                 slider->setMaximum(imax);
-                slider->setValue(current_value->value_to_variant()[0].toInt());
+                QVector<QVariant> var_array = current_value->value_to_variant();
+                if (var_array.size()>0)
+                    slider->setValue(var_array[0].toInt());
+                else
+                    slider->setValue(imin);
                 RADARPARAMIOTYPE  io_type = current_value->get_io_type();
                 slider->setEnabled(io_type != RPT_IO_OUTPUT);
                 ui->tblParams->setCellWidget(row,COL_SETVALUE,slider);
@@ -820,7 +841,11 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
                 }
                 slider->setMinimum(imin);
                 slider->setMaximum(imax);
-                slider->setValue(current_value->value_to_variant()[0].toInt());
+                QVector<QVariant> var_array = current_value->value_to_variant();
+                if (var_array.size()>0)
+                    slider->setValue(var_array[0].toInt());
+                else
+                    slider->setValue(imin);
                 RADARPARAMIOTYPE  io_type = current_value->get_io_type();
                 slider->setEnabled(io_type != RPT_IO_OUTPUT);
                 ui->tblParams->setCellWidget(row,COL_SETVALUE,slider);
