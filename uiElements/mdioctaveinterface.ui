@@ -145,7 +145,7 @@
          <widget class="QWidget" name="layoutWidget">
           <layout class="QVBoxLayout" name="verticalLayout">
            <item>
-            <widget class="QLabel" name="label_2">
+            <widget class="QLabel" name="label">
              <property name="text">
               <string>Output</string>
              </property>
@@ -160,10 +160,10 @@
            </item>
           </layout>
          </widget>
-         <widget class="QWidget" name="layoutWidget">
+         <widget class="QWidget" name="layoutWidget_2">
           <layout class="QVBoxLayout" name="verticalLayout_2">
            <item>
-            <widget class="QLabel" name="label_3">
+            <widget class="QLabel" name="label_2">
              <property name="text">
               <string>History</string>
              </property>
@@ -182,10 +182,10 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="layoutWidget">
-      <layout class="QHBoxLayout" name="horizontalLayout">
+     <widget class="QWidget" name="layoutWidget_3">
+      <layout class="QHBoxLayout" name="horizontalLayout_3">
        <item>
-        <widget class="QLabel" name="label">
+        <widget class="QLabel" name="label_3">
          <property name="text">
           <string>Command</string>
          </property>

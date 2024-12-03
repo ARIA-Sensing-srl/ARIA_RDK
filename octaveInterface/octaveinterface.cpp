@@ -324,6 +324,7 @@ bool    octaveInterface::save_workspace_to_file(QString filename)
 {
     if (_workspace == nullptr) return false;
     _workspace->save_to_file(filename.toStdString());
+    return true;
 }
 
 
