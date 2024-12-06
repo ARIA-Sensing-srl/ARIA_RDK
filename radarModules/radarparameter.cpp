@@ -2132,7 +2132,7 @@ template<> bool radarParameter<int32_t>::split_values(const QByteArray& data)
     _value.resize(dim_vector(1,res.quot));
     for (int n=0, p=0; n < res.quot; n++, p+=4)
     {
-        int16_t dest;
+        int32_t dest;
         char* _pdest = (char*)(&dest);
         strncpy(_pdest,data.mid(p, 4).data(),4);
         _value.elem(n) = dest;
