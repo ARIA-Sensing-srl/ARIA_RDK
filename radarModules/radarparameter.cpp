@@ -2101,7 +2101,7 @@ template<> bool radarParameter<uint16_t>::split_values(const QByteArray& data)
     {
         uint16_t dest;
         char* _pdest = (char*)(&dest);
-        strncpy(_pdest,data.mid(p, 2).data(),2);
+        memcpy(_pdest,data.mid(p, 2).data(),2);
         _value.elem(n) = dest;
     }
     return true;
@@ -2118,7 +2118,7 @@ template<> bool radarParameter<int16_t>::split_values(const QByteArray& data)
     {
         int16_t dest;
         char* _pdest = (char*)(&dest);
-        strncpy(_pdest,data.mid(p, 2).data(),2);
+        memcpy(_pdest,data.mid(p, 2).data(),2);
         _value.elem(n) = dest;
     }
     return true;
@@ -2134,7 +2134,7 @@ template<> bool radarParameter<int32_t>::split_values(const QByteArray& data)
     {
         int32_t dest;
         char* _pdest = (char*)(&dest);
-        strncpy(_pdest,data.mid(p, 4).data(),4);
+        memcpy(_pdest,data.mid(p, 4).data(),4);
         _value.elem(n) = dest;
     }
     return true;
@@ -2151,7 +2151,7 @@ template<> bool radarParameter<uint32_t>::split_values(const QByteArray& data)
     {
         uint32_t dest;
         char* _pdest = (char*)(&dest);
-        strncpy(_pdest,data.mid(p, 4).data(),4);
+        memcpy(_pdest,data.mid(p, 4).data(),4);
         _value.elem(n) = dest;
     }
     return true;

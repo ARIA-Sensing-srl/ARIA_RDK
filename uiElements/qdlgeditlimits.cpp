@@ -283,14 +283,20 @@ void QDlgEditLimits::init_menu()
     QMenu *menu1            = menubar->addMenu("Parameters");
     QAction *actionAdd      = menu1->addAction("Add Row");
     QAction *actionRemove   = menu1->addAction("Delete Row");
-    connect(actionAdd,      SIGNAL(triggered()),this,SLOT(add_new_row()));
-    connect(actionRemove,   SIGNAL(triggered()),this,SLOT(remove_current_row()));
+    connect(actionAdd,      &QAction::triggered,  this,&QDlgEditLimits::add_new_row);
+    connect(actionRemove,   &QAction::triggered,  this,&QDlgEditLimits::remove_current_row);
+    connect(ui->btnAddRow,  &QPushButton::clicked,this,&QDlgEditLimits::add_new_row);
+    connect(ui->btnRemoveRow,  &QPushButton::clicked,this,&QDlgEditLimits::remove_current_row);
+
 }
 
 //------------------------------------------------
 // Add a blank row
 void QDlgEditLimits::add_new_row()
 {
+    if (ui->cbLimitType->currentIndex()==0)
+        return;
+
     if (_bEditingLimits)
     {
         if (_param->get_type()==RPT_ENUM)
@@ -339,6 +345,9 @@ void QDlgEditLimits::add_new_row()
 //------------------------------------------------
 void QDlgEditLimits::remove_current_row()
 {
+    if (ui->cbLimitType->currentIndex()==0)
+        return;
+
     int row = ui->tblVector->currentRow();
     if ((row < 0)||(row>=ui->tblVector->rowCount()))
         return;

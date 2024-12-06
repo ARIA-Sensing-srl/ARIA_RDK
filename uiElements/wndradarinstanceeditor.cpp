@@ -731,7 +731,7 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
                 RADARPARAMIOTYPE  io_type = current_value->get_io_type();
                 slider->setEnabled(io_type != RPT_IO_OUTPUT);
 
-                connect(slider,SIGNAL(sliderReleased()),this,SLOT(paramSliderReleased()));
+                connect(slider,&QSlider::sliderReleased,this,&wndRadarInstanceEditor::paramSliderReleased);
             }
                 break;
             case RPT_INT8:
@@ -902,7 +902,7 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
                 RADARPARAMIOTYPE  io_type = current_value->get_io_type();
                 cb->setEnabled(io_type != RPT_IO_OUTPUT);
                 ui->tblParams->setCellWidget(row,COL_SETVALUE,cb);
-                connect(cb, SIGNAL(currentIndexChanged(int)),this, SLOT(cbEnumIndexChange(int)));
+                connect(cb, &QComboBox::currentIndexChanged,this, &wndRadarInstanceEditor::cbEnumIndexChange);
             }
         } // switch
     } // if scalar
@@ -916,7 +916,7 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
                 QPushButton* btnSendCommand = new QPushButton();
                 btnSendCommand->setText("Send cmd");
                 if (btnSendCommand!=nullptr) ui->tblParams->setCellWidget(row,COL_SETVALUE,btnSendCommand);
-                connect(btnSendCommand, SIGNAL(clicked()), this, SLOT(send_command()));
+                connect(btnSendCommand, &QPushButton::clicked, this, &wndRadarInstanceEditor::send_command);
             }
             break;
         case RPT_UNDEFINED:

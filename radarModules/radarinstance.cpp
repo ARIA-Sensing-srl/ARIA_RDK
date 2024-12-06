@@ -1579,6 +1579,9 @@ bool    radarInstance::inquiry_parameter(radarParamPointer param)
     {
         if ((param->get_io_type()!=RPT_IO_INPUT)&&(param->has_inquiry_value()))
             _params_to_inquiry.append(param);
+
+        if (param->get_io_type()==RPT_IO_OUTPUT)
+             _params_to_inquiry.append(param);
     }
 
     return transmit_param_non_blocking(params, true);
