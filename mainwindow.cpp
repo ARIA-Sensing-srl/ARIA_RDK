@@ -960,7 +960,19 @@ void MainWindow::deleteDevice()
     radarInstance *radar = (radarInstance*)(currentItem);
     if (QMessageBox::question(this, "Confirm", tr("Do you want to delete ")+radar->get_device_name()+tr(" ?"))==QMessageBox::No)
         return;
-
+    // Close any window related to the module itself
+    for (auto &child: ui->mdiArea->subWindowList())
+    {
+        if (typeid(child).name()==typeid(wndRadarInstanceEditor).name())
+        {
+            if (((wndRadarInstanceEditor*)(child))->getRadarInstance()==radar)
+            {
+                ((wndRadarInstanceEditor*)(child))->close();
+                delete (wndRadarInstanceEditor*)(child);
+                return;
+            }
+        }
+    }
     project->remove_radar_instance(radar);
 
     if (!project->get_last_error().isEmpty())
@@ -1039,6 +1051,20 @@ void MainWindow::deleteScheduler()
     if (QMessageBox::question(this, "Confirm", tr("Do you want to delete ")+scheduler->get_name()+tr(" ?"))==QMessageBox::No)
         return;
 
+    // Close any window related to the module itself
+    for (auto &child: ui->mdiArea->subWindowList())
+    {
+        if (typeid(child).name()==typeid(wndScheduler).name())
+        {
+            if (((wndScheduler*)(child))->getScheduler()==scheduler)
+            {
+                ((wndScheduler*)(child))->close();
+                delete (wndScheduler*)(child);
+                return;
+            }
+        }
+    }
+
     project->remove_scheduler(scheduler);
 
 
@@ -1094,11 +1120,26 @@ void MainWindow::deleteModule()
     radarModule *radar_mod= (radarModule*)(currentItem);
     if (QMessageBox::question(this, "Confirm", tr("Do you want to delete ")+radar_mod->get_name()+tr(" ?"))==QMessageBox::No)
         return;
+    // Close any window related to the module itself
+    for (auto &child: ui->mdiArea->subWindowList())
+    {
+        if (typeid(child).name()==typeid(wndRadarModuleEditor).name())
+        {
+            if (((wndRadarModuleEditor*)(child))->get_radar_module()==(radarModule*)radar_mod)
+            {
+                ((wndRadarModuleEditor*)(child))->close();
+                delete (wndRadarModuleEditor*)(child);
+                return;
+            }
+        }
+    }
 
     project->remove_radar_module(radar_mod);
 
     if (!project->get_last_error().isEmpty())
     {QMessageBox::critical(this,tr("Error"), project->get_last_error()); return;}
+
+
 
     updateProjectTree();
 
