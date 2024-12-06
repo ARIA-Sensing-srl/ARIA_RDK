@@ -418,10 +418,10 @@ bool    radarInstance::set_port(const QSerialPortInfo& port, const SerialSetting
             if (!_expected_serial_number.isEmpty())
                 if (port.serialNumber()!=_expected_serial_number.toHex()) return false;
 
-            if (_expected_vendorid!=-1)
+            if (_expected_vendorid!=0)
                 if (port.vendorIdentifier()!=_expected_vendorid) return false;
 
-            if (_expected_productid!=-1)
+            if (_expected_productid!=0)
                 if (port.productIdentifier()!=_expected_productid) return false;
         }
 

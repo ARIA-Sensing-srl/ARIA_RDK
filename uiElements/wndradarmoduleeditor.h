@@ -99,6 +99,7 @@ private:
     void        update_all_txrx_combos(QString oldname, QString newname);
 
     void        init_serial_port_combos();
+    void        serial_port_to_module();
     void        update_cb_inquiry();
 
 public slots:

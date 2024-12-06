@@ -450,7 +450,11 @@ void wndRadarInstanceEditor::confirm()
         {
             radarInstance *new_radar;
             new_radar = new radarInstance(*_radar_instance);
-            (*_backup) = (*_radar_instance);
+
+            if (_backup == nullptr)
+                _backup = new radarInstance (*_radar_instance);
+            else
+                (*_backup) = (*_radar_instance);
             _radar_instance = new_radar;
             connect_serial_updates();
             add_new = true;

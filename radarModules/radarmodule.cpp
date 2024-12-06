@@ -49,8 +49,8 @@ radarModule::radarModule(QString filename,projectItem *parent ) : projectItem("n
     _expected_serial_description = "";
     _expected_serial_manufacturer= "";
     _expected_serial_number      = "";
-    _expected_vendorid           = -1;
-    _expected_productid          = -1;
+    _expected_vendorid           = 0;
+    _expected_productid          = 0;
     set_filename(filename);
 
     _inquiry_moduleid_command           = "";

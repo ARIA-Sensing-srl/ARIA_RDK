@@ -544,7 +544,31 @@ void MainWindow::importRadarModule()
 
     ariasdk_modules_path.setPath(QFileInfo(projectFile).absolutePath());
 
-    project->add_radar_module(projectFile, project->get_root()->get_folder("Radar modules"));
+    // Check that we don't have already the same file in the project
+    QString path_dest = project->get_root()->get_folder("Radar Modules")->get_full_path();
+
+
+
+    QFileInfo fi(projectFile);
+    fi.setFile(path_dest,fi.fileName());
+    if (fi.exists())
+    {
+        if (QMessageBox::question(this,"Confirm","File is already in the project folder. Do you want to overwrite?")==QMessageBox::No)
+            return;
+    }
+
+    radarModule* new_module = new radarModule();
+
+    if (!new_module->load_file(projectFile))
+    {
+        QMessageBox::critical(this,"Error", "The file is not a correct module");
+        delete new_module;
+        return;
+    }
+
+    new_module->save_file(fi.absoluteFilePath());
+
+    project->add_radar_module(new_module);
 
     QString error = project->get_last_error();
 
@@ -552,6 +576,8 @@ void MainWindow::importRadarModule()
     {
         QMessageBox::critical(this,"Error",error);
     }
+
+
     project->save_project_file();
 }
 //---------------------------------------------------------------
@@ -901,6 +927,12 @@ void MainWindow::newDevice()
         return;
     }
     QVector<radarModule*> modules  = project->get_available_modules();
+
+    if (modules.isEmpty())
+    {
+        QMessageBox::critical(this,"Error","Need to define at least one radar module");
+        return;
+    }
 
     wndRadarInstanceEditor *radarInstanceEditor = new wndRadarInstanceEditor(nullptr,modules,this);
     if (interfaceData!=nullptr)

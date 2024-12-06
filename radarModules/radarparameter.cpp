@@ -311,13 +311,7 @@ template<typename T> bool radarParameter<T>::validate_data()
 //----------------------------------------------------
 template<typename T>   bool radarParameter<T>::is_scalar()
 {
-    dim_vector dv = _value.dims();
-    int overallsize = 1;
-
-    for (int s = 0; s < dv.numel(); s++)
-        overallsize *= dv.elem(s);
-
-    return overallsize==1;
+    return _value.numel()==1;
 }
 
 //----------------------------------------------------
@@ -891,7 +885,7 @@ template<> unsigned int radarParameter<char>::value_bytes_count()
 //------------------------------------------------------
 template<typename T> int    radarParameter<T>::get_expected_payload_size()
 {
-    if (is_scalar())
+    //if (is_scalar())
         return (int)(sizeof(T));
 
     return -1;

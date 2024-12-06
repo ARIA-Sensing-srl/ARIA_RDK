@@ -31,10 +31,17 @@ wndScanModules::wndScanModules(QVector<projectItem*> radar_modules, radarProject
 
 wndScanModules::~wndScanModules()
 {
-    foreach (auto module,_connected_radars)
-        foreach(auto radar, module)
-            if (radar!=nullptr) delete radar;
-
+    /*
+    for (auto& module: _connected_radars)
+        for(auto& radar :  module)
+        {
+            module.removeAll(radar);
+            if (radar!=nullptr)
+            {
+                delete radar;
+            }
+        }
+    _connected_radars.clear();*/
     delete ui;
 }
 
@@ -70,8 +77,11 @@ void wndScanModules::scanRadarModules()
         return;
     }
 
-    for (const auto& port: selectedPorts)
+    for (auto sel : selected)
     {
+        int n = sel.row();
+        auto &port = _availablePorts[n];
+
         _connected_radars[n] = QVector<radarInstance*>();
         qDebug() << port.portName();
         qDebug() << port.description();

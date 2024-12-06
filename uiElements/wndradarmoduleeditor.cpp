@@ -31,10 +31,10 @@
 
 #define COL_NAME 0
 #define COL_TYPE 1
-#define COL_SIZE 2
-#define COL_VALUE 3
-#define COL_LIMITS 4
-#define COL_IO 5
+#define COL_IO 2
+#define COL_SIZE 3
+#define COL_VALUE 4
+#define COL_LIMITS 5
 #define COL_GROUP 6
 #define COL_COMMAND 7
 #define COL_INQUIRY 8
@@ -201,7 +201,7 @@ void wndRadarModuleEditor::init_param_table()
     ui->tblParamsEditor->setColumnCount(9);
 
     QStringList headers;
-    headers << "Param name" << "Base Type" << "Dimension" << "Default Value" << "Valid values" << "I/O" << "Group" << "Command String (hex)" << "Inquiry Value (hex)";
+    headers << "Param name" << "Base Type" << "I/O" << "Dimension" << "Default Value" << "Valid values"  << "Group" << "Command String (hex)" << "Inquiry Value (hex)";
             //<< "Linked to Workspace" << "Compound name" << "Alias";
 
     ui->tblParamsEditor->setHorizontalHeaderLabels(headers);
@@ -654,6 +654,16 @@ int wndRadarModuleEditor::validate_param(radarParamPointer &dest, int row)
 
     dest->set_group( ui->tblParamsEditor->item(row,COL_GROUP)->text());
 
+    if (rpt==RPT_ENUM)
+    {
+        if ((!_ptable[row]->has_available_set())||(_ptable[row]->availableset_to_variant().isEmpty()))
+        {
+            QMessageBox::critical(this, "Error", _name + QString(" is defined as enum but has no valid elements"));
+            return COL_NAME;
+        }
+
+    }
+
     if (rpt!=RPT_VOID)
     {
 
@@ -1046,6 +1056,7 @@ void wndRadarModuleEditor::update_row_param(int row)
 void wndRadarModuleEditor::add_parameter()
 {
     radarParamPointer newParam = std::make_shared<radarParameter<float>>("");
+    newParam->set_value(octave_value(0.0));
     _ptable.append(newParam);
     ui->tblParamsEditor->insertRow(ui->tblParamsEditor->rowCount());
     set_param_row(_ptable.at(_ptable.count()-1),_ptable.count()-1);
@@ -1062,7 +1073,7 @@ void wndRadarModuleEditor::remove_parameter()
 
     if (QMessageBox::question(this, "Confirm action",question)==QMessageBox::No)
         return;
-    ui->tblParamsEditor->removeRow(row);
+
 
     if (p!=nullptr)
     {
@@ -1070,6 +1081,7 @@ void wndRadarModuleEditor::remove_parameter()
         p.reset();
     }
 
+    ui->tblParamsEditor->removeRow(row);
 
 }
 
@@ -1681,6 +1693,7 @@ void wndRadarModuleEditor::save_radar_module()
 
     copy_temp_array_to_module();
     command_tables_to_radar();
+    serial_port_to_module();
     save_parameters();
 
     QFileInfo fi(QDir(_project->get_folder(cstr_radar_modules)->get_full_path()),radarModuleName);
@@ -1774,6 +1787,7 @@ void wndRadarModuleEditor::save_radar_module_as()
 
     copy_temp_array_to_module();
     command_tables_to_radar();
+    serial_port_to_module();
     save_parameters();
 
     QFileInfo fi(QDir(_project->get_folder(cstr_radar_modules)->get_full_path()),radarModuleName);
@@ -2714,7 +2728,68 @@ bool    wndRadarModuleEditor::validate_param_groups()
 {
     return true;
 }
+void wndRadarModuleEditor::serial_port_to_module()
+{
+    if (_radar_module==nullptr) return;
+    bool bOk;
+    qint32 baud_rate = ui->cbBaudRate->currentText().toInt(&bOk);
+    if (!bOk) return;
 
+    QString strParity = ui->cbParity->currentText();
+
+    QSerialPort::Parity parity = QSerialPort::NoParity;
+
+    for (auto par_descr = serial_port_parity_descriptor.begin(), end = serial_port_parity_descriptor.end();
+         par_descr != end;
+         par_descr++)
+    {
+        if (par_descr.value()==strParity)
+        {
+            parity = par_descr.key();
+            break;
+        }
+    }
+
+    QString strStop = ui->cbStopBits->currentText();
+
+    QSerialPort::StopBits stopBits= QSerialPort::OneStop;
+
+    for (auto par_descr = serial_port_stopbits_descriptor.begin(), end = serial_port_stopbits_descriptor.end();
+         par_descr != end;
+         par_descr++)
+    {
+        if (par_descr.value()==strStop)
+        {
+            stopBits = par_descr.key();
+            break;
+        }
+    }
+
+
+    QString strFlow = ui->cbFlowControl->currentText();
+
+    QSerialPort::FlowControl flowControl= QSerialPort::NoFlowControl;
+
+    for (auto par_descr = serial_port_flowcontrol_descriptor.begin(), end = serial_port_flowcontrol_descriptor.end();
+         par_descr != end;
+         par_descr++)
+    {
+        if (par_descr.value()==strFlow)
+        {
+            flowControl = par_descr.key();
+            break;
+        }
+    }
+
+
+
+    _radar_module->set_serial_port_configuration(baud_rate, ( QSerialPort::DataBits )(ui->sbDataBits->value()),
+                                                 parity, stopBits, flowControl );
+
+    _radar_module->set_expected_serial_port_data(ui->leSerialDescription->text(), ui->leSerialManufacturer->text(), ui->leSerialNumber->text(),
+                                                 ui->leVendorId->text(), ui->leProductId->text());
+
+}
 //---------------------------------------
 void        wndRadarModuleEditor::init_serial_port_combos()
 {
@@ -2796,9 +2871,19 @@ void wndRadarModuleEditor::update_cb_inquiry()
 void wndRadarModuleEditor::scanRadarDevices()
 {
     QVector<projectItem*> radarModules;
+    radarModule backup(*_radar_module);
+
+    copy_temp_array_to_module();
+    command_tables_to_radar();
+    serial_port_to_module();
+    save_parameters();
+
     radarModules.append(_radar_module);
+
     wndScanModules scanModules(radarModules, _project, this);
     scanModules.exec();
+
+    *_radar_module = backup;
 }
 //---------------------------------------
 void wndRadarModuleEditor::createDevice()
@@ -2818,6 +2903,12 @@ void wndRadarModuleEditor::createDevice()
         return;
     }
     QVector<radarModule*> availableModules; availableModules.append(_source);
+
+    if (availableModules.isEmpty())
+    {
+        QMessageBox::critical(this,"Error","Need to define at least one radar module");
+        return;
+    }
     wndRadarInstanceEditor deviceEditor(new_device,availableModules,this);
     if (deviceEditor.exec()==QMessageBox::Ok)
     {
