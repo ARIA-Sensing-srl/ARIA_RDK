@@ -64,6 +64,7 @@ public slots:
     void                        paramSliderReleased();
     void                        cbEnumIndexChange(int);
     void                        linkToOctaveChanged(Qt::CheckState);
+    void                        compoundNameChanged(Qt::CheckState);
 //    void                        currentPlotChanged(int);
     void                        itemChanged(QTableWidgetItem* item);
     void                        cbInitScriptChanged(int index);

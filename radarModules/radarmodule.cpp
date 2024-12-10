@@ -740,7 +740,7 @@ bool radarModule::load_xml()
             antenna_elem = antenna_elem.nextSiblingElement("antenna");
         }
 
-        if (_ant.count()!=antenna_count) return false;
+        //if (_ant.count()!=antenna_count) return false;
     }
 
     _txrx_scheme.clear();
@@ -880,7 +880,7 @@ bool radarModule::load_xml()
         }
         while(!script.isNull());
 
-        if (_init_scripts.count()!=num_scripts) return false;
+       // if (_init_scripts.count()!=num_scripts) return false;
     }
 
     scripts = root.firstChildElement("acquisition_scripts");
@@ -902,7 +902,7 @@ bool radarModule::load_xml()
         }
         while(!script.isNull());
 
-        if (_acquisition_scripts.count()!=num_scripts) return false;
+        //if (_acquisition_scripts.count()!=num_scripts) return false;
     }
 
     scripts = root.firstChildElement("post_acquisition_scripts");
@@ -923,7 +923,7 @@ bool radarModule::load_xml()
         }
         while(!script.isNull());
 
-        if (_post_acquisition_scripts.count()!=num_scripts) return false;
+       // if (_post_acquisition_scripts.count()!=num_scripts) return false;
     }
 
 

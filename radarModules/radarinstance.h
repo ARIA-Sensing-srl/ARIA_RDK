@@ -180,6 +180,8 @@ public:
     void            set_serial_timeout(int timeout) {if (timeout>0) kWriteTimeoutRx=timeout;}
     int             get_serial_timeout()            {return kWriteTimeoutRx;}
 
+    QByteArray      set_port_no_module_check(char module_id_inquiry_command, const QSerialPortInfo& port, const SerialSettings& settings);
+
 public slots:
     //void            data_received();
     void            serial_error(QSerialPort::SerialPortError error);

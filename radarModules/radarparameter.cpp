@@ -200,6 +200,7 @@ radarParamBase& radarParamBase::operator = (radarParamBase& v2)
     _is_grouped = v2._is_grouped;
     _group_order = v2._group_order;
     _pure_command= v2._pure_command;
+    _b_compound_name = v2._b_compound_name;
     _workspace = v2._workspace;
     return *this;
 }
@@ -209,6 +210,7 @@ radarParamBase& radarParamBase::operator = (const radarParamBase& v2)
     _rpt = v2._rpt;
     _rpt_io = v2._rpt_io;
     _paramname = v2._paramname;
+    _b_compound_name = v2._b_compound_name;
     _group = v2._group;
     _hasMinMax=v2._hasMinMax;
     _isValid = v2._isValid;

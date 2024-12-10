@@ -40,17 +40,18 @@ NDArray Quantile(const octave_value& inData)
         return inData.array_value();
 
     NDArray data(inData.sort(1).array_value());
+/*
     for (int n=0; n < data.numel(); n++)
         qDebug() << data(n);
-
+*/
     std::vector<double> probs={0.25, 0.5, 0.75};
 
     for (size_t i = 0; i < probs.size(); ++i)
     {
         double poi = Lerp(-0.5, data.numel() - 0.5, probs[i]);
-        qDebug() << probs[i];
-        qDebug() << data.numel();
-        qDebug() << poi;
+//        qDebug() << probs[i];
+//        qDebug() << data.numel();
+//        qDebug() << poi;
 
         size_t left = std::max(int64_t(std::floor(poi)), int64_t(0));
         size_t right = std::min(int64_t(std::ceil(poi)), int64_t(data.numel() - 1));
@@ -58,10 +59,10 @@ NDArray Quantile(const octave_value& inData)
         double datLeft = data(left);
         double datRight = data(right);
 
-        qDebug() << left;
-        qDebug() << right;
-        qDebug() << datLeft;
-        qDebug() << datRight;
+//        qDebug() << left;
+//        qDebug() << right;
+//        qDebug() << datLeft;
+//        qDebug() << datRight;
 
         double quantile = Lerp(datLeft, datRight, poi - left);
 
@@ -1920,9 +1921,9 @@ void wndPlot2d::octave_to_box_plotdata(std::string varname, std::string indep)
         double vmax = quantiles(2)+iqr;
         double vmin = quantiles(0)-iqr;
 
-        qDebug() << "Avg:" << mean;
-        qDebug() << "Om :" << vmin;
-        qDebug() << "OM :" << vmax;
+//        qDebug() << "Avg:" << mean;
+//        qDebug() << "Om :" << vmin;
+//        qDebug() << "OM :" << vmax;
 
 
 
@@ -1934,7 +1935,7 @@ void wndPlot2d::octave_to_box_plotdata(std::string varname, std::string indep)
 
             if ((val>vmax)||(val<vmin))
             {
-                qDebug() << "outlier : " << val;
+//                qDebug() << "outlier : " << val;
                 outlier_x << x;
                 outlier << val;
                 // remove the outliers from the "row" vector

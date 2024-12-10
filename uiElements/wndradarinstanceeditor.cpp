@@ -620,7 +620,7 @@ void    wndRadarInstanceEditor::param_to_table_row(int row, radarParamPointer cu
    // Exported to Octave
     QCheckBox* cb = new QCheckBox();
     cb->setChecked(current_param->is_linked_to_octave() && (current_param->get_type()!=RPT_VOID));
-    connect(cb,SIGNAL(checkStateChanged(Qt::CheckState)), this, SLOT(linkToOctaveChanged(Qt::CheckState)));
+    connect(cb, &QCheckBox::checkStateChanged, this, &wndRadarInstanceEditor::linkToOctaveChanged);
     ui->tblParams->setCellWidget(row,COL_EXPORT_OCTAVE,cb);
     cb->setEnabled(current_param->get_type() != RPT_VOID);
 /*
@@ -657,6 +657,8 @@ void    wndRadarInstanceEditor::param_to_table_row(int row, radarParamPointer cu
     QCheckBox *cb_comp = new QCheckBox();
     cb_comp->setChecked(current_param->is_compound_name());
     cb_comp->setEnabled((current_param->get_type()!=RPT_VOID)&&(current_param->is_linked_to_octave())&&(!current_param->get_alias_octave_name().isEmpty()));
+
+    connect(cb_comp, &QCheckBox::checkStateChanged, this, &wndRadarInstanceEditor::compoundNameChanged);
     ui->tblParams->setCellWidget(row, COL_COMPOUND_NAME,cb_comp);
 
 }
@@ -1031,6 +1033,23 @@ void wndRadarInstanceEditor::cbEnumIndexChange(int index)
     //update_serial_output();
     _b_transmitting = false;
 }
+//------------------------------------------------------------
+void    wndRadarInstanceEditor::compoundNameChanged(Qt::CheckState newCompState)
+{
+    int row = -1;
+    QWidget *w = qobject_cast<QWidget *>(sender());
+    if(w)
+        row = ui->tblParams->indexAt(w->pos()).row();
+
+    if (row<0) return;
+
+    radarParamPointer param = _radar_instance->get_param(row);
+    if (param==nullptr) return;
+    QCheckBox* cb = (QCheckBox*)ui->tblParams->cellWidget(row, COL_COMPOUND_NAME);
+    if (cb==nullptr) return;
+    param->set_compound_name(cb->isChecked());
+}
+
 //-----------------------------------------------------------
 void    wndRadarInstanceEditor::linkToOctaveChanged(Qt::CheckState newLinkState)
 {
@@ -1046,16 +1065,7 @@ void    wndRadarInstanceEditor::linkToOctaveChanged(Qt::CheckState newLinkState)
     QCheckBox* cb = (QCheckBox*)ui->tblParams->cellWidget(row, COL_EXPORT_OCTAVE);
     if (cb==nullptr) return;
     bool linked =cb->checkState() == Qt::Checked && (param->get_type()!=RPT_VOID);
-/*
-    QComboBox* plotcb = (QComboBox*)ui->tblParams->cellWidget(row,COL_PLOTTYPE);
-    if (plotcb==nullptr) return;
-    plotcb->setEnabled(linked);
 
-    if (param->is_plotted()&&linked)
-        plotcb->setCurrentIndex(param->get_plot_type()+1);
-    else
-        plotcb->setCurrentIndex(0);
-*/
     QTableWidgetItem* item = ui->tblParams->item(row,COL_ALIAS);
     if (linked)
     {
@@ -1188,9 +1198,9 @@ void wndRadarInstanceEditor::connect_radar()
         {
             for (auto& port: ports)
             {
-                qDebug() << port.portName();
-                qDebug() << _radar_instance->get_expected_portname();
-                qDebug() << (port.portName() == _radar_instance->get_expected_portname() ? tr("Match") : tr("unmatch"));
+//                qDebug() << port.portName();
+//                qDebug() << _radar_instance->get_expected_portname();
+//                qDebug() << (port.portName() == _radar_instance->get_expected_portname() ? tr("Match") : tr("unmatch"));
                 if (port.portName() == _radar_instance->get_expected_portname())
                 {
                     _radar_instance->set_port(port);

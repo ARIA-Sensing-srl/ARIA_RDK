@@ -138,6 +138,7 @@ MainWindow::~MainWindow()
 /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 void MainWindow::QMessageOutput(QtMsgType , const QMessageLogContext &, const QString &msg)
 {
+    if (msg == "QFSFileEngine::open: No file name specified") return;
     std::cout<<msg.toStdString().c_str()<<std::endl;
 }
 
@@ -556,6 +557,7 @@ void MainWindow::importRadarModule()
         if (QMessageBox::question(this,"Confirm","File is already in the project folder. Do you want to overwrite?")==QMessageBox::No)
             return;
     }
+
 
     radarModule* new_module = new radarModule();
 

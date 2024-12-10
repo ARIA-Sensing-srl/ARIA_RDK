@@ -85,9 +85,11 @@ void radarInstance::initSerialPortTimer()
     _serialport->blockSignals(false);
     _bytesToWrite = 0;
 
-    _serialport->clear();
-    _serialport->flush();
-
+    if (_serialport->isOpen())
+    {
+        _serialport->clear();
+        _serialport->flush();
+    }
 }
 //-----------------------------------------------
 void radarInstance::clearSerialPortTimer()
@@ -166,7 +168,7 @@ QString     radarInstance::get_mapped_name(radarParamPointer param)
 
 
     if (param->is_compound_name())
-        mapped_name = (_ref_module == nullptr ? QString("nomodule") : _ref_module->get_name()) + "_" +
+        mapped_name = (QFileInfo(_device_name).baseName()) + "_" +
                       (_serialport == nullptr ? "noPort" : _serialport->portName()) + "_" + base_name;
     else
         mapped_name = base_name;
@@ -394,6 +396,44 @@ void            radarInstance::load_extra_project_item_data(QDomElement& node)
 bool            radarInstance::can_differentiate()
 {
     return _fixed_id || _fixed_serial_port;
+}
+//-----------------------------------------------
+QByteArray      radarInstance::set_port_no_module_check(char module_id_inquiry_command,const QSerialPortInfo& port, const SerialSettings& settings)
+{
+    QByteArray module_id;
+
+    if (_serialport == nullptr)
+        initSerialPortTimer();
+    else
+        if (is_connected()) disconnect();
+
+    if (_serialport == nullptr)
+        return module_id;
+
+    _serialport->setPort(port);
+    _serialport->setDataBits(settings.dataBits);
+    _serialport->setStopBits(settings.stopBits);
+    _serialport->setParity(settings.parity);
+    _serialport->setBaudRate(settings.baudRate);
+    _serialport->setFlowControl(settings.flowControl);
+    _serialport->setReadBufferSize(0);
+    port_connect();
+
+    if (!is_connected())
+        return module_id;
+
+    QByteArray data_tx;
+
+    if (_protocol!=nullptr)
+        data_tx.append(_protocol->get_start());
+    data_tx.append(module_id_inquiry_command);
+    if (_protocol!=nullptr)
+        data_tx.append(_protocol->get_stop());
+
+    transmit_and_wait_answer(data_tx);
+
+    module_id = _protocol->decode_rx(_last_serial_rx);
+    return module_id;
 }
 //-----------------------------------------------
 bool    radarInstance::set_port(const QSerialPortInfo& port, const SerialSettings& settings, bool force_connection)
@@ -1630,10 +1670,11 @@ void    radarInstance::port_connect()
     if (_serialport==nullptr) return;
     _serialport->open(QIODevice::ReadWrite);
     _serial_status = SS_IDLE;
-
-    _serialport->clear();
-    _serialport->flush();
-
+    if (_serialport->isOpen())
+    {
+        _serialport->clear();
+        _serialport->flush();
+    }
 }
 //--------------------------------------------------
 
@@ -1713,8 +1754,12 @@ void    radarInstance::serial_timeout()
     {
         emit tx_timeout("Timeout error during data transmission");
     }
-    _serialport->flush();
-    _serialport->clear();
+
+    if (_serialport->isOpen())
+    {
+        _serialport->flush();
+        _serialport->clear();
+    }
     _serial_status = SS_TIMEOUT;
 }
 

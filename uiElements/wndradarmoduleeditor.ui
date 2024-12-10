@@ -33,6 +33,9 @@
    </item>
    <item row="1" column="0" colspan="5">
     <widget class="QToolBox" name="tblRadarConf">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
      <property name="currentIndex">
       <number>0</number>
      </property>
