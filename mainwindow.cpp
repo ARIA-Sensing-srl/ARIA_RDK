@@ -625,7 +625,7 @@ void MainWindow::tree_project_double_click(QTreeWidgetItem* widget, int column)
         {
          if (typeid(child).name()==typeid(wndRadarModuleEditor).name())
          {
-             if (((wndRadarModuleEditor*)(child))->get_radar_module()==(radarModule*)currentItem)
+            if (((wndRadarModuleEditor*)(child))->get_radar_module()->get_name()==((radarModule*)currentItem)->get_name())
              {
                  ((wndRadarModuleEditor*)(child))->showMaximized();
                  return;

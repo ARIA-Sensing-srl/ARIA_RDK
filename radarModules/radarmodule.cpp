@@ -729,15 +729,16 @@ bool radarModule::load_xml()
             // Model file is the relative?
             QString model_file = antenna_elem.attribute("model_file");
 
-            antenna_pointer new_antenna =new antennaInstance();
+            antenna_pointer new_antenna =antennaInstance::load_xml(document, antenna_elem);
             if (new_antenna == nullptr)
                 return false;
 
             antenna* model = (antenna*)(get_root()->get_child(model_file,DT_ANTENNA));
             new_antenna->set_antenna_model(model);
             new_antenna->set_antenna_name(antenna_elem.attribute("name",QString("noname")+QString::number(nnoname++)));
+
             _ant.append(new_antenna);
-            antenna_elem = antenna_elem.nextSiblingElement("antenna");
+            //antenna_elem = antenna_elem.nextSiblingElement("antenna");
         }
 
         //if (_ant.count()!=antenna_count) return false;
@@ -1089,9 +1090,9 @@ void radarModule::calculate_direction_focusing(double a_ref, double z_ref, int n
         antenna_pointer ant2 = _ant[a2];
 
         if ((ant1==nullptr)||(ant2==nullptr)) return;
-
-        double phase_i = k*dot(ant1->get_phase_center().array_value(), vector);
-        double phase_j = k*dot(ant2->get_phase_center().array_value(), vector);
+        // 1. Ep, Et are calculated at 1m
+        double phase_i = k*(dot(ant1->get_phase_center().array_value(), vector)-1);
+        double phase_j = k*(dot(ant2->get_phase_center().array_value(), vector)-1);
 #ifdef DEBUG_FOI
         qDebug() << "Phase i:" << QString::number(phase_i);
         qDebug() << "Phase j:" << QString::number(phase_j);
