@@ -1137,13 +1137,21 @@ void mdiOctaveInterface::updatedSingleVar(const std::string& varname)
             if (sid < varsize.ndims()-1)
                 strSize += QString(" x ");
         }
+        if (ui->workspaceList->item(n,2)==nullptr)
+            ui->workspaceList->setItem(n,2,new QTableWidgetItem(strSize));
+        else
+            ui->workspaceList->item(n,2)->setText(strSize);
 
         // Column 3
         QString strVal = QString::fromStdString(var.class_name());
 
         if (var.is_complex_scalar()||var.is_complex_matrix())
             strVal = "complex";
-        ui->workspaceList->setItem(n,3,new QTableWidgetItem(strVal));
+
+        if (ui->workspaceList->item(n,3)==nullptr)
+            ui->workspaceList->setItem(n,3,new QTableWidgetItem(strVal));
+        else
+            ui->workspaceList->item(n,3)->setText(strVal);
 
         for (const auto& child: _plot2d_children)
             if (child!=nullptr)

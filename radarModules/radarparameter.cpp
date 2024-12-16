@@ -202,6 +202,7 @@ radarParamBase& radarParamBase::operator = (radarParamBase& v2)
     _pure_command= v2._pure_command;
     _b_compound_name = v2._b_compound_name;
     _workspace = v2._workspace;
+    _b_is_transmitting = v2._b_is_transmitting;
     return *this;
 }
 //------------------------------------------------------
@@ -222,6 +223,7 @@ radarParamBase& radarParamBase::operator = (const radarParamBase& v2)
     _group_order = v2._group_order;
     _pure_command= v2._pure_command;
     _workspace = v2._workspace;
+    _b_is_transmitting = v2._b_is_transmitting;
     return *this;
 }
 //------------------------------------------------------

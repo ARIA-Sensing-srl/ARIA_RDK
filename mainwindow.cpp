@@ -18,6 +18,7 @@
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QPainter>
+#include <QMdiSubWindow>
 #include "octaveinterface.h"
 
 #include <octave.h>
@@ -621,16 +622,18 @@ void MainWindow::tree_project_double_click(QTreeWidgetItem* widget, int column)
 
     if (currentItem->get_type() == DT_RADARMODULE)
      {
-        for (auto &child: ui->mdiArea->subWindowList())
+        QList<QMdiSubWindow*> subwnds = ui->mdiArea->subWindowList();
+        for (auto &child: subwnds)
         {
-         if (typeid(child).name()==typeid(wndRadarModuleEditor).name())
-         {
-            if (((wndRadarModuleEditor*)(child))->get_radar_module()->get_name()==((radarModule*)currentItem)->get_name())
+            wndRadarModuleEditor* wnd = qobject_cast<wndRadarModuleEditor*>(child->widget());
+            if (wnd!=nullptr)
+            {
+             if (wnd->get_radar_module()->get_name()==((radarModule*)currentItem)->get_name())
              {
-                 ((wndRadarModuleEditor*)(child))->showMaximized();
+                 wnd->showMaximized();
                  return;
              }
-         }
+            }
         }
 
         radarModule *radar_module = (radarModule*)(currentItem);
@@ -642,14 +645,15 @@ void MainWindow::tree_project_double_click(QTreeWidgetItem* widget, int column)
 
      if (currentItem->get_type() == DT_RADARDEVICE)
      {
-
-         for (auto &child: ui->mdiArea->subWindowList())
+         QList<QMdiSubWindow*> subwnds = ui->mdiArea->subWindowList();
+         for (auto &child: subwnds)
          {
-             if (typeid(child).name()==typeid(wndRadarInstanceEditor).name())
+             wndRadarInstanceEditor* wnd = qobject_cast<wndRadarInstanceEditor*>(child->widget());
+             if (wnd!=nullptr)
              {
-                 if (((wndRadarInstanceEditor*)(child))->getRadarInstance()==(radarInstance*)currentItem)
+                 if (wnd->getRadarInstance()->get_device_name()==((radarInstance*)currentItem)->get_device_name())
                  {
-                     ((wndRadarInstanceEditor*)(child))->showMaximized();
+                     wnd->showMaximized();
                      return;
                  }
              }
@@ -693,13 +697,16 @@ void MainWindow::tree_project_double_click(QTreeWidgetItem* widget, int column)
 
     if (currentItem->get_type() == DT_SCHEDULER)
     {
-        for (auto &child: ui->mdiArea->subWindowList())
+
+        QList<QMdiSubWindow*> subwnds = ui->mdiArea->subWindowList();
+        for (auto &child: subwnds)
         {
-            if (typeid(child).name()==typeid(wndScheduler).name())
+            wndScheduler* wnd = qobject_cast<wndScheduler*>(child->widget());
+            if (wnd!=nullptr)
             {
-                if (((wndScheduler*)(child))->getScheduler()==(opScheduler*)currentItem)
+                if (wnd->getScheduler()->get_name()==((opScheduler*)currentItem)->get_name())
                 {
-                    ((wndScheduler*)(child))->showMaximized();
+                    wnd->showMaximized();
                     return;
                 }
             }

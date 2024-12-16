@@ -560,14 +560,19 @@ void    radarInstance::set_param_value(radarParamPointer param, const QVector<QV
         return;
     if (param->get_type()==RPT_VOID)
         return;
-    octave_value old_val = param->get_value();
+
+
+    if (param->get_type() != RPT_VOID)
+    {
+        QVector<QVariant> current_val = param->value_to_variant();
+
+        if (current_val == val) return;
+    }
+
     param->variant_to_value(val);
 
     if (!param->is_last_assignment_valid())
         return;
-
-    if (param->get_type() != RPT_VOID)
-        if (ov_equal(param->get_value(),old_val)) return;
 
     update_param_workspace_gui(param,update_workspace);
 
@@ -1884,6 +1889,8 @@ bool    radarInstance::transmit_param_non_blocking(const QVector<radarParamPoint
 
     QByteArray data_tx = encode_param_for_transmission(params,inquiry);
 
+    params[0]->set_transmitting();
+
     transmit_data(data_tx);
     return true;
 }
@@ -2022,7 +2029,7 @@ bool    radarInstance::update_param_from_last_rx()
 
                         param_is_updated(param_of_group);
                         update_param_workspace_gui(param_of_group,true);
-
+                        param->unset_transmitting();
                         continue;
                     }
 
@@ -2033,6 +2040,7 @@ bool    radarInstance::update_param_from_last_rx()
 
                     param_is_updated(param_of_group);
                     update_param_workspace_gui(param_of_group,true);
+                    param->unset_transmitting();
                 }
 
                 _last_sent_command = nullptr;
@@ -2049,6 +2057,7 @@ bool    radarInstance::update_param_from_last_rx()
 
                 param_is_updated(param);
                 update_param_workspace_gui(param,true);
+                param->unset_transmitting();
                 _last_sent_command = nullptr;
                 return true;
             }

@@ -697,10 +697,12 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
         {
             case RPT_VOID:
             {
-            QPushButton* btnSendCommand = new QPushButton();
+            QPushButton* btnSendCommand = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QPushButton() :
+                                                  (QPushButton*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
+
             btnSendCommand->setText("Send cmd");
             if (btnSendCommand!=nullptr) ui->tblParams->setCellWidget(row,COL_SETVALUE,btnSendCommand);
-            connect(btnSendCommand, SIGNAL(clicked()), this, SLOT(send_command()));
+            connect(btnSendCommand, &QPushButton::clicked, this, &wndRadarInstanceEditor::send_command);
                 /*
                 QTableWidgetItem* item = new QTableWidgetItem(); //ui->tblParams->item(row,COL_SETVALUE);
                 if (item != nullptr)
@@ -715,7 +717,14 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
             {
                 imin = 0;
                 imax = UCHAR_MAX;
-                QSlider * slider = new QSlider(Qt::Horizontal);
+                if (ui->tblParams->item(row,COL_SETVALUE)!=nullptr)
+                {
+                    ui->tblParams->item(row,COL_SETVALUE)->setText("");
+                    ui->tblParams->item(row,COL_SETVALUE)->setFlags(ui->tblParams->item(row,COL_SETVALUE)->flags() ^ Qt::ItemIsEditable);
+                }
+
+                QSlider * slider = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QSlider(Qt::Horizontal) :
+                                      (QSlider*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
 
                 if (current_value->has_min_max())
                 {
@@ -740,7 +749,14 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
             {
                 imin = SCHAR_MIN;
                 imax = SCHAR_MAX;
-                QSlider * slider = new QSlider(Qt::Horizontal);
+                if (ui->tblParams->item(row,COL_SETVALUE)!=nullptr)
+                {
+                    ui->tblParams->item(row,COL_SETVALUE)->setText("");
+                    ui->tblParams->item(row,COL_SETVALUE)->setFlags(ui->tblParams->item(row,COL_SETVALUE)->flags() ^ Qt::ItemIsEditable);
+                }
+
+                QSlider * slider = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QSlider(Qt::Horizontal):
+                                      (QSlider*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
 
                 if (current_value->has_min_max())
                 {
@@ -758,14 +774,22 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
                 slider->setEnabled(io_type != RPT_IO_OUTPUT);
                 ui->tblParams->setCellWidget(row,COL_SETVALUE,slider);
 
-                connect(slider,SIGNAL(sliderReleased()),this,SLOT(paramSliderReleased()));
+                connect(slider,&QSlider::sliderReleased,this,&wndRadarInstanceEditor::paramSliderReleased);
             }
                 break;
             case RPT_UINT16:
             {
                 imin = 0;
                 imax = USHRT_MAX;
-                QSlider * slider = new QSlider(Qt::Horizontal);
+                if (ui->tblParams->item(row,COL_SETVALUE)!=nullptr)
+                {
+                    ui->tblParams->item(row,COL_SETVALUE)->setText("");
+                    ui->tblParams->item(row,COL_SETVALUE)->setFlags(ui->tblParams->item(row,COL_SETVALUE)->flags() ^ Qt::ItemIsEditable);
+                }
+
+                QSlider * slider = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QSlider(Qt::Horizontal):
+                                      (QSlider*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
+
 
                 if (current_value->has_min_max())
                 {
@@ -783,14 +807,21 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
                 RADARPARAMIOTYPE  io_type = current_value->get_io_type();
                 slider->setEnabled(io_type != RPT_IO_OUTPUT);
                 ui->tblParams->setCellWidget(row,COL_SETVALUE,slider);
-                connect(slider,SIGNAL(sliderReleased()),this,SLOT(paramSliderReleased()));
+                connect(slider,&QSlider::sliderReleased,this,&wndRadarInstanceEditor::paramSliderReleased);
             }
                 break;
             case RPT_INT16:
             {
                 imin = SHRT_MIN;
                 imax = SHRT_MAX;
-                QSlider * slider = new QSlider(Qt::Horizontal);
+                if (ui->tblParams->item(row,COL_SETVALUE)!=nullptr)
+                {
+                    ui->tblParams->item(row,COL_SETVALUE)->setText("");
+                    ui->tblParams->item(row,COL_SETVALUE)->setFlags(ui->tblParams->item(row,COL_SETVALUE)->flags() ^ Qt::ItemIsEditable);
+                }
+
+                QSlider * slider = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QSlider(Qt::Horizontal):
+                                      (QSlider*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
 
                 if (current_value->has_min_max())
                 {
@@ -807,14 +838,21 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
                 RADARPARAMIOTYPE  io_type = current_value->get_io_type();
                 slider->setEnabled(io_type != RPT_IO_OUTPUT);
                 ui->tblParams->setCellWidget(row,COL_SETVALUE,slider);
-                connect(slider,SIGNAL(sliderReleased()),this,SLOT(paramSliderReleased()));
+                connect(slider,&QSlider::sliderReleased,this,&wndRadarInstanceEditor::paramSliderReleased);
             }
                 break;
             case RPT_INT32:
             {
                 imin = SHRT_MIN;
                 imax = SHRT_MAX;
-                QSlider * slider = new QSlider(Qt::Horizontal);
+                if (ui->tblParams->item(row,COL_SETVALUE)!=nullptr)
+                {
+                    ui->tblParams->item(row,COL_SETVALUE)->setText("");
+                    ui->tblParams->item(row,COL_SETVALUE)->setFlags(ui->tblParams->item(row,COL_SETVALUE)->flags() ^ Qt::ItemIsEditable);
+                }
+
+                QSlider * slider = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QSlider(Qt::Horizontal):
+                                      (QSlider*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
 
                 if (current_value->has_min_max())
                 {
@@ -831,14 +869,22 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
                 RADARPARAMIOTYPE  io_type = current_value->get_io_type();
                 slider->setEnabled(io_type != RPT_IO_OUTPUT);
                 ui->tblParams->setCellWidget(row,COL_SETVALUE,slider);
-                connect(slider,SIGNAL(sliderReleased()),this,SLOT(paramSliderReleased()));
+                connect(slider,&QSlider::sliderReleased,this,&wndRadarInstanceEditor::paramSliderReleased);
             }
                 break;
             case RPT_UINT32:
             {
                 imin = SHRT_MIN;
                 imax = SHRT_MAX;
-                QSlider * slider = new QSlider(Qt::Horizontal);
+                if (ui->tblParams->item(row,COL_SETVALUE)!=nullptr)
+                {
+                    ui->tblParams->item(row,COL_SETVALUE)->setText("");
+                    ui->tblParams->item(row,COL_SETVALUE)->setFlags(ui->tblParams->item(row,COL_SETVALUE)->flags() ^ Qt::ItemIsEditable);
+                }
+
+                QSlider * slider = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QSlider(Qt::Horizontal):
+                                      (QSlider*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
+
 
                 if (current_value->has_min_max())
                 {
@@ -855,13 +901,18 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
                 RADARPARAMIOTYPE  io_type = current_value->get_io_type();
                 slider->setEnabled(io_type != RPT_IO_OUTPUT);
                 ui->tblParams->setCellWidget(row,COL_SETVALUE,slider);
-                connect(slider,SIGNAL(sliderReleased()),this,SLOT(paramSliderReleased()));
+                connect(slider,&QSlider::sliderReleased,this,&wndRadarInstanceEditor::paramSliderReleased);
             }
                 break;
             case RPT_FLOAT:
             case RPT_STRING:
             {
-                QTableWidgetItem* item = new QTableWidgetItem();
+                if (ui->tblParams->cellWidget(row,COL_SETVALUE )!=nullptr)
+                    ui->tblParams->removeCellWidget(row, COL_SETVALUE);
+
+                QTableWidgetItem* item = ui->tblParams->currentItem() == nullptr ? new QTableWidgetItem() :
+                                             ui->tblParams->currentItem();
+
                 QVector<QVariant> vals = current_value->value_to_variant();
                 if (vals.count()>0)
                     item->setText(vals[0].toString());
@@ -873,7 +924,12 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
             }
             case RPT_UNDEFINED:
             {
-                QTableWidgetItem* item = new QTableWidgetItem();
+                if (ui->tblParams->cellWidget(row,COL_SETVALUE )!=nullptr)
+                    ui->tblParams->removeCellWidget(row, COL_SETVALUE);
+
+                QTableWidgetItem* item = ui->tblParams->currentItem() == nullptr ? new QTableWidgetItem() :
+                                             ui->tblParams->currentItem();
+
                 item->setFlags(item->flags() ^ Qt::ItemIsEditable);
                 item->setText("[ERROR : Undefined type]");
                 ui->tblParams->setItem(row,COL_SETVALUE,item);
@@ -881,7 +937,13 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
             }
             case RPT_ENUM:
             {
-                QComboBox* cb = new QComboBox();
+                if (ui->tblParams->item(row,COL_SETVALUE)!=nullptr)
+                {
+                    ui->tblParams->item(row,COL_SETVALUE)->setText("");
+                    ui->tblParams->item(row,COL_SETVALUE)->setFlags(ui->tblParams->item(row,COL_SETVALUE)->flags() ^ Qt::ItemIsEditable);
+                }
+                QComboBox* cb = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QComboBox() :
+                                    (QComboBox*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
                 std::shared_ptr<radarParameter<enumElem>> rpenum = std::dynamic_pointer_cast<radarParameter<enumElem>>(current_value);
                 int currentIndex=-1;
                 QVector<QVariant> def = current_value->value_to_variant();
@@ -915,7 +977,9 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
         {
             case RPT_VOID:
             {
-                QPushButton* btnSendCommand = new QPushButton();
+            QPushButton* btnSendCommand = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QPushButton() :
+                                              (QPushButton*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
+
                 btnSendCommand->setText("Send cmd");
                 if (btnSendCommand!=nullptr) ui->tblParams->setCellWidget(row,COL_SETVALUE,btnSendCommand);
                 connect(btnSendCommand, &QPushButton::clicked, this, &wndRadarInstanceEditor::send_command);
@@ -923,7 +987,11 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
             break;
         case RPT_UNDEFINED:
         {
-            QTableWidgetItem* item = new QTableWidgetItem();
+                QTableWidgetItem* item = ui->tblParams->currentItem() == nullptr ? new QTableWidgetItem() :
+                                             ui->tblParams->currentItem();
+            if (ui->tblParams->cellWidget(row,COL_SETVALUE )!=nullptr)
+                ui->tblParams->removeCellWidget(row, COL_SETVALUE);
+
             if (item!=nullptr) item->setFlags(item->flags() ^ Qt::ItemIsEditable);
             item->setText("[ERROR: Undefined type]");
             ui->tblParams->setItem(row,COL_SETVALUE,item);
@@ -938,7 +1006,11 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
             case RPT_FLOAT:
             case RPT_STRING:
             {
-                QTableWidgetItem* item = new QTableWidgetItem();
+                QTableWidgetItem* item = ui->tblParams->currentItem() == nullptr ? new QTableWidgetItem() :
+                                             ui->tblParams->currentItem();
+                if (ui->tblParams->cellWidget(row,COL_SETVALUE )!=nullptr)
+                    ui->tblParams->removeCellWidget(row, COL_SETVALUE);
+
                 if (item!=nullptr) item->setFlags(item->flags() ^ Qt::ItemIsEditable);
                 QVector<QVariant> vals =  current_value->value_to_variant();
                 QString val("[");
@@ -953,7 +1025,13 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
             break;
         case RPT_ENUM:
         {
-            QTableWidgetItem* item = new QTableWidgetItem();
+            QTableWidgetItem* item = ui->tblParams->currentItem() == nullptr ? new QTableWidgetItem() :
+                                         ui->tblParams->currentItem();
+
+            if (ui->tblParams->cellWidget(row,COL_SETVALUE )!=nullptr)
+                ui->tblParams->removeCellWidget(row, COL_SETVALUE);
+
+
             if (item!=nullptr) item->setFlags(item->flags() ^ Qt::ItemIsEditable);
             QVector<QVariant> vals =  current_value->value_to_variant();
             QString val("[");
@@ -1124,14 +1202,17 @@ void    wndRadarInstanceEditor::itemChanged(QTableWidgetItem* item)
 
     if (col==COL_SETVALUE)
     {
-        QVector<QVariant> val;
-        val.resize(1);
-        val[0] = item->text();
+        if (param->is_scalar())
+        {
+            QVector<QVariant> val;
+            val.resize(1);
+            val[0] = item->text();
 
-        _b_transmitting = true;
-        if (!_radar_instance->blocking_var_update())
-            _radar_instance->set_param_value(param,val,true, true);
-        _b_transmitting = false;
+            if (!param->is_transmitting())
+                _radar_instance->set_param_value(param,val,!param->is_transmitting(), true);
+            else
+                param->unset_transmitting();
+        }
     }
 
     if (col==COL_ALIAS)

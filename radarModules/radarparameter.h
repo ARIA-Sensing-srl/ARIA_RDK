@@ -58,6 +58,7 @@ protected:
     octavews*            _workspace;
     bool                 _b_compound_name;
     bool                _b_plotted;
+    bool                _b_is_transmitting;
     PLOT_TYPE   _plottype;
 public:
     radarParamBase() :
@@ -76,7 +77,8 @@ public:
         _workspace(nullptr),
         _b_compound_name(false),
         _b_plotted(false),
-        _plottype(PTJK_PLOT)
+        _plottype(PTJK_PLOT),
+        _b_is_transmitting(false)
     {
 
     }
@@ -95,7 +97,8 @@ public:
         _group_order(-1),
         _pure_command(""),
         _workspace(nullptr),
-        _b_compound_name(false)
+        _b_compound_name(false),
+        _b_is_transmitting(false)
     {
 
     }
@@ -115,7 +118,8 @@ public:
         _group_order(v2._group_order),
         _pure_command(v2._pure_command),
         _workspace(v2._workspace),
-        _b_compound_name(v2._b_compound_name)
+        _b_compound_name(v2._b_compound_name),
+        _b_is_transmitting(v2._b_is_transmitting)
 
     {}
 
@@ -133,7 +137,8 @@ public:
         _group_order(v2._group_order),
         _pure_command(v2._pure_command),
         _workspace(v2._workspace),
-        _b_compound_name(v2._b_compound_name)
+        _b_compound_name(v2._b_compound_name),
+        _b_is_transmitting(v2._b_is_transmitting)
 
     {}
 
@@ -226,6 +231,10 @@ public:
 
      PLOT_TYPE get_plot_type() {return _plottype;}
      void               set_plot_type(PLOT_TYPE plot) {_plottype = plot;}
+
+     void     set_transmitting() {_b_is_transmitting = true;}
+     void     unset_transmitting() {_b_is_transmitting = false;}
+     bool     is_transmitting() {return _b_is_transmitting;}
 
 
 };
