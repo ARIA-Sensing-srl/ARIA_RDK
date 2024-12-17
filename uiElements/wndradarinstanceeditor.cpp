@@ -1465,6 +1465,8 @@ void    wndRadarInstanceEditor::run()
     if (_scheduler == nullptr)
     {
         _scheduler = new opScheduler(_radar_instance->get_workspace()->data_interface());
+        _scheduler->set_policy_on_error(HALT_ALL);
+        _scheduler->set_policy_on_timeout(HALT_ON_TIMEOUT);
         _scheduler->add_radar(_radar_instance);
         connect(_scheduler, &opScheduler::running,                  this, &wndRadarInstanceEditor::scheduler_running);
         connect(_scheduler, &opScheduler::halted,                   this, &wndRadarInstanceEditor::scheduler_halted);
