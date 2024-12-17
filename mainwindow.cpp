@@ -43,7 +43,12 @@ QString          ariasdk_flag_verify;
 QString          ariasdk_bin_start_address;
 QString          ariasdk_serial_name;
 
-
+extern QString cstr_radar_devices;
+extern QString cstr_scripts;
+extern QString cstr_handler;
+extern QString cstr_radar_modules;
+extern QString cstr_antenna_models;
+extern QString cstr_comm_protocol;
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -376,7 +381,9 @@ void MainWindow::newProject()
     connect(project,&radarProject::add_item,            this, &MainWindow::add_project_item);
     connect(project,&radarProject::remove_item,         this, &MainWindow::remove_project_item);
     connect(project,&radarProject::item_updated,        this, &MainWindow::update_project_item);
-
+    QString script_path = project->get_folder(cstr_scripts)->get_full_path();
+    if (script_path!=nullptr)
+        if (interfaceData!=nullptr) interfaceData->set_pwd(script_path);
     project->save_project_file();
 }
 //---------------------------------------------------------------
@@ -547,7 +554,7 @@ void MainWindow::importRadarModule()
     ariasdk_modules_path.setPath(QFileInfo(projectFile).absolutePath());
 
     // Check that we don't have already the same file in the project
-    QString path_dest = project->get_root()->get_folder("Radar Modules")->get_full_path();
+    QString path_dest = project->get_root()->get_folder(cstr_radar_modules)->get_full_path();
 
 
 
@@ -845,6 +852,10 @@ void MainWindow::loadProject()
     connect(project,&radarProject::project_updated,     this, &MainWindow::updateProjectTree);
     connect(project,&radarProject::add_item,            this, &MainWindow::add_project_item);
     connect(project,&radarProject::remove_item,         this, &MainWindow::remove_project_item);
+    QString script_path = project->get_folder(cstr_scripts)->get_full_path();
+    if (script_path!=nullptr)
+        if (interfaceData!=nullptr) interfaceData->set_pwd(script_path);
+
     project->save_project_file();
 
 }

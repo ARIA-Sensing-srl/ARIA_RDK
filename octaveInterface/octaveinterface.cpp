@@ -165,7 +165,12 @@ QString octaveInterface::appendVariable(QString name, const octave_value& val, b
     return var->getName();
 */
 }
-
+//-----------------------------
+void    octaveInterface::set_pwd(const QString& path)
+{
+    if (_octave_engine==nullptr) return;
+    _octave_engine->chdir(path.toStdString());
+}
 //-----------------------------
 void octaveInterface::completeCommand()
 {

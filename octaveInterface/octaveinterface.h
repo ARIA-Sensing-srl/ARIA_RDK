@@ -53,6 +53,8 @@ public:
     inline octave::interpreter*    get_octave_engine() {return _octave_engine;}
     void                    run(std::shared_ptr<class octaveScript> script);
     void                    run(const QString &program);
+    void                    set_pwd(const QString& path);
+
  /*--------------------------------------------
   * Workspace commands
   * ------------------------------------------*/
