@@ -488,7 +488,7 @@ void wndRadarModuleEditor::fill_cb_with_available(QComboBox* cb,radarParamPointe
 
     for (int n=0; n < avail.count(); n++)
     {
-       QString avstr = avail[n].toString();
+       QString avstr = (rp->get_type() == RPT_INT8) || (rp->get_type()==RPT_UINT8) ? QString::number(avail[n].toInt()) : avail[n].toString();
        cb->addItem(avstr);
 
        if ((def.count()==1)&&(avstr == rpdef))

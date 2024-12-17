@@ -1016,7 +1016,10 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
                 QString val("[");
                 if (vals.count()>1)
                 {
-                    val+=vals[0].toString()+" , "+vals[1].toString();
+                    if ((current_value->get_type() == RPT_INT8)||(current_value->get_type()==RPT_UINT8))
+                        val+=QString::number(vals[0].toInt()) + " , "+QString::number(vals[1].toInt());
+                    else
+                        val+=vals[0].toString()+" , "+vals[1].toString();
                 }
                 val+="...]";
                 item->setText(val);
@@ -1364,7 +1367,7 @@ void    wndRadarInstanceEditor::update_read_value(int row)
         {
             QVector<QVariant> value = param->value_to_variant();
             QVariant v0 = value.count()>=1 ? value[0] : QVariant();
-            QString pString = datatype == RPT_UINT8 ? QString::number(v0.toUInt()) : v0.toString();
+            QString pString = (datatype == RPT_UINT8 || datatype == RPT_INT8)? QString::number(v0.toInt()) : v0.toString();
             item->setText(pString);            
             break;
         }
@@ -1416,8 +1419,8 @@ void    wndRadarInstanceEditor::update_read_value(int row)
             QString val("[");
             if (vals.count()>1)
             {
-                QString string1 = datatype == RPT_UINT8 ?   QString::number(param->value_to_variant()[0].toUInt()) : param->value_to_variant()[0].toString();
-                QString string2 = datatype == RPT_UINT8 ?   QString::number(param->value_to_variant()[1].toUInt()) : param->value_to_variant()[1].toString();
+                QString string1 = (datatype == RPT_UINT8 || datatype == RPT_INT8) ?   QString::number(param->value_to_variant()[0].toUInt()) : param->value_to_variant()[0].toString();
+                QString string2 = (datatype == RPT_UINT8 || datatype == RPT_INT8) ?   QString::number(param->value_to_variant()[1].toUInt()) : param->value_to_variant()[1].toString();
 
                 val+=string1+" , "+string2;
             }

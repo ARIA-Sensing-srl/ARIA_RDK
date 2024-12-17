@@ -152,7 +152,8 @@ void QDlgEditLimits::fill_table()
             QVector<QVariant> data = _param->availableset_to_variant();
             ui->tblVector->setRowCount(data.count());
             for (int n=0; n < data.count(); n++)
-                ui->tblVector->setItem(n,0,new QTableWidgetItem(data[n].toString()));
+                ui->tblVector->setItem(n,0,new QTableWidgetItem( (_param->get_type()==RPT_INT8 || _param->get_type()==RPT_UINT8) ?
+                                                                      QString::number(data[n].toInt()) : data[n].toString()));
         }
         else
         {
@@ -434,10 +435,16 @@ void QDlgEditLimits::save_and_close()
                     ui->tblVector->selectRow(n);
                     return;
                 }
-            else
-                temp_avail.append(QVariant(ui->tblVector->item(n,0)->text()));
+                else
+                {
+                    QVariant val = ((_param->get_type()==RPT_INT8)||(_param->get_type()==RPT_UINT8)) ?
+                                       ui->tblVector->item(n,0)->text().toInt() : QVariant(ui->tblVector->item(n,0)->text());
+
+                    temp_avail.append(val);
+                }
 
             _avail_dataset = temp_avail;
+
             _bUpdateParam = true;
             _param->variant_to_availabeset(temp_avail);
             done(QMessageBox::Ok);
