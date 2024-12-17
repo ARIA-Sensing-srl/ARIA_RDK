@@ -1524,23 +1524,30 @@ void    wndRadarInstanceEditor::variable_updated(const std::string& varname)
     if (ws == nullptr) return;
 
     octave_value val = ws->var_value(varname);
+    /*
     if ((varname == _radar_instance->get_device_name().toStdString())&&(val.isstruct()))
     {
         init_parameter_table();
         return;
-    }
+    }*/
 
-    for (int n=0; n < ui->tblParams->rowCount(); n++)
+    for (auto& param: _radar_instance->get_param_table())
     {
-        radarParamPointer ptr = _radar_instance->get_param(ui->tblParams->item(n,COL_NAME)->text());
-        if (ptr == nullptr) continue;
-        if (_radar_instance->get_mapped_name(ptr).toStdString() == varname)
+        if (_radar_instance->get_mapped_name(param).toStdString() == varname)
         {
-            current_param_to_table(n,ptr);
-            update_read_value(n);
-            return;
+            QString pure_name = param->get_name();
+            for (int n=0; n < ui->tblParams->rowCount(); n++)
+            {
+                if (ui->tblParams->item(n,COL_NAME)->text()==pure_name)
+                {
+                    current_param_to_table(n,param);
+                    update_read_value(n);
+                    return;
+                }
+            }
         }
     }
+
 }
 //----------------------------------------------------
 void    wndRadarInstanceEditor::variables_updated(const std::set<std::string>& varlist)

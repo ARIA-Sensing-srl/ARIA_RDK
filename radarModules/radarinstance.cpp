@@ -579,6 +579,7 @@ void    radarInstance::set_param_value(radarParamPointer param, const QVector<QV
     _block_update = true;
     if (transmit)
         transmit_param(param);
+    _block_update = false;
  }
 
 //-----------------------------------------------
@@ -590,16 +591,19 @@ void    radarInstance::set_param_value(radarParamPointer param, octave_value val
     if (param->get_io_type()==RPT_IO_OUTPUT)
         return;
 
-    if (param->get_type() != RPT_VOID)
+    if ((param->get_type() != RPT_VOID)&&(param->get_io_type()!=RPT_IO_INPUT))
         if (ov_equal(param->get_value(),val)) return;
 
     param->set_value(val);
 
     update_param_workspace_gui(param,update_workspace);
 
+    bool bprevblock = _block_update;
+
     _block_update = true;
     if (transmit)
         transmit_param(param);
+    _block_update = bprevblock;
 }
 
 //-----------------------------------------------
@@ -627,8 +631,12 @@ void         radarInstance::set_param_value(QString name, octave_value val, bool
                 if ((transmit)&&(is_connected()))
                 {
                     // Transmit param may update the value according to device response, we need to update the linked var
+                    bool bprevblock = _block_update;
+
                     _block_update = true;
-                    transmit_param(param);
+                    if (transmit)
+                        transmit_param(param);
+                    _block_update = bprevblock;
                 }
                 return;
             }
@@ -647,7 +655,7 @@ void         radarInstance::set_param_value(int param_index, octave_value val, b
     if (param->get_io_type()==RPT_IO_OUTPUT)
         return;
 
-    if (param->get_type() != RPT_VOID)
+    if ((param->get_type() != RPT_VOID)&&(param->get_io_type()!=RPT_IO_INPUT))
         if (ov_equal(param->get_value(),val)) return;
 
     param->set_value(val);
@@ -657,9 +665,12 @@ void         radarInstance::set_param_value(int param_index, octave_value val, b
     QString mapped_name = get_mapped_name(param);
     if ((transmit)&&(is_connected()))
     {
+        bool bprevblock = _block_update;
+
         _block_update = true;
-        transmit_param(_params[param_index]);
-        _block_update = false;
+        if (transmit)
+            transmit_param(param);
+        _block_update = bprevblock;
     }
 
 }
