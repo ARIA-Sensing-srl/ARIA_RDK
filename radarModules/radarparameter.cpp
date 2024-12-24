@@ -203,6 +203,7 @@ radarParamBase& radarParamBase::operator = (radarParamBase& v2)
     _b_compound_name = v2._b_compound_name;
     _workspace = v2._workspace;
     _b_is_transmitting = v2._b_is_transmitting;
+    _status = v2._status;
     return *this;
 }
 //------------------------------------------------------
@@ -224,6 +225,7 @@ radarParamBase& radarParamBase::operator = (const radarParamBase& v2)
     _pure_command= v2._pure_command;
     _workspace = v2._workspace;
     _b_is_transmitting = v2._b_is_transmitting;
+    _status = v2._status;
     return *this;
 }
 //------------------------------------------------------
@@ -815,7 +817,83 @@ template<typename T> QByteArray radarParameter<T>::chain_values()
     }
     return out;
 }
+//------------------------------------------------------
+template<typename T> void radarParameter<T>::convert_data(const octave_value& data_in)
+{
+    if (data_in.is_int8_type())
+    {
+        _value.resize(data_in.dims());
+        int8NDArray array_in = data_in.int8_array_value();
+        for (int n=0; n < array_in.numel(); n++)
+            _value(n)=(T)array_in(n);
+        return;
+    }
+    if (data_in.is_uint8_type())
+    {
+        _value.resize(data_in.dims());
+        uint8NDArray array_in = data_in.uint8_array_value();
+        for (int n=0; n < array_in.numel(); n++)
+            _value(n)=(T)(array_in(n));
+        return;
+    }
+    if (data_in.is_int16_type())
+    {
+        _value.resize(data_in.dims());
+        int16NDArray array_in = data_in.int16_array_value();
+        for (int n=0; n < array_in.numel(); n++)
+            _value(n)=(T)array_in(n);
+        return;
+    }
+    if (data_in.is_uint16_type())
+    {
+        _value.resize(data_in.dims());
+        uint16NDArray array_in = data_in.uint16_array_value();
+        for (int n=0; n < array_in.numel(); n++)
+            _value(n)=(T)(array_in(n));
+        return;
+    }
+    if (data_in.is_int32_type())
+    {
+        _value.resize(data_in.dims());
+        int32NDArray array_in = data_in.int32_array_value();
+        for (int n=0; n < array_in.numel(); n++)
+            _value(n)=(T)array_in(n);
+        return;
+    }
+    if (data_in.is_uint32_type())
+    {
+        _value.resize(data_in.dims());
+        uint32NDArray array_in = data_in.uint32_array_value();
+        for (int n=0; n < array_in.numel(); n++)
+            _value(n)=(T)(array_in(n));
+        return;
+    }
+    if (data_in.is_char_matrix())
+    {
+        _value.resize(data_in.dims());
+        charNDArray array_in = data_in.char_array_value();
+        for (int n=0; n < array_in.numel(); n++)
+            _value(n)=(T)(array_in(n));
+        return;
+    }
+    if (data_in.isfloat())
+    {
+        _value.resize(data_in.dims());
+        FloatNDArray array_in = data_in.float_array_value();
+        for (int n=0; n < array_in.numel(); n++)
+            _value(n)=(T)(array_in(n));
+        return;
+    }
+    if (data_in.is_double_type())
+    {
+        _value.resize(data_in.dims());
+        NDArray array_in = data_in.array_value();
+        for (int n=0; n < array_in.numel(); n++)
+            _value(n)=(T)(array_in(n));
+        return;
+    }
 
+}
 /*
 template<typename T> bool radarParameter<T>::split_values(const QByteArray& data)
 {
@@ -831,7 +909,6 @@ template<typename T> bool radarParameter<T>::split_values(const QByteArray& data
     return true;
 }
 */
-
 //------------------------------------------------------
 template<> QString radarParameter<uint8_t>::get_min_string()
 {
@@ -1853,7 +1930,7 @@ void radarParameter<QString>::update_variable()
         sv(n) = _value[n].toStdString();
     _workspace->add_variable(_var.toStdString(), false, octave_value(sv));
 }
-
+//------------------------------------------------------
 unsigned int radarParameter<QString>::value_bytes_count()
 {
     unsigned int totsize=0;
@@ -1862,6 +1939,213 @@ unsigned int radarParameter<QString>::value_bytes_count()
     for (const auto& curr : currvalarray)
         totsize += curr.length();
     return totsize;
+}
+//------------------------------------------------------
+void radarParameter<QString>::convert_data(const octave_value& in)
+{
+    if (in.iscellstr())
+    {
+        Array<std::string> in_array = in.cellstr_value();
+        _value.resize(in.numel());
+        for (int n=0; n < in.numel(); n++)
+            _value[n] = QString::fromStdString(in_array(n));
+
+        return;
+    }
+    if (in.is_char_matrix())
+    {
+        int ns = in.dims()(0);
+        int nc = in.dims()(1);
+        _value.resize(ns);
+        charNDArray in_array = in.char_array_value();
+        for (int n=0; n < ns; n++)
+        {
+            _value[n].resize(nc);
+            for (int c=0; c < nc; c++)
+                _value[n][c] = in_array(n,c);
+        }
+
+        return;
+    }
+}
+//------------------------------------------------------
+void radarParameter<enumElem>::convert_data(const octave_value& in)
+{
+    if (in.is_uint8_type())
+    {
+        uint8NDArray in_array = in.uint8_array_value();
+        _value.resize(in.numel());
+        const auto& avail = _availableset;
+        for (int n=0; n < in.numel(); n++)
+        {
+            uint8_t val = (uint8_t)in_array(n);
+            for (const auto& check : avail)
+            {
+                if (check.second==val)
+                {
+                    _value[n] = enumElem(check.first, val);
+                    break;
+                }
+            }
+        }
+        return;
+    }
+
+    if (in.is_int8_type())
+    {
+        int8NDArray in_array = in.int8_array_value();
+        _value.resize(in.numel());
+        const auto& avail = _availableset;
+        for (int n=0; n < in.numel(); n++)
+        {
+            uint8_t val = (uint8_t)in_array(n);
+            for (const auto& check : avail)
+            {
+                if (check.second==val)
+                {
+                    _value[n] = enumElem(check.first, val);
+                    break;
+                }
+            }
+        }
+        return;
+    }
+    if (in.is_uint16_type())
+    {
+        uint16NDArray in_array = in.uint16_array_value();
+        _value.resize(in.numel());
+        const auto& avail = _availableset;
+        for (int n=0; n < in.numel(); n++)
+        {
+            uint8_t val = (uint8_t)in_array(n);
+            for (const auto& check : avail)
+            {
+                if (check.second==val)
+                {
+                    _value[n] = enumElem(check.first, val);
+                    break;
+                }
+            }
+        }
+        return;
+    }
+
+    if (in.is_int16_type())
+    {
+        int16NDArray in_array = in.int16_array_value();
+        _value.resize(in.numel());
+        const auto& avail = _availableset;
+        for (int n=0; n < in.numel(); n++)
+        {
+            uint8_t val = (uint8_t)in_array(n);
+            for (const auto& check : avail)
+            {
+                if (check.second==val)
+                {
+                    _value[n] = enumElem(check.first, val);
+                    break;
+                }
+            }
+        }
+        return;
+    }
+    if (in.is_uint32_type())
+    {
+        uint32NDArray in_array = in.uint32_array_value();
+        _value.resize(in.numel());
+        const auto& avail = _availableset;
+        for (int n=0; n < in.numel(); n++)
+        {
+            uint8_t val = (uint8_t)in_array(n);
+            for (const auto& check : avail)
+            {
+                if (check.second==val)
+                {
+                    _value[n] = enumElem(check.first, val);
+                    break;
+                }
+            }
+        }
+        return;
+    }
+
+    if (in.is_int32_type())
+    {
+        int32NDArray in_array = in.int32_array_value();
+        _value.resize(in.numel());
+        const auto& avail = _availableset;
+        for (int n=0; n < in.numel(); n++)
+        {
+            uint8_t val = (uint8_t)in_array(n);
+            for (const auto& check : avail)
+            {
+                if (check.second==val)
+                {
+                    _value[n] = enumElem(check.first, val);
+                    break;
+                }
+            }
+        }
+        return;
+    }
+    if (in.is_char_matrix())
+    {
+        charNDArray in_array = in.char_array_value();
+        _value.resize(in.numel());
+        const auto& avail = _availableset;
+        for (int n=0; n < in.numel(); n++)
+        {
+            uint8_t val = (uint8_t)in_array(n);
+            for (const auto& check : avail)
+            {
+                if (check.second==val)
+                {
+                    _value[n] = enumElem(check.first, val);
+                    break;
+                }
+            }
+        }
+        return;
+    }
+
+    if (in.isfloat())
+    {
+        FloatNDArray in_array = in.float_array_value();
+        _value.resize(in.numel());
+        const auto& avail = _availableset;
+        for (int n=0; n < in.numel(); n++)
+        {
+            uint8_t val = (uint8_t)(round(in_array(n)));
+            for (const auto& check : avail)
+            {
+                if (check.second==val)
+                {
+                    _value[n] = enumElem(check.first, val);
+                    break;
+                }
+            }
+        }
+        return;
+    }
+    if (in.is_double_type())
+    {
+        NDArray in_array = in.array_value();
+        _value.resize(in.numel());
+        const auto& avail = _availableset;
+        for (int n=0; n < in.numel(); n++)
+        {
+            uint8_t val = (uint8_t)(round(in_array(n)));
+            for (const auto& check : avail)
+            {
+                if (check.second==val)
+                {
+                    _value[n] = enumElem(check.first, val);
+                    break;
+                }
+            }
+        }
+        return;
+    }
 }
 
 template<> radarParameter<int8_t>::radarParameter(QString paramName) : radarParamBase(paramName, RPT_INT8), _value(dim_vector()){}
@@ -1889,7 +2173,8 @@ template<> octave_value radarParameter<int8_t>::get_value()
 //------------------------------------------------------
 template<> void         radarParameter<int8_t>::set_value(const octave_value& val )
 {
-    _value = val.int8_array_value();
+    //_value = val.int8_array_value();
+    convert_data(val);
 }
 //------------------------------------------------------
 template<> octave_value radarParameter<uint8_t>::get_value()
@@ -1899,7 +2184,8 @@ template<> octave_value radarParameter<uint8_t>::get_value()
 //------------------------------------------------------
 template<> void         radarParameter<uint8_t>::set_value(const octave_value& val )
 {
-    _value = val.uint8_array_value();
+    //_value = val.uint8_array_value();
+    convert_data(val);
 }
 
 //------------------------------------------------------
@@ -1910,7 +2196,8 @@ template<> octave_value radarParameter<int16_t>::get_value()
 //------------------------------------------------------
 template<> void         radarParameter<int16_t>::set_value(const octave_value& val )
 {
-    _value = val.int16_array_value();
+    //_value = val.int16_array_value();
+    convert_data(val);
 }
 //------------------------------------------------------
 template<> octave_value radarParameter<uint16_t>::get_value()
@@ -1920,7 +2207,8 @@ template<> octave_value radarParameter<uint16_t>::get_value()
 //------------------------------------------------------
 template<> void         radarParameter<uint16_t>::set_value(const octave_value& val )
 {
-    _value = val.uint16_array_value();
+    //_value = val.uint16_array_value();
+    convert_data(val);
 }
 //------------------------------------------------------
 template<> octave_value radarParameter<int32_t>::get_value()
@@ -1930,7 +2218,8 @@ template<> octave_value radarParameter<int32_t>::get_value()
 //------------------------------------------------------
 template<> void         radarParameter<int32_t>::set_value(const octave_value& val )
 {
-    _value = val.int32_array_value();
+    //_value = val.int32_array_value();
+    convert_data(val);
 }
 //------------------------------------------------------
 template<> octave_value radarParameter<uint32_t>::get_value()
@@ -1940,7 +2229,8 @@ template<> octave_value radarParameter<uint32_t>::get_value()
 //------------------------------------------------------
 template<> void         radarParameter<uint32_t>::set_value(const octave_value& val )
 {
-    _value = val.uint32_array_value();
+    //_value = val.uint32_array_value();
+    convert_data(val);
 }
 
 //------------------------------------------------------
@@ -1951,7 +2241,8 @@ template<> octave_value radarParameter<char>::get_value()
 //------------------------------------------------------
 template<> void         radarParameter<char>::set_value(const octave_value& val )
 {
-    _value = val.char_array_value();
+    //_value = val.char_array_value(true);
+    convert_data(val);
 }
 
 //------------------------------------------------------
@@ -1962,7 +2253,8 @@ template<> octave_value radarParameter<float>::get_value()
 //------------------------------------------------------
 template<> void         radarParameter<float>::set_value(const octave_value& val )
 {
-    _value = val.float_array_value();
+    //_value = val.float_array_value(true);
+    convert_data(val);
 }
 
 //------------------------------------------------------
@@ -1979,10 +2271,7 @@ octave_value radarParameter<QString>::get_value()
 //------------------------------------------------------
 void         radarParameter<QString>::set_value(const octave_value& val )
 {
-    Array<std::string> in = val.cellstr_value();
-    _value.resize(in.numel());
-    for (int n=0; n < in.numel(); n++)
-        _value[n] = QString::fromStdString(in(n));
+    convert_data(val);
 }
 
 
@@ -2021,21 +2310,7 @@ octave_value radarParameter<enumElem>::get_value()
 //------------------------------------------------------
 void         radarParameter<enumElem>::set_value(const octave_value& val )
 {
-    uint8NDArray in = val.uint8_array_value();
-    _value.resize(in.numel());
-    const auto& avail = _availableset;
-    for (int n=0; n < in.numel(); n++)
-    {
-        uint8_t val = in(n);
-        for (const auto& check : avail)
-        {
-            if (check.second==val)
-            {
-                _value[n] = enumElem(check.first, val);
-                break;
-            }
-        }
-    }
+    convert_data(val);
 }
 
 //------------------------------------------------------
@@ -2053,7 +2328,12 @@ octave_value radarParameter<void>::get_value()
     return octave_value();
 }
 //------------------------------------------------------
-void         radarParameter<void>::set_value(const octave_value& val )
+void radarParameter<void>::convert_data(const octave_value& val)
+{
+
+}
+//------------------------------------------------------
+void        radarParameter<void>::set_value(const octave_value& val )
 { }
 //------------------------------------------------------
 bool         radarParameter<void>::operator == (const radarParameter<void>& param)

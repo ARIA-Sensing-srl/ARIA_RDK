@@ -31,6 +31,8 @@ public:
     ~MainWindow();
     void        delete_children(class wndPlot2d* child);
     void        delete_children(class wndMathGL* child);
+
+    static      MainWindow*     mainWnd;
     // QMessage
     /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
     static  void QMessageOutput(QtMsgType , const QMessageLogContext &, const QString &msg);
@@ -54,8 +56,8 @@ private:
 
     QFile            option_file;
 
-    void            read_option_file();
-    void            update_option_file();
+    void             read_option_file();
+    void             update_option_file();
 
     std::streambuf  *octavepbuf, *coutbackup;
 

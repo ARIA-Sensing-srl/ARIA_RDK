@@ -63,8 +63,6 @@ void wndScheduler::connect_scheduler_signals()
     connect(_scheduler, &opScheduler::connection_error,         this, &wndScheduler::connection_error);
     connect(_scheduler, &opScheduler::init_error,               this, &wndScheduler::init_error);
     connect(_scheduler, &opScheduler::init_done,                this, &wndScheduler::init_done);
-    connect(_scheduler, &opScheduler::preacquisition_error,     this, &wndScheduler::preacquisition_error);
-    connect(_scheduler, &opScheduler::preacquisition_done,      this, &wndScheduler::preacquisition_done);
     connect(_scheduler, &opScheduler::postacquisition_error,    this, &wndScheduler::postacquisition_error);
     connect(_scheduler, &opScheduler::postacquisition_done,     this, &wndScheduler::postacquisition_done);
     connect(_scheduler, &opScheduler::timeout_error,            this, &wndScheduler::timeout_error);
@@ -323,22 +321,6 @@ void wndScheduler::init_error(radarInstance* device)
 }
 //--------------------------------
 void wndScheduler::init_done(radarInstance* device)
-{
-    int row = get_row_device(device);
-    if (row == -1) return;
-    set_status_at_row(row,true);
-}
-//--------------------------------
-void wndScheduler::preacquisition_error(radarInstance* device)
-{
-    int row = get_row_device(device);
-    if (row == -1) return;
-    set_status_at_row(row,false);
-
-
-}
-//--------------------------------
-void wndScheduler::preacquisition_done(radarInstance* device)
 {
     int row = get_row_device(device);
     if (row == -1) return;

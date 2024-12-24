@@ -143,8 +143,6 @@ void wndRadarInstanceEditor::init_script_tables()
 {
     init_script_table(ui->tblScriptsInit, _radar_instance->get_init_scripts());
 
-    init_script_table(ui->tblScriptsPreacq, _radar_instance->get_acquisition_scripts());
-
     init_script_table(ui->tblScriptsPostAcq, _radar_instance->get_postacquisition_scripts());
 }
 //---------------------------------------------------------------
@@ -171,8 +169,6 @@ void wndRadarInstanceEditor::init_script_table(QTableWidget* table, QVector<octa
         cb->setCurrentText(script->get_name());
         if (table == ui->tblScriptsInit)
             connect(cb,&QComboBox::currentIndexChanged, this, &wndRadarInstanceEditor::cbInitScriptChanged);
-        if (table == ui->tblScriptsPreacq)
-            connect(cb,&QComboBox::currentIndexChanged, this, &wndRadarInstanceEditor::cbPreacqScriptChanged);
         if (table == ui->tblScriptsPostAcq)
             connect(cb,&QComboBox::currentIndexChanged, this, &wndRadarInstanceEditor::cbPostacqScriptChanged);
 
@@ -205,8 +201,6 @@ void wndRadarInstanceEditor::add_script_table_empty_row(QTableWidget* table)
 
     if (table == ui->tblScriptsInit)
         connect(cb,&QComboBox::currentIndexChanged, this, &wndRadarInstanceEditor::cbInitScriptChanged);
-    if (table == ui->tblScriptsPreacq)
-        connect(cb,&QComboBox::currentIndexChanged, this, &wndRadarInstanceEditor::cbPreacqScriptChanged);
     if (table == ui->tblScriptsPostAcq)
         connect(cb,&QComboBox::currentIndexChanged, this, &wndRadarInstanceEditor::cbPostacqScriptChanged);
     QTableWidgetItem* item = new QTableWidgetItem();
@@ -291,68 +285,6 @@ void    wndRadarInstanceEditor::cbInitScriptChanged(int index)
     else
     {
         _radar_instance->set_init_script(row, script);
-    }
-}
-//---------------------------------------------------------------
-void    wndRadarInstanceEditor::cbPreacqScriptChanged(int index)
-{
-    // Recast current parameter
-    // Warning : changing the parameter class will result in loss of previous data
-
-    octaveScript* script = nullptr;
-    int row = -1;
-    QWidget *w = qobject_cast<QWidget *>(sender());
-    if(w)
-        row = ui->tblScriptsPreacq->indexAt(w->pos()).row();
-
-    if ((row<0)||(row>=ui->tblScriptsPreacq->rowCount())) return;
-
-    if ((row == ui->tblScriptsPreacq->rowCount()-1)&&(index == 0)) return;
-    QString script_name = ((QComboBox*)(sender()))->currentText();
-
-    if (index==1)
-    {
-        script = load_new_script();
-        if (script == nullptr) return;
-
-        QVector<octaveScript*> scripts = _radar_instance->get_acquisition_scripts();
-
-        scripts.insert(row, script);
-        _radar_instance->set_acquisition_scripts(scripts);
-        init_script_table(ui->tblScriptsPreacq, _radar_instance->get_acquisition_scripts());
-
-        return;
-    }
-
-    if (index==0)
-    {
-        QVector<octaveScript*> scripts = _radar_instance->get_acquisition_scripts();
-        scripts.remove(row);
-        _radar_instance->set_acquisition_scripts(scripts);
-        init_script_table(ui->tblScriptsPreacq, _radar_instance->get_acquisition_scripts());
-
-        return;
-    }
-
-    script = (octaveScript*)(_project->get_child(script_name,DT_SCRIPT));
-    if (script == nullptr)
-    {
-        QMessageBox::critical(this, tr("Error"), tr("Script not found in project"));
-
-        return;
-    }
-
-    if (row == ui->tblScriptsPostAcq->rowCount()-1)
-    {
-        QVector<octaveScript*> scripts = _radar_instance->get_acquisition_scripts();
-        scripts.insert(row, script);
-        _radar_instance->set_acquisition_scripts(scripts);
-
-        add_script_table_empty_row(ui->tblScriptsPreacq);
-    }
-    else
-    {
-        _radar_instance->set_acquisition_script(row, script);
     }
 }
 
@@ -520,7 +452,7 @@ void    wndRadarInstanceEditor::init_parameter_table()
     ui->tblParams->setColumnCount(7);
     ui->tblParams->setRowCount(_radar_instance->get_param_count());
     ui->tblParams->setHorizontalHeaderLabels(QStringList({"Parameter","Default Value","Current Value","Current Value", "Exported to Octave","Alias", "Compound"}));
-    connect(ui->tblParams, SIGNAL(itemChanged(QTableWidgetItem*)), this, SLOT(itemChanged(QTableWidgetItem*)));
+    connect(ui->tblParams, &QTableWidget::itemChanged, this, &wndRadarInstanceEditor::itemChanged);
 
     QVector<radarParamPointer> params = _radar_instance->get_param_table();
     ui->tblParams->setRowCount(params.count());
@@ -1211,10 +1143,16 @@ void    wndRadarInstanceEditor::itemChanged(QTableWidgetItem* item)
             val.resize(1);
             val[0] = item->text();
 
-            if (!param->is_transmitting())
-                _radar_instance->set_param_value(param,val,!param->is_transmitting(), true);
+            RP_STATUS param_stat = param->get_status();
+            if (param_stat == RPS_IDLE)
+                param->set_status(RPS_MODIFIED);
             else
-                param->unset_transmitting();
+            {
+                param->set_status(RPS_IDLE);
+                //qDebug() << "\n**** " << param->get_name() << " modification overlapping with current transfer. Discarded";
+            }
+
+            _radar_instance->set_param_value(param,val,true, true);
         }
     }
 
@@ -1468,21 +1406,16 @@ void    wndRadarInstanceEditor::run()
         _scheduler->set_policy_on_error(HALT_ALL);
         _scheduler->set_policy_on_timeout(HALT_ON_TIMEOUT);
         _scheduler->add_radar(_radar_instance);
+
         connect(_scheduler, &opScheduler::running,                  this, &wndRadarInstanceEditor::scheduler_running);
         connect(_scheduler, &opScheduler::halted,                   this, &wndRadarInstanceEditor::scheduler_halted);
-
         connect(_scheduler, &opScheduler::connection_done,          this, &wndRadarInstanceEditor::connection_done);
         connect(_scheduler, &opScheduler::connection_done_all,      this, &wndRadarInstanceEditor::connection_done_all);
         connect(_scheduler, &opScheduler::connection_error,         this, &wndRadarInstanceEditor::connection_error);
-
         connect(_scheduler, &opScheduler::init_done,                this, &wndRadarInstanceEditor::init_done);
         connect(_scheduler, &opScheduler::init_done_all,            this, &wndRadarInstanceEditor::init_done_all);
         connect(_scheduler, &opScheduler::init_error,               this, &wndRadarInstanceEditor::init_error);
-
-        connect(_scheduler, &opScheduler::preacquisition_error,     this, &wndRadarInstanceEditor::preacquisition_error);
         connect(_scheduler, &opScheduler::postacquisition_error,    this, &wndRadarInstanceEditor::postacquisition_error);
-
-        connect(_scheduler, &opScheduler::preacquisition_done_all,  this, &wndRadarInstanceEditor::preacquisition_done_all);
         connect(_scheduler, &opScheduler::postacquisition_done_all, this, &wndRadarInstanceEditor::postacquisition_done_all);
 
         _scheduler->run();

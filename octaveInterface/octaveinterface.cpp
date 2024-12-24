@@ -9,14 +9,20 @@
 #include <oct.h>
 #include <parse.h>
 #include "octavescript.h"
-#include "iostream"
+#include <QFileInfo>
+//#include "iostream"
+
 
 
 /*-----------------------------
  * QSharedData implementation
  *----------------------------*/
-octaveInterface::octaveInterface() : commandList(), commandCurrent(""), bStopThread(false),
-    _workspace(nullptr)
+octaveInterface::octaveInterface() :
+      commandList()
+    , commandCurrent("")
+    , bStopThread(false)
+    , _workspace(nullptr)
+    , _immediate_filename("")
 {
     // Initialize Octave Interpreter
     _octave_engine = new octave::interpreter();
@@ -29,12 +35,6 @@ octaveInterface::octaveInterface() : commandList(), commandCurrent(""), bStopThr
 
     os.flushing_output_to_pager(false);
     os.page_screen_output(false);
-/*
-
-    os.diary_file_name("/home/alessioc/projects/octave_diary.txt");
-    os.open_diary();
-    os.write_to_diary_file(true);
-*/
 
     _workspace = new octavews(_octave_engine);
     _workspace->data_interface(this);
@@ -51,11 +51,6 @@ octaveInterface::~octaveInterface()
 {
     if (_octave_engine!=nullptr)
     {
-        /*
-        octave::output_system& os = _octave_engine->get_output_system();
-        os.close_diary();*/
-
-        //_octave_engine->quit(0,true);
         delete _octave_engine;
         _octave_engine= nullptr;
     }
@@ -93,7 +88,6 @@ bool octaveInterface::appendCommand(const QString &newCommand)
 
     try
     {
-        //updateInterpreterInternalVariables();
         octave::flush_stdout();
         update_interpreter_internal_vars();
         _octave_engine->eval_string(newCommand.toStdString(),false,parse_status);
@@ -113,11 +107,15 @@ bool octaveInterface::appendCommand(const QString &newCommand)
         b_ok = false;
     }
     emit commandCompleted(newCommand,parse_status);
-    if (b_ok) completeCommand();
+    if (b_ok)
+        completeCommand();
+    else
+    {
+        remove_interface_file();
+        emit errorWhileRunning();
+    }
 
     _b_running_command = false;
-
-
 #endif
     return b_ok;
 }
@@ -152,18 +150,6 @@ void octaveInterface::clearCommandList()
 QString octaveInterface::appendVariable(QString name, const octave_value& val, bool internal, bool toOctave, QStringList indep, QStringList dep )
 {
     return "";
-/*
-    variable *var = dWorkspace==nullptr? nullptr: dWorkspace->getVarByName(name);
-    if (var==nullptr) var = new variable(name,val,dWorkspace,indep);
-    var->setInternal(internal);
-    var->setDependentVar(dep);
-
-    if (toOctave)
-        updateInterpreterInternalVariables();
-
-    emit workspaceUpdated();
-    return var->getName();
-*/
 }
 //-----------------------------
 void    octaveInterface::set_pwd(const QString& path)
@@ -191,20 +177,9 @@ void octaveInterface::completeCommand()
 #endif
 }
 //-----------------------------
-/*
-void  octaveInterface::updatedVariable(const std::string&  var)
-{
-
-}
-//-----------------------------
-void  octaveInterface::udpatedVariables(const std::set<std::string>& vars)
-{
-
-}
-*/
-//-----------------------------
 octave_value_list octaveInterface::execute_feval(QString command, octave_value_list& in, int n_outputs)
 {
+
     return _octave_engine->feval(command.toLatin1(),in,n_outputs);
 }
 
@@ -331,7 +306,56 @@ bool    octaveInterface::save_workspace_to_file(QString filename)
     _workspace->save_to_file(filename.toStdString());
     return true;
 }
+void octaveInterface::remove_interface_file()
+{
+    if (_immediate_filename.empty()) return;
+    QFileInfo fi(QString::fromStdString(_immediate_filename));
+    if (fi.fileName()!=".rdk_tmp.atp") return;
+    std::remove(_immediate_filename.c_str());
+    _immediate_filename.clear();
+}
+//-----------------------------
+void    octaveInterface::immediate_update_of_radar_var(const std::string& str, const std::string& filename)
+{
+    _immediate_filename = filename;
+    if ((str.empty())||(filename.empty())) {remove_interface_file(); return;}
 
+    if (!std::filesystem::exists(filename)) return;
+    //_vars_immediate_update.insert(str);
+    emit immediateUpdateVariable(str);
+    // Delete lock file
+    remove_interface_file();
+}
+
+//-----------------------------
+void    octaveInterface::immediate_inquiry_of_radar_var(const std::string& str, const std::string& filename)
+{
+
+    _immediate_filename = filename;
+    if ((str.empty())||(filename.empty())) {remove_interface_file(); return;}
+
+    // Add the variable to the list of modified vars
+    //_vars_immediate_update.insert(str);
+    if (!std::filesystem::exists(filename)) return;
+
+    emit inquiryVariable(str);
+    // Delete lock file
+    remove_interface_file();
+}
+//-----------------------------
+void    octaveInterface::immediate_command(const std::string& str, const std::string& filename)
+{
+    _immediate_filename = filename;
+    if ((str.empty())||(filename.empty()))
+        if ((str.empty())||(filename.empty())) {remove_interface_file(); return;}
+
+    // Add the variable to the list of modified vars
+    if (!std::filesystem::exists(filename)) return;
+
+    emit sendCommand(str);
+    // Delete lock file
+    remove_interface_file();
+}
 
 /*-----------------------------
  * QWorker implementation

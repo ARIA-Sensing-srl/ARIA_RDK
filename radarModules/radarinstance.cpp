@@ -22,7 +22,6 @@ radarInstance::radarInstance(radarModule* module) : radarModule("newRadar", DT_R
 #ifdef INTERFACE_STRUCT
     _radar_cell(),
 #endif
-    _block_update(false),
     _serial_status(SS_IDLE),
     _serialport(nullptr),
     _serial_timer(nullptr)
@@ -555,62 +554,103 @@ void    radarInstance::auto_connect()
 void    radarInstance::set_param_value(radarParamPointer param, const QVector<QVariant>& val, bool transmit,bool update_workspace)
 {
     if (param==nullptr) return;
-    if (_block_update) return;
+
     if (param->get_io_type()==RPT_IO_OUTPUT)
         return;
     if (param->get_type()==RPT_VOID)
         return;
 
-
-    if (param->get_type() != RPT_VOID)
-    {
-        QVector<QVariant> current_val = param->value_to_variant();
-
-        if (current_val == val) return;
-    }
+    RP_STATUS stat = param->get_status();
+    if (stat != RPS_MODIFIED)
+        return;
 
     param->variant_to_value(val);
 
     if (!param->is_last_assignment_valid())
         return;
 
-    update_param_workspace_gui(param,update_workspace);
+    if (!is_connected())
+    {
+        param->set_status(RPS_UPDATED);
+        update_param_workspace_gui(param);        
+        return;
+    }
 
-    _block_update = true;
-    if (transmit)
+    if ((transmit)&&(is_connected())&&(param->get_status()==RPS_MODIFIED))
         transmit_param(param);
-    _block_update = false;
  }
+//---------------------------------------------
+// This is a patch to avoid script execution termination
+// when immediate_update is applied
+void    radarInstance::update_param_internal_copy(radarParamPointer param, octave_value val)
+{
+    if (param==nullptr) return;
+    octave_value valint = val;
+    RADARPARAMTYPE type = param->get_type();
+    switch (type)
+    {
+    case RPT_INT8:
+        param->set_value(valint.int8_array_value());
+        return;
+    case RPT_UINT8:
+        param->set_value(valint.uint8_array_value());
+        return;
+    case RPT_INT16:
+        param->set_value(valint.int16_array_value());
+        return;
+    case RPT_UINT16:
+        param->set_value(valint.uint16_array_value());
+        return;
+    case RPT_INT32:
+        param->set_value(valint.int32_array_value());
+        return;
+    case RPT_UINT32:
+        param->set_value(valint.uint32_array_value());
+        return;
+    case RPT_STRING:
+        param->set_value(valint.char_array_value());
+        return;
+    case RPT_FLOAT:
+        param->set_value(valint.float_array_value());
+        return;
+    default:
+        return;
+
+    }
+    return;
+ }
+
 
 //-----------------------------------------------
 void    radarInstance::set_param_value(radarParamPointer param, octave_value val, bool transmit, bool update_workspace)
 {
 
     if (param==nullptr) return;
-    if (_block_update) return;
+
     if (param->get_io_type()==RPT_IO_OUTPUT)
         return;
 
-    if ((param->get_type() != RPT_VOID)&&(param->get_io_type()!=RPT_IO_INPUT))
-        if (ov_equal(param->get_value(),val)) return;
-
     param->set_value(val);
 
-    update_param_workspace_gui(param,update_workspace);
+    RP_STATUS stat = param->get_status();
+    if (stat != RPS_MODIFIED)
+        return;
 
-    bool bprevblock = _block_update;
+    if (!is_connected())
+    {
+        param->set_status(RPS_UPDATED);
+        update_param_workspace_gui(param);        
+        return;
+    }
 
-    _block_update = true;
-    if (transmit)
+    if ((transmit)&&(is_connected())&&(param->get_status()==RPS_MODIFIED))
         transmit_param(param);
-    _block_update = bprevblock;
 }
 
 //-----------------------------------------------
 void         radarInstance::set_param_value(QString name, octave_value val, bool transmit, bool update_workspace)
 {
     if (name.isEmpty()) return;
-    if (_block_update) return;
 
     for (auto& param: _params)
         if ((param!=nullptr)&&(param->get_io_type()!=RPT_IO_OUTPUT))
@@ -618,25 +658,27 @@ void         radarInstance::set_param_value(QString name, octave_value val, bool
             QString mapped_name = get_mapped_name(param);
             if (mapped_name==name)
             {
-
                 if (param->get_io_type()==RPT_IO_OUTPUT)
                     return;
 
-                if (param->get_type() != RPT_VOID)
-                    if (ov_equal(param->get_value(),val)) return;
-
                 param->set_value(val);
 
-                update_param_workspace_gui(param,update_workspace);
-                if ((transmit)&&(is_connected()))
+                RP_STATUS stat = param->get_status();
+                if (stat != RPS_MODIFIED)
+                    return;
+
+                if (!is_connected())
+                {
+                    param->set_status(RPS_UPDATED);
+                    update_param_workspace_gui(param);                    
+                    return;
+                }
+
+                if ((transmit)&&(is_connected())&&(param->get_status()==RPS_MODIFIED))
                 {
                     // Transmit param may update the value according to device response, we need to update the linked var
-                    bool bprevblock = _block_update;
+                    transmit_param(param);
 
-                    _block_update = true;
-                    if (transmit)
-                        transmit_param(param);
-                    _block_update = bprevblock;
                 }
                 return;
             }
@@ -646,7 +688,6 @@ void         radarInstance::set_param_value(QString name, octave_value val, bool
 //-----------------------------------------------
 void         radarInstance::set_param_value(int param_index, octave_value val, bool transmit, bool update_workspace)
 {
-    if (_block_update) return;
     if ((param_index < 0)||(param_index>=get_param_count()))
             return;
     radarParamPointer param = _params[param_index];
@@ -655,24 +696,22 @@ void         radarInstance::set_param_value(int param_index, octave_value val, b
     if (param->get_io_type()==RPT_IO_OUTPUT)
         return;
 
-    if ((param->get_type() != RPT_VOID)&&(param->get_io_type()!=RPT_IO_INPUT))
-        if (ov_equal(param->get_value(),val)) return;
-
     param->set_value(val);
 
-    update_param_workspace_gui(param,update_workspace);
+    RP_STATUS stat = param->get_status();
+    if (stat != RPS_MODIFIED)
+        return;
 
-    QString mapped_name = get_mapped_name(param);
-    if ((transmit)&&(is_connected()))
+
+    if (!is_connected())
     {
-        bool bprevblock = _block_update;
-
-        _block_update = true;
-        if (transmit)
-            transmit_param(param);
-        _block_update = bprevblock;
+        param->set_status(RPS_UPDATED);
+        update_param_workspace_gui(param);        
+        return;
     }
 
+    if ((transmit)&&(is_connected())&&(param->get_status()==RPS_MODIFIED))
+        transmit_param(param);
 }
 
 //-----------------------------------------------
@@ -684,8 +723,13 @@ void    radarInstance::set_param_value_default(int param_index, bool transmit)
     if (_params[param_index]==nullptr) return;
 
     if (_ref_module == nullptr) return;
-    if (_params[param_index]->get_io_type()!=RPT_IO_IO)
+    if (_params[param_index]->get_io_type()==RPT_IO_OUTPUT)
         return;
+
+    RP_STATUS stat = _params[param_index]->get_status();
+
+    if (stat!=RPS_IDLE) return;
+    _params[param_index]->set_status(RPS_MODIFIED);
 
     radarParamPointer _defpar = _ref_module->get_param(param_index);
     if (_defpar == nullptr)
@@ -693,17 +737,15 @@ void    radarInstance::set_param_value_default(int param_index, bool transmit)
 
     _params[param_index]->set_value(_defpar->get_value());
 
-    if ((transmit)&&(is_connected()))
+    if (!is_connected())
     {
-        transmit_param(_params[param_index]);
+        _params[param_index]->set_status(RPS_UPDATED);
+        update_param_workspace_gui(_params[param_index]);
+        return;
     }
 
-    if (_params[param_index]->is_linked_to_octave())
-    {
-        _block_update = true;
-        _workspace->set_variable(get_mapped_name(_params[param_index]).toStdString(),   _params[param_index]->get_value());
-        _block_update = false;
-    }
+    if ((transmit)&&(is_connected())&&(_params[param_index]->get_status()==RPS_MODIFIED))
+        transmit_param(_params[param_index]);
 
 }
 
@@ -717,6 +759,18 @@ bool radarInstance::transmit_param(radarParamPointer param)
 
     if (param==nullptr) return false;
     QVector<radarParamPointer> params = get_param_group(param);
+    for (auto& p: params)
+        if (p!=nullptr)
+        {
+            if (p->get_status()!=RPS_MODIFIED)
+                return false;
+        }
+    for (auto& p: params)
+        if (p!=nullptr)
+        {
+            p->set_status(RPS_TRANSMITTING);
+        }
+
 
     if (params.count()==0)
         return false;
@@ -798,14 +852,6 @@ bool    radarInstance::save_xml(QDomDocument& document)
     script_list.setAttribute("count",_init_scripts.count());
 
     for (auto& script: _init_scripts)
-        if (script!=nullptr)
-            if (!script->save_xml(document,script_list)) return false;
-    radar_node.appendChild(script_list);
-
-    script_list = document.createElement("acquisition_scripts");
-    script_list.setAttribute("count",_acquisition_scripts.count());
-
-    for (auto& script: _acquisition_scripts)
         if (script!=nullptr)
             if (!script->save_xml(document,script_list)) return false;
     radar_node.appendChild(script_list);
@@ -961,28 +1007,6 @@ bool radarInstance::load_xml()
         if (_init_scripts.count()!=num_scripts) return false;
     }
 
-    scripts = radar_node.firstChildElement("acquisition_scripts");
-
-    if (!scripts.isNull())
-    {
-        int num_scripts = scripts.attribute("count","0").toInt(&bOk);
-        QDomElement script = scripts.firstChildElement("script");
-        _acquisition_scripts.resize(0);
-
-        do
-        {
-            QString script_file =QFileInfo(script.attribute("filename")).fileName();
-            octaveScript_ptr octave_script = (octaveScript*)(get_root()->get_child(script_file,DT_SCRIPT));
-            if (octave_script!=nullptr)
-                _acquisition_scripts.append(octave_script);
-
-            script = script.nextSiblingElement("script");
-        }
-        while(!script.isNull());
-
-        if (_acquisition_scripts.count()!=num_scripts) return false;
-    }
-
     scripts = radar_node.firstChildElement("post_acquisition_scripts");
 
     if (!scripts.isNull())
@@ -1118,7 +1142,6 @@ void    radarInstance::update_module()
     }
 
     _init_commands = _ref_module->get_init_commands();
-    _acquisition_commands = _ref_module->get_acquisition_commands();
     _postacquisition_commands = _ref_module->get_postacquisition_commands();
     // Inquiry
     set_inquiry_moduleid_command(_ref_module->get_inquiry_moduleid_command());
@@ -1159,8 +1182,6 @@ bool radarInstance::init_pre()
     if (_workspace==nullptr) return false;
 
     if (_workspace->data_interface()==nullptr) return false;
-
-    _block_update = true;
 
     clear_params_update_lists();
 
@@ -1210,7 +1231,6 @@ bool radarInstance::init_pre()
         emit all_params_updated();
         emit_operation_done();
     }
-    _block_update = false;
 
     return true;
 }
@@ -1269,112 +1289,7 @@ void radarInstance::init()
 
     init_scripts();
 }
-//--------------------------------------------------
-bool radarInstance::acquisition_pre()
-{
-    if (_workspace == nullptr)
-        return false;
 
-    if (!is_connected()) return false;
-
-    if (_workspace==nullptr) return false;
-
-    if (_workspace->data_interface()==nullptr) return false;
-
-    _block_update = true;
-
-    clear_params_update_lists();
-
-    //1. Feed params from device to workspace according to policy
-    for (int param_index: _acquisition_commands)
-    {
-        radarParamPointer par = _params[param_index];
-        if (par==nullptr) continue;
-
-        if (!_params_to_inquiry.contains(par))
-        {
-            RADARPARAMIOTYPE rpt_io = par->get_io_type();
-
-            if ((rpt_io == RPT_IO_OUTPUT)||((rpt_io == RPT_IO_IO)&&(par->has_inquiry_value())))
-                _params_to_inquiry.append(par);
-        }
-    }
-
-    _radar_operation = RADAROP_PREACQ_PARAMS;
-
-    if (!_params_to_inquiry.isEmpty())
-    {
-        inquiry_parameter(_params_to_inquiry[0]);
-
-#ifdef UPDATE_INSIDE
-            _workspace->set_variable(get_mapped_name(param).toStdString(),   param->get_value());
-#endif
-#ifdef INTERFACE_STRUCT
-            // in the struct maintain the parameter name
-            _radar_cell.setfield(param->get_name().toStdString(),param->get_value());
-#endif
-    }
-
-#ifdef INTERFACE_STRUCT
-    _workspace->set_variable(get_device_name().toStdString(), _radar_cell);
-#endif
-    // Update workspace
-#ifdef UPDATE_INSIDE
-    _workspace->workspace_to_interpreter();
-#endif
-
-    // if we don't have parameter to update, let's send a signal that we are done (otherwise we should wait for all transfers)
-    if (_params_to_inquiry.empty())
-    {
-#ifdef UPDATE_INSIDE
-        _workspace->workspace_to_interpreter();
-#endif
-        emit all_params_updated();
-        emit_operation_done();
-    }
-    _block_update = false;
-
-    return true;
-
-}
-
-//--------------------------------------------------
-bool radarInstance::acquisition_scripts()
-{
-    // Run scripts
-    if (_workspace == nullptr)
-        return false;
-    if (_workspace->data_interface()==nullptr) return false;
-    _radar_operation = RADAROP_PREACQ_SCRIPTS;
-
-    //1. Feed params from device to workspace according to policy
-    for (int param_index: _acquisition_commands)
-    {
-        radarParamPointer par = _params[param_index];
-        if (par==nullptr) continue;
-
-        if (!_params_to_modify.contains(par))
-        {
-            RADARPARAMIOTYPE rpt_io = par->get_io_type();
-
-            if (rpt_io != RPT_IO_INPUT)
-                _params_to_modify.append(par);
-        }
-    }
-
-    for (auto& script: _acquisition_scripts)
-        if (script != nullptr)
-            _workspace->data_interface()->run(script->get_text());
-
-    if (_params_to_modify.empty()||_acquisition_scripts.empty())
-    {
-        clear_params_update_lists();
-        emit all_params_updated();
-        emit_operation_done();
-    }
-
-    return true;
-}
 //--------------------------------------------------
 bool radarInstance::postacquisition_pre()
 {
@@ -1386,8 +1301,6 @@ bool radarInstance::postacquisition_pre()
     if (_workspace==nullptr) return false;
 
     if (_workspace->data_interface()==nullptr) return false;
-
-    _block_update = true;
 
     clear_params_update_lists();
 
@@ -1432,7 +1345,7 @@ bool radarInstance::postacquisition_pre()
     // Update workspace
     _workspace->workspace_to_interpreter();
 #endif
-    _block_update = false;
+
     return true;
 }
 //--------------------------------------------------
@@ -1485,7 +1398,6 @@ void radarInstance::run()
 //--------------------------------------------------
 void radarInstance::export_to_octave()
 {
-    _block_update = true;
     if (_workspace == nullptr)
         return;
 
@@ -1509,7 +1421,6 @@ void radarInstance::export_to_octave()
 #endif
     _workspace->workspace_to_interpreter();
 
-    _block_update = false;
 }
 
 //--------------------------------------------------
@@ -1543,9 +1454,107 @@ void radarInstance::import_from_octave()
 
 }
 //--------------------------------------------------
+void    radarInstance::immediate_update_variable(const std::string& varname)
+{
+    if (_workspace == nullptr)
+        return;
+
+    octave_value var_value = _workspace->var_value(varname);
+
+    if (varname.empty()) return;
+
+    for (auto& param : _params)
+        if (param!=nullptr)
+        {
+            if (get_mapped_name(param).toStdString() == varname)
+            {
+                immediate_set_param_value(param, var_value);
+                return;
+            }
+        }
+}
+//--------------------------------------------------
+void    radarInstance::immediate_inquiry_variable(const std::string& varname)
+{
+    if (varname.empty()) return;
+
+    for (auto& param : _params)
+        if (param!=nullptr)
+        {
+            if (get_mapped_name(param).toStdString() == varname)
+            {
+                immediate_inquiry_value(param);
+                return;
+            }
+        }
+
+}
+//--------------------------------------------------
+void    radarInstance::immediate_set_param_value(radarParamPointer param, const octave_value& val)
+{
+    if (param->get_io_type()==RPT_IO_OUTPUT)
+        return;
+    if (param->get_type()==RPT_VOID)
+        return;
+
+    QVector<radarParamPointer> params = get_param_group(param);
+
+    // Inquiry the module this device belongs to
+    if (params.count()==0)
+        return;
+
+    param->set_value(val);
+    if (!is_connected()) return;
+    if (transmit_param_blocking(params))
+        param_is_updated(param);
+}
+//--------------------------------------------------
+void    radarInstance::immediate_inquiry_value(radarParamPointer param)
+{
+    if (param->get_io_type()==RPT_IO_INPUT)
+        return;
+    if (param->get_type()==RPT_VOID)
+        return;
+    if (!param->has_inquiry_value()) return;
+    QVector<radarParamPointer> params = get_param_group(param);
+
+    if (params.count()==0)
+        return;
+    if (!is_connected()) return;
+    if (transmit_param_blocking(params, true))
+        param_is_updated(param);
+}
+//--------------------------------------------------
+void    radarInstance::immediate_set_command(radarParamPointer param)
+{
+    if (param->get_io_type()!=RPT_IO_INPUT)
+        return;
+    if (param->get_type()!=RPT_VOID)
+        return;
+
+    if (!is_connected()) return;
+    transmit_command_blocking(param);
+}
+
+//--------------------------------------------------
+void    radarInstance::immediate_command(const std::string& varname)
+{
+    if (varname.empty()) return;
+
+    for (auto& param : _params)
+        if (param!=nullptr)
+        {
+            if (get_mapped_name(param).toStdString() == varname)
+            {
+                immediate_set_command(param);
+                return;
+            }
+        }
+}
+//--------------------------------------------------
 void    radarInstance::update_variable(const std::string& varname)
 {
-    if (_block_update) return;
+
     if (_workspace == nullptr)
         return;
 
@@ -1570,7 +1579,7 @@ void    radarInstance::update_variable(const std::string& varname)
         {
             if (get_mapped_name(param).toStdString() == varname)
             {
-                set_param_value(param, var_value, true, false);
+                set_param_value(param, var_value, true, true);
                 return;
             }
         }
@@ -1578,7 +1587,6 @@ void    radarInstance::update_variable(const std::string& varname)
 //--------------------------------------------------
 void    radarInstance::update_variables(const std::set<std::string>& varlist)
 {
-    if (_block_update) return;
     // First update the struct, then update the mapped fields (higher priority for the latter)
 #ifdef INTERFACE_STRUCT
     for (auto& varname : varlist)
@@ -1597,8 +1605,17 @@ void    radarInstance::update_variables(const std::set<std::string>& varlist)
         {
             if (get_mapped_name(param).toStdString() == varname)
                 if (param->get_io_type() != RPT_IO_OUTPUT)
-                    if ((_params_to_modify.isEmpty())||(!_params_to_modify.contains(param)))
-                    _params_to_modify.append(param);
+                {
+                    RP_STATUS status = param->get_status();
+                    // In this case the modification is set by the workspace
+                    if (status==RPS_IDLE)
+                        param->set_status(RPS_MODIFIED);
+
+
+                    if (!_params_to_modify.contains(param))
+                        if (param->get_status()==RPS_MODIFIED)
+                            _params_to_modify.append(param);
+                }
         }
     }
 
@@ -1608,7 +1625,15 @@ void    radarInstance::update_variables(const std::set<std::string>& varlist)
         // Skip struct
         if (varname == get_device_name().toStdString()) continue;
 #endif
-        update_variable(varname);
+        for (auto& param:_params)
+        {
+            if (get_mapped_name(param).toStdString() == varname)
+            {
+                RP_STATUS status = param->get_status();
+                if (status==RPS_MODIFIED)
+                    update_variable(varname);
+            }
+        }
     }
 }
 //--------------------------------------------------
@@ -1671,8 +1696,13 @@ bool    radarInstance::is_connected()
 //--------------------------------------------------
 void    radarInstance::disconnect()
 {
+    for (auto& p: _params)
+        if (p!=nullptr) p->set_status(RPS_IDLE);
+
     if (_serialport==nullptr) return;
     if (!is_connected()) return;
+    _serialport->clear();
+    _serialport->flush();
     _serialport->close();
     emit disconnection();
 }
@@ -1680,6 +1710,9 @@ void    radarInstance::disconnect()
 
 void    radarInstance::port_connect()
 {
+    for (auto& p: _params)
+        if (p!=nullptr) p->set_status(RPS_IDLE);
+
     if (is_connected()) return;
 
     if (_serialport==nullptr) initSerialPortTimer();
@@ -1761,6 +1794,12 @@ void    radarInstance::transmit_data(const QByteArray& datatx)
 
 void    radarInstance::serial_timeout()
 {
+    for (auto& param: _params)
+    {
+        if (param!=nullptr)
+            param->set_status(RPS_IDLE);
+    }
+
     if (_serial_status == SS_RECEIVING)
     {
         emit rx_timeout("Timeout error during data receiption");
@@ -1776,7 +1815,11 @@ void    radarInstance::serial_timeout()
         _serialport->flush();
         _serialport->clear();
     }
+
+    for (auto& p: _params) if (p!=nullptr) p->set_status(RPS_IDLE);
     _serial_status = SS_TIMEOUT;
+
+
 }
 
 //--------------------------------------------------
@@ -1811,8 +1854,6 @@ void radarInstance::serial_chain_data(const QByteArray& data_readAll)
             _serial_status = SS_RECEIVEDONE;
             _serial_timer->stop();
             update_param_from_last_rx();
-            if (_block_update == true)
-                _block_update = false;
 
             emit new_read_completed(_last_serial_rx);
         }
@@ -1886,6 +1927,55 @@ bool    radarInstance::transmit_param_blocking(const QVector<radarParamPointer>&
     }
     return true;
 }
+
+/*
+* Transmit a param in "blocking mode".
+* In non-blocking mode, scheduler has to handle signals properly
+*/
+//--------------------------------------------------
+bool    radarInstance::transmit_command_blocking(radarParamPointer param)
+{
+    _last_sent_command = nullptr;
+    if (!is_connected()) return false;
+
+    _serialport->clear(QSerialPort::Output);
+
+    QByteArray data_tx = encode_param_for_transmission(QVector<radarParamPointer>({param}));
+    _serial_status = SS_TRANSMITTING;
+    _serialport->write(data_tx);
+    if (_serialport->waitForBytesWritten(kWriteTimeoutTx)) {
+        _last_serial_tx = data_tx;
+        _serial_status = SS_RECEIVING;
+    }
+    else
+    {
+        serial_timeout();
+        return false;
+    }
+    emit new_write_completed(_last_serial_tx);
+
+    if (_serialport->waitForReadyRead(kWriteTimeoutRx))
+    {
+        // read request
+        if (!update_command_from_last_rx()) return false;
+        _serial_status = SS_RECEIVEDONE;
+        _serial_timer->stop();
+        emit new_read_completed(_last_serial_rx);
+        if (_serial_status == SS_RECEIVEDONE) return true;
+        while (_serialport->waitForReadyRead(10))
+        {
+            serial_chain_data(_serialport->readAll());
+            if (_serial_status == SS_RECEIVEDONE) return true;
+        }
+    }
+    else
+    {
+        serial_timeout();
+        return false;
+    }
+    return true;
+}
+
 //--------------------------------------------------
 bool    radarInstance::transmit_param_non_blocking(const QVector<radarParamPointer>& params, bool inquiry)
 {
@@ -1900,8 +1990,6 @@ bool    radarInstance::transmit_param_non_blocking(const QVector<radarParamPoint
 
     QByteArray data_tx = encode_param_for_transmission(params,inquiry);
 
-    params[0]->set_transmitting();
-
     transmit_data(data_tx);
     return true;
 }
@@ -1910,8 +1998,6 @@ void radarInstance::emit_operation_done()
 {
     if (_radar_operation == RADAROP_INIT_PARAMS)    {emit init_params_done(); return;}
     if (_radar_operation == RADAROP_INIT_SCRIPTS)   {emit init_scripts_done(); return;}
-    if (_radar_operation == RADAROP_PREACQ_PARAMS)  {emit preacq_params_done(); return;}
-    if (_radar_operation == RADAROP_PREACQ_SCRIPTS) {emit preacq_scripts_done(); return;}
     if (_radar_operation == RADAROP_POSTACQ_PARAMS) {emit postacq_params_done(); return;}
     if (_radar_operation == RADAROP_POSTACQ_SCRIPTS) {emit postacq_scripts_done(); return;}
     _radar_operation = RADAROP_NONE;
@@ -1989,13 +2075,41 @@ void    radarInstance::param_is_updated(radarParamPointer param)
 
             if (!bfound_modify)
             {
+                // Move to the next element in the queue
                 if (!_params_to_modify.isEmpty())
                     transmit_param_non_blocking(get_param_group(_params_to_modify[0]), false);
             }
         }
     }
 }
+//--------------------------------------------------
+bool    radarInstance::update_command_from_last_rx()
+{
+    if (_last_serial_rx.isEmpty()) return false;
 
+    if (_protocol==nullptr) return false;
+
+    QByteArray decoded  = _protocol->decode_rx(_last_serial_rx);
+
+    if (decoded.isEmpty()) return false;
+
+    for (auto & param : _params)
+        if (param!=nullptr)
+        {
+            int expected_command_length = param->get_command_group().length();
+
+            QByteArray received_command = decoded.left(expected_command_length);
+
+            if (received_command!=param->get_command_group())
+                continue;
+
+            param->set_status(RPS_RECEIVED);
+            return true;
+        }
+
+    return false;
+
+}
 //--------------------------------------------------
 bool    radarInstance::update_param_from_last_rx()
 {
@@ -2017,7 +2131,8 @@ bool    radarInstance::update_param_from_last_rx()
             if (received_command!=param->get_command_group())
                 continue;
 
-            QByteArray payload          = decoded.right(decoded.length()-expected_command_length);
+
+            QByteArray payload  = decoded.right(decoded.length()-expected_command_length);
 
             if (param->is_command_group())
             {
@@ -2025,6 +2140,7 @@ bool    radarInstance::update_param_from_last_rx()
                 int np = 0;
                 for (const auto& param_of_group: params)
                 {
+                    param_of_group->set_status(RPS_RECEIVED);
                     np++;
                     int expected_size = param_of_group->get_expected_payload_size();
                     if (expected_size == 0) continue;
@@ -2034,24 +2150,33 @@ bool    radarInstance::update_param_from_last_rx()
                         expected_size = param_of_group->get_expected_payload_size();
 
                         if (!param_of_group->split_values(payload.left(expected_size)))
-                                return false;
+                        { // Clean up the status param group, if something wrong
+                            for ( auto& pg: params)
+                                if (pg!=nullptr) pg->set_status(RPS_IDLE);
 
+                            return false;
+                        }
                         payload = payload.right(payload.length()-expected_size);
 
                         param_is_updated(param_of_group);
-                        update_param_workspace_gui(param_of_group,true);
-                        param->unset_transmitting();
+                        update_param_workspace_gui(param_of_group);
+
                         continue;
                     }
 
                     // This is variable payload: it must be at the end of the packet.
                     if(!param_of_group->split_values(payload))
-                        return false;
+                    { // Clean up the status param group, if something wrong
+                        for ( auto& pg: params)
+                            if (pg!=nullptr) pg->set_status(RPS_IDLE);
 
+                        return false;
+                    }
 
                     param_is_updated(param_of_group);
-                    update_param_workspace_gui(param_of_group,true);
-                    param->unset_transmitting();
+                    update_param_workspace_gui(param_of_group);
+                    param_of_group->set_status(RPS_IDLE);
+
                 }
 
                 _last_sent_command = nullptr;
@@ -2059,17 +2184,22 @@ bool    radarInstance::update_param_from_last_rx()
             }
             else
             {
+                param->set_status(RPS_RECEIVED);
                 int expected_size = param->get_expected_payload_size();
                 if (expected_size == 0)
                     continue;
 
                 if (!param->split_values(payload))
+                {
+                    param->set_status(RPS_IDLE);
                     return false;
+                }
 
                 param_is_updated(param);
-                update_param_workspace_gui(param,true);
-                param->unset_transmitting();
+                update_param_workspace_gui(param);
+
                 _last_sent_command = nullptr;
+                param->set_status(RPS_IDLE);
                 return true;
             }
         }
@@ -2078,24 +2208,24 @@ bool    radarInstance::update_param_from_last_rx()
 }
 
 
-void radarInstance::update_param_workspace_gui(radarParamPointer param, bool update_workspace)
+void radarInstance::update_param_workspace_gui(radarParamPointer param/*, bool update_workspace*/)
 {
+    if (param==nullptr) return;
     if (param->get_type()==RPT_VOID)
         return;
     if (param->get_io_type()==RPT_IO_INPUT) return;
-    if (update_workspace)
+    // To be done
+    if (_workspace!=nullptr)
     {
-        if (_workspace!=nullptr)
-        {
-            if (param->get_type() != RPT_VOID)
-                if (param->is_linked_to_octave())
-                {
-                    _block_update = true;
-                    _workspace->set_variable(get_mapped_name(param).toStdString(),   param->get_value());
-                    _block_update = false;
-                }
-        }
+        if (param->get_type() != RPT_VOID)
+            if (param->is_linked_to_octave())
+            {
+                _workspace->set_variable(get_mapped_name(param).toStdString(),   param->get_value());
+            }
     }
 
+    // This signal should be linked to GUI
     emit param_updated(param);
+
+    param->set_status(RPS_IDLE);
 }

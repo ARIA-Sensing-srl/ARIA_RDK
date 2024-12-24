@@ -35,7 +35,6 @@ radarModule::radarModule(QString filename,projectItem *parent ) : projectItem("n
     _freq_of_interest(-1),
     _protocol(nullptr),
     _init_commands(),    
-    _acquisition_commands(),
     _postacquisition_commands()
 
 {
@@ -84,7 +83,6 @@ radarModule::radarModule(radarModule& module) :
     _freq_of_interest(-1),
     _protocol(module._protocol),
     _init_commands(),
-    _acquisition_commands(),
     _postacquisition_commands()
 {
     operator = (module);
@@ -194,14 +192,10 @@ radarModule&   radarModule::operator = (radarModule& m2)
     _equivalent_array_antenna = m2._equivalent_array_antenna;
     _freq_of_interest = m2._freq_of_interest;
     _init_commands = m2._init_commands;
-    _acquisition_commands = m2._acquisition_commands;
     _postacquisition_commands = m2._postacquisition_commands;
-
-    _acquisition_commands = m2._acquisition_commands;
     _init_commands        = m2._init_commands;
     _postacquisition_commands = m2._postacquisition_commands;
     copy_scripts(_init_scripts, m2._init_scripts);
-    copy_scripts(_acquisition_scripts, m2._acquisition_scripts);
     copy_scripts(_post_acquisition_scripts, m2._post_acquisition_scripts);
 
     set_filename(m2.get_full_filepath());
@@ -291,14 +285,12 @@ void radarModule::clear_antenna_table()
 void radarModule::clear_commands_tables()
 {
     _init_commands.clear();
-    _acquisition_commands.clear();
     _postacquisition_commands.clear();
 }
 //---------------------------------------------
 void radarModule::clear_scripts_tables()
 {
     _init_scripts.clear();
-    _acquisition_scripts.clear();
     _post_acquisition_scripts.clear();
 
 }
@@ -463,7 +455,6 @@ bool radarModule::operator == (const radarModule& module2)
     if (!is_equal(_zenith, module2._zenith)) return false;
 
     if (_init_commands != module2._init_commands) return false;
-    if (_acquisition_commands != module2._acquisition_commands) return false;
     if (_postacquisition_commands != module2._postacquisition_commands) return false;
 
 
@@ -473,11 +464,6 @@ bool radarModule::operator == (const radarModule& module2)
         if (!((*(_init_scripts[j]))==(*(module2._init_scripts[j]))))
             return false;
 
-    if (_acquisition_scripts.count() !=module2._acquisition_scripts.count()) return false;
-
-    for (int j=0; j < _acquisition_scripts.count(); j++)
-        if (!((*(_acquisition_scripts[j]))==(*(module2._acquisition_scripts[j]))))
-            return false;
 
     if (_post_acquisition_scripts.count() !=module2._post_acquisition_scripts.count()) return false;
 
@@ -562,20 +548,6 @@ bool radarModule::save_xml(QDomDocument& document)
 
     root.appendChild(init_params);
 
-    QDomElement acquisition_params = document.createElement("acquisition_parameters");
-    acquisition_params.setAttribute("count",_acquisition_commands.count());
-
-    for (int n=0; n < _acquisition_commands.count(); n++)
-    {
-        QDomElement command = document.createElement("command");
-        command.setAttribute("order", n);
-        command.setAttribute("param_id", _acquisition_commands[n]);
-
-        acquisition_params.appendChild(command);
-    }
-
-    root.appendChild(acquisition_params);
-
     QDomElement postacquisition_params = document.createElement("post_acquisition_parameters");
     postacquisition_params.setAttribute("count",_postacquisition_commands.count());
 
@@ -600,17 +572,6 @@ bool radarModule::save_xml(QDomDocument& document)
     }
 
     root.appendChild(init_scripts_root);
-
-    QDomElement acq_scripts_root = document.createElement("acquisition_scripts");
-    acq_scripts_root.setAttribute("count",_acquisition_scripts.count());
-
-    for (int i = 0; i < _acquisition_scripts.count(); i++)
-    {
-//        _acquisition_scripts[i]->rebase_dir_samedest(get_base_dir());
-        _acquisition_scripts[i]->save_xml(document,acq_scripts_root);
-    }
-
-    root.appendChild(acq_scripts_root);
 
     QDomElement post_acq_scripts_root = document.createElement("post_acquisition_scripts");
     post_acq_scripts_root.setAttribute("count",_post_acquisition_scripts.count());
@@ -719,8 +680,8 @@ bool radarModule::load_xml()
     if (!antenna_root.isNull())
     {
         bool bOk = false;
-        int antenna_count = antenna_root.attribute("count").toInt(&bOk);
-        if (!bOk) return false;
+        //int antenna_count = antenna_root.attribu  te("count").toInt(&bOk);
+        //if (!bOk) return false;
 
         QDomElement antenna_elem = antenna_root.firstChildElement("antenna");
         int nnoname= 0;
@@ -804,34 +765,6 @@ bool radarModule::load_xml()
         if (n_good_params!=num_init_params) return false;
     }
 
-    params = root.firstChildElement("acquisition_parameters");
-
-    if (!params.isNull())
-    {
-        int num_params = params.attribute("count","0").toInt(&bOk);
-
-        if (!bOk) return false;
-
-        QDomElement command_elem = params.firstChildElement("command");
-        _acquisition_commands.resize(0);
-        int n_good_params = 0;
-        while (!command_elem.isNull())
-        {
-            int command_order = command_elem.attribute("order","-1").toInt(&bOk);
-            if (!bOk) return false;
-            int command_id = command_elem.attribute("param_id","-1").toInt(&bOk);
-
-            if ((command_order<0)||(command_order>=num_params)) return false;
-            if ((command_id<0)||(command_id>=_params.count())) return false;
-            _acquisition_commands.append(command_id);
-
-            command_elem = command_elem.nextSiblingElement("command");
-             n_good_params++;
-        }
-
-        if (n_good_params!=num_params) return false;
-    }
-
     params = root.firstChildElement("post_acquisition_parameters");
 
     if (!params.isNull())
@@ -866,7 +799,7 @@ bool radarModule::load_xml()
 
     if (!scripts.isNull())
     {
-        int num_scripts = scripts.attribute("count","0").toInt(&bOk);
+        //int num_scripts = scripts.attribute("count","0").toInt(&bOk);
         QDomElement script = scripts.firstChildElement("script");
         _init_scripts.resize(0);
 
@@ -884,33 +817,12 @@ bool radarModule::load_xml()
        // if (_init_scripts.count()!=num_scripts) return false;
     }
 
-    scripts = root.firstChildElement("acquisition_scripts");
-
-    if (!scripts.isNull())
-    {
-        int num_scripts = scripts.attribute("count","0").toInt(&bOk);
-        QDomElement script = scripts.firstChildElement("script");
-        _acquisition_scripts.resize(0);
-
-        do
-        {
-            QString script_file = script.attribute("filename");
-            octaveScript_ptr octave_script = (octaveScript*)(get_root()->get_child(QFileInfo(script_file).fileName(),DT_SCRIPT));
-            if (octave_script!=nullptr)
-                _acquisition_scripts.append(octave_script);
-
-            script = script.nextSiblingElement("script");
-        }
-        while(!script.isNull());
-
-        //if (_acquisition_scripts.count()!=num_scripts) return false;
-    }
 
     scripts = root.firstChildElement("post_acquisition_scripts");
 
     if (!scripts.isNull())
     {
-        int num_scripts = scripts.attribute("count","0").toInt(&bOk);
+        //int num_scripts = scripts.attribute("count","0").toInt(&bOk);
         QDomElement script = scripts.firstChildElement("script");
         _post_acquisition_scripts.resize(0);
         do
@@ -1160,17 +1072,6 @@ void        radarModule::set_init_scripts(QVector<octaveScript_ptr> scripts)
         }
 }
 //---------------------------------------------
-void        radarModule::set_acquisition_scripts(QVector<octaveScript_ptr> scripts)
-{
-    QString base_dir = get_full_path();
-    _acquisition_scripts = scripts;
-    for (auto &script: _acquisition_scripts)
-        if (script!=nullptr)
-        {
-            script->move_to_new_basedir(base_dir);
-        }
-}
-//---------------------------------------------
 void        radarModule:: set_postacquisition_scripts(QVector<octaveScript_ptr> scripts)
 {
     QString base_dir = get_full_path();
@@ -1189,34 +1090,11 @@ void        radarModule::append_init_script(octaveScript_ptr script)
     _init_scripts.append(script);
 
 }
-//---------------------------------------------
-void        radarModule::append_acquisition_script(octaveScript_ptr script)
-{
-    if (script==nullptr) return;
-    script->move_to_new_basedir(get_full_path());
-    _acquisition_scripts.append(script);
-}
-//---------------------------------------------
-void        radarModule::append_postacquisition_script(octaveScript_ptr script)
-{
-        if (script==nullptr) return;
-        script->move_to_new_basedir(get_full_path());
-        _acquisition_scripts.append(script);
-    }
-//---------------------------------------------
 
 //---------------------------------------------
 void    radarModule::set_init_command(int command_order, int command_id)
 {
     if ((command_order < 0)||(command_order>=_init_commands.count()))
-        return;
-    if ((command_id<0)||(command_id>=_params.count()))
-        return;
-}
-//---------------------------------------------
-void    radarModule::set_acquisition_command(int command_order, int command_id)
-{
-    if ((command_order < 0)||(command_order>=_acquisition_commands.count()))
         return;
     if ((command_id<0)||(command_id>=_params.count()))
         return;
@@ -1238,14 +1116,6 @@ int     radarModule::get_init_command(int command_order)
     return _init_commands[command_order];
 }
 //---------------------------------------------
-int     radarModule::get_acquisition_command(int command_order)
-{
-    if ((command_order < 0)||(command_order>=_acquisition_commands.count()))
-        return -1;
-
-    return _acquisition_commands[command_order];
-}
-
 int     radarModule::get_postacquisition_command(int command_order)
 {
     if ((command_order < 0)||(command_order>=_postacquisition_commands.count()))
@@ -1262,16 +1132,6 @@ void    radarModule::set_init_script(int script_order, octaveScript_ptr script)
         return;
     script->move_to_new_basedir(get_full_path());
     _init_scripts[script_order] = script;
-
-}
-//---------------------------------------------
-void    radarModule::set_acquisition_script(int script_order, octaveScript_ptr script)
-{
-    if (script==nullptr) return;
-    if ((script_order<=0)||(script_order>=_acquisition_scripts.count()))
-        return;
-    script->move_to_new_basedir(get_full_path());
-    _acquisition_scripts[script_order] = script;
 
 }
 //---------------------------------------------
@@ -1293,14 +1153,6 @@ octaveScript_ptr    radarModule::get_init_script(int script_order)
     return (_init_scripts[script_order]);
 }
 //---------------------------------------------
-octaveScript_ptr    radarModule::get_acquisition_script(int script_order)
-{
-    if ((script_order<=0)||(script_order>=_acquisition_scripts.count()))
-        return nullptr;
-
-    return (_acquisition_scripts[script_order]);
-}
-//---------------------------------------------
 octaveScript_ptr     radarModule::get_postacquisition_script(int script_order)
 {
     if ((script_order<=0)||(script_order>=_post_acquisition_scripts.count()))
@@ -1315,12 +1167,6 @@ bool    radarModule::copy_scripts_to_folder(QString base_dir, QString newfolder)
     for (const auto& script: init_scripts)
         if (script!=nullptr)
         {        
-            script->move_to_new_basedir(base_dir,newfolder,false,true);
-        }
-    const QVector<octaveScript_ptr>& acq_scripts = _acquisition_scripts;
-    for (const auto& script: acq_scripts)
-        if (script!=nullptr)
-        {
             script->move_to_new_basedir(base_dir,newfolder,false,true);
         }
     const QVector<octaveScript_ptr>& postacq_scripts = _post_acquisition_scripts;

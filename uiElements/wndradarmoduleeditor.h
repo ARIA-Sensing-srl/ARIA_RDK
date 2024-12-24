@@ -93,7 +93,6 @@ private:
     void    renumber_table(QTableWidget* table);
 
     QVector<octaveScript_ptr>   _init_scripts;
-    QVector<octaveScript_ptr>   _acq_scripts;
     QVector<octaveScript_ptr>   _postacq_scripts;
 
     void        update_all_txrx_combos(QString oldname, QString newname);
@@ -150,24 +149,18 @@ public slots:
 */
 
     void initParams_RightClick(QPoint pos);
-    void acqParams_RightClick(QPoint pos);
     void postacqParams_RightClick(QPoint pos);
     void initScripts_RightClick(QPoint pos);
-    void acqScripts_RightClick(QPoint pos);
     void postacqScripts_RightClick(QPoint pos);
 
     void add_initParam( );
     void remove_initParam( );
-    void add_acquisitionParam( );
-    void remove_acquisitionParam( );
     void add_postAcquisitionParam( );
     void remove_postAcquisitionParam( );
 
 
     void add_initScript( );
     void remove_initScript( );
-    void add_acquisitionScript( );
-    void remove_acquisitionScript( );
     void add_postAcquisitionScript( );
     void remove_postAcquisitionScript( );
 

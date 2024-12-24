@@ -18,6 +18,7 @@
 enum RADARPARAMTYPE{RPT_UNDEFINED, RPT_FLOAT, RPT_INT8, RPT_UINT8, RPT_INT16, RPT_UINT16, RPT_INT32, RPT_UINT32, RPT_ENUM, RPT_STRING, RPT_VOID};
 enum RADARPARAMSIZE{RPT_SCALAR, RPT_NDARRAY};
 enum RADARPARAMIOTYPE{RPT_IO_INPUT, RPT_IO_OUTPUT, RPT_IO_IO};
+enum RP_STATUS{RPS_IDLE, RPS_MODIFIED,  RPS_TRANSMITTING, RPS_RECEIVED, RPS_UPDATED};
 
 #include "plotdescriptor.h"
 
@@ -59,7 +60,8 @@ protected:
     bool                 _b_compound_name;
     bool                _b_plotted;
     bool                _b_is_transmitting;
-    PLOT_TYPE   _plottype;
+    PLOT_TYPE           _plottype;
+    RP_STATUS           _status;
 public:
     radarParamBase() :
         _rpt(RPT_UNDEFINED),
@@ -77,8 +79,9 @@ public:
         _workspace(nullptr),
         _b_compound_name(false),
         _b_plotted(false),
+        _b_is_transmitting(false),
         _plottype(PTJK_PLOT),
-        _b_is_transmitting(false)
+        _status(RPS_IDLE)
     {
 
     }
@@ -98,7 +101,8 @@ public:
         _pure_command(""),
         _workspace(nullptr),
         _b_compound_name(false),
-        _b_is_transmitting(false)
+        _b_is_transmitting(false),
+        _status(RPS_IDLE)
     {
 
     }
@@ -119,7 +123,8 @@ public:
         _pure_command(v2._pure_command),
         _workspace(v2._workspace),
         _b_compound_name(v2._b_compound_name),
-        _b_is_transmitting(v2._b_is_transmitting)
+        _b_is_transmitting(v2._b_is_transmitting),
+        _status(v2._status)
 
     {}
 
@@ -138,11 +143,11 @@ public:
         _pure_command(v2._pure_command),
         _workspace(v2._workspace),
         _b_compound_name(v2._b_compound_name),
-        _b_is_transmitting(v2._b_is_transmitting)
-
+        _b_is_transmitting(v2._b_is_transmitting),
+        _status(v2._status)
     {}
 
-    ~radarParamBase() {};
+    virtual ~radarParamBase() {};
 
     radarParamBase& operator = (radarParamBase& v2);
     radarParamBase& operator = (const radarParamBase& v2);
@@ -163,80 +168,83 @@ public:
      virtual QVector<QVariant>       value_to_variant() {return QVector<QVariant>();};
      virtual QVector<QVariant>       availableset_to_variant() {return QVector<QVariant>();};
 
-     virtual void variant_to_value(QVector<QVariant>& data) = 0;
-     virtual void variant_to_availabeset(QVector<QVariant>& data) = 0;
-     virtual void variant_to_value(const QVector<QVariant>& data) = 0;
-     virtual void variant_to_availabeset(const QVector<QVariant>& data) = 0;
-     virtual void variant_to_inquiry_value(const QVariant& data) = 0;
-     virtual QVariant inquiry_value_to_variant() = 0;
-     virtual QByteArray          get_inquiry_value()  {return QByteArray();}
+     virtual void           variant_to_value(QVector<QVariant>& data) = 0;
+     virtual void           variant_to_availabeset(QVector<QVariant>& data) = 0;
+     virtual void           variant_to_value(const QVector<QVariant>& data) = 0;
+     virtual void           variant_to_availabeset(const QVector<QVariant>& data) = 0;
+     virtual void           variant_to_inquiry_value(const QVariant& data) = 0;
+     virtual QVariant       inquiry_value_to_variant() = 0;
+     virtual QByteArray     get_inquiry_value()  {return QByteArray();}
 
-     virtual bool is_scalar() {return true;}
-     virtual void set_min_max(QVariant min, QVariant max) {};
-     virtual int  get_index_of_value(QVariant value) {return -1;}
-     virtual QString get_min_string() {return "unknown";}
-     virtual QString get_max_string() {return "unknown";}
-     bool set_min_string(QString strval) {return false;}
-     bool set_max_string(QString strval) {return false;}
-     bool validate_string(QString strval){return false;}
-     void                remove_min_max() {_hasMinMax = false;}
-     void                remove_available_set() {}
+     virtual bool           is_scalar() {return true;}
+     virtual void           set_min_max(QVariant min, QVariant max) {};
+     virtual int            get_index_of_value(QVariant value) {return -1;}
+     virtual QString        get_min_string() {return "unknown";}
+     virtual QString        get_max_string() {return "unknown";}
+     bool                   set_min_string(QString strval) {return false;}
+     bool                   set_max_string(QString strval) {return false;}
+     bool                   validate_string(QString strval){return false;}
+     void                   remove_min_max() {_hasMinMax = false;}
+     void                   remove_available_set() {}
 
-     virtual int                get_expected_payload_size() {return -1;}
+     virtual int            get_expected_payload_size() {return -1;}
 
 
-     void               set_io_type(RADARPARAMIOTYPE io)    {_rpt_io = io;}
-     RADARPARAMIOTYPE   get_io_type(void)                   {return _rpt_io;}
+     void                   set_io_type(RADARPARAMIOTYPE io)    {_rpt_io = io;}
+     RADARPARAMIOTYPE       get_io_type(void)                   {return _rpt_io;}
 
-     QString            get_group(void)                     {return _group;}
-     void               set_group(QString group)            {_group = group;}
+     QString                get_group(void)                     {return _group;}
+     void                   set_group(QString group)            {_group = group;}
 
-     virtual            bool    save_xml(QDomDocument& owner, QDomElement& root) = 0;
-     virtual            bool    load_xml(QDomDocument& owner, QDomElement& root) = 0;
+     virtual bool           save_xml(QDomDocument& owner, QDomElement& root) = 0;
+     virtual bool           load_xml(QDomDocument& owner, QDomElement& root) = 0;
      static std::shared_ptr<radarParamBase> create_from_xml_node(QDomDocument& owner, QDomElement& root);
-     virtual            QByteArray chain_values() = 0;
-     virtual            bool       split_values(const QByteArray& data) = 0;
+     virtual QByteArray     chain_values() = 0;
+     virtual bool           split_values(const QByteArray& data) = 0;
 
 
-     QString            get_command_string() {return _command_string;}
-     QByteArray         get_command_group();
-     int                get_command_order_group();
-     bool               is_command_group();
-     void               set_command_string(QString command);
+     QString                get_command_string() {return _command_string;}
+     QByteArray             get_command_group();
+     int                    get_command_order_group();
+     bool                   is_command_group();
+     void                   set_command_string(QString command);
     // Allow for cross-link (in this case, _var is used instead of paramName)
-     void               set_alias_octave_name(const QString& var);
-     QString            get_alias_octave_name();
-     void               unset_alias_octave_name();
-     void               link_to_workspace(octavews* workspace);
-     octavews*          get_workspace();
+     void                   set_alias_octave_name(const QString& var);
+     QString                get_alias_octave_name();
+     void                   unset_alias_octave_name();
+     void                   link_to_workspace(octavews* workspace);
+     octavews*              get_workspace();
 
-     virtual void   var_changed() = 0;
+     virtual void           var_changed() = 0;
 
-     bool       has_inquiry_value() {return _has_inquiry_value;}
-     void       set_inquiry_value() {_has_inquiry_value = false;}
+     bool                   has_inquiry_value() {return _has_inquiry_value;}
+     void                   set_inquiry_value() {_has_inquiry_value = false;}
 
-     virtual    unsigned int value_bytes_count() {return 0;}
+     virtual unsigned int   value_bytes_count() {return 0;}
 
-     bool       is_linked_to_octave();
-     void       set_compound_name(bool b_compound_name = true);
-     bool       is_compound_name();
-     virtual octave_value get_value();
-     virtual void         set_value(const octave_value& val);
-     virtual QVariant get_min() {return QVariant();}
-     virtual QVariant get_max() {return QVariant();}
-     bool         operator == (const radarParamBase& param);
+     bool                   is_linked_to_octave();
+     void                   set_compound_name(bool b_compound_name = true);
+     bool                   is_compound_name();
+     virtual octave_value   get_value();
+     virtual void           set_value(const octave_value& val);
+     virtual QVariant       get_min() {return QVariant();}
+     virtual QVariant       get_max() {return QVariant();}
+     bool                   operator == (const radarParamBase& param);
 
-     bool       is_plotted() {return _b_plotted;}
-     void       set_plotted(bool bplot) {_b_plotted = bplot;}
+     bool                   is_plotted() {return _b_plotted;}
+     void                   set_plotted(bool bplot) {_b_plotted = bplot;}
 
-     PLOT_TYPE get_plot_type() {return _plottype;}
-     void               set_plot_type(PLOT_TYPE plot) {_plottype = plot;}
+     PLOT_TYPE              get_plot_type() {return _plottype;}
+     void                   set_plot_type(PLOT_TYPE plot) {_plottype = plot;}
 
-     void     set_transmitting() {_b_is_transmitting = true;}
-     void     unset_transmitting() {_b_is_transmitting = false;}
-     bool     is_transmitting() {return _b_is_transmitting;}
+     void                   set_transmitting() {_b_is_transmitting = true;}
+     void                   unset_transmitting() {_b_is_transmitting = false;}
+     bool                   is_transmitting() {return _b_is_transmitting;}
 
+     void                   set_status(RP_STATUS status) {_status = status;}
+     RP_STATUS              get_status() {return _status;}
 
+     virtual void           convert_data(const octave_value& data_in) {};
 };
 
 
@@ -322,6 +330,8 @@ public:
     bool                operator == (const radarParameter<T>& param);
     QVariant get_min() override;
     QVariant get_max() override;
+
+    void           convert_data(const octave_value& data_in) override;
 };
 
 
@@ -414,7 +424,9 @@ public:
     QVariant get_min() override;
     QVariant get_max() override;
 
+    void           convert_data(const octave_value& data_in) override;
 };
+
 
 // This is a bit sneaky since when using enums, _availableset is different. In case of
 // enum, we want to store description too.
@@ -509,6 +521,7 @@ public:
     bool         operator == (const radarParameter<enumElem>& param);
     QVariant get_min() override {return QVariant();}
     QVariant get_max() override{return QVariant();}
+    void           convert_data(const octave_value& data_in) override;
 };
 
 
@@ -579,6 +592,7 @@ public:
     bool         operator == (const radarParameter<void>& param);
     QVariant get_min() override {return QVariant();}
     QVariant get_max() override{return QVariant();}
+    void           convert_data(const octave_value& data_in) override;
 };
 
 template class radarParameter<int8_t>;

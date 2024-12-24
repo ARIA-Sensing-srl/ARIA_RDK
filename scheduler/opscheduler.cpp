@@ -17,8 +17,6 @@ opSchedulerOperations::opSchedulerOperations(radarInstance* device, octaveInterf
     {
         connect(_device, &radarInstance::init_params_done,  this, &opSchedulerOperations::init_params_done, Qt::QueuedConnection);
         connect(_device, &radarInstance::init_scripts_done, this, &opSchedulerOperations::init_scripts_done,Qt::QueuedConnection);
-        connect(_device, &radarInstance::preacq_params_done,this, &opSchedulerOperations::preacq_params_done,Qt::QueuedConnection);
-        connect(_device, &radarInstance::preacq_scripts_done,this, &opSchedulerOperations::preacq_scripts_done,Qt::QueuedConnection);
         connect(_device, &radarInstance::postacq_params_done,this, &opSchedulerOperations::postacq_params_done,Qt::QueuedConnection);
         connect(_device, &radarInstance::postacq_scripts_done,this, &opSchedulerOperations::postacq_scripts_done,Qt::QueuedConnection);
         connect(_device, &radarInstance::connection_done, this, &opSchedulerOperations::device_connected_done,Qt::QueuedConnection);
@@ -28,19 +26,6 @@ opSchedulerOperations::opSchedulerOperations(radarInstance* device, octaveInterf
         connect(_device, &radarInstance::serial_error_out,   this, &opSchedulerOperations::error_during_comm,Qt::QueuedConnection);
     }
 }
-/*
-//----------------------------
-void   opSchedulerOperations::radar_device_updated()
-{
-
-    if (_status == IDLE)                 {_status = INIT_PRE_START; emit device_connected(_device); return;}
-    if (_status == INIT_PRE_START)       {_status = INIT_PRE_DONE;  init_device();  return;}
-    if (_status == INIT_SCRIPTS_STARTS)  {_status = INIT_SCRIPTS_DONE; emit initDone(this); return;}
-    if (_status == PREACQ_PARAM_START)   {_status = PREACQ_PARAM_DONE; pre_acquisition();  return;}
-    if (_status == PREACQ_SCRIPTS_START) {_status = PREACQ_SCRIPTS_DONE; emit preAcquisitionDone(this); return;}
-    if (_status == POSTACQ_PARAM_START)   {_status = POSTACQ_PARAM_DONE; post_acquisition(); return;}
-    if (_status == POSTACQ_SCRIPTS_START) {_status = POSTACQ_SCRIPTS_DONE; emit postAcquisitionDone(this); return;}
-}*/
 //---------------------------
 void   opSchedulerOperations::device_connected_done()
 {
@@ -62,21 +47,6 @@ void   opSchedulerOperations::init_scripts_done()
     if (_status != INIT_SCRIPTS_STARTS) return;
     _status = INIT_SCRIPTS_DONE;
     init_device();
-}
-//---------------------------
-void   opSchedulerOperations::preacq_params_done()
-{
-    if (_status != PREACQ_PARAM_START) return;
-    _status = PREACQ_PARAM_DONE;
-    pre_acquisition();
-}
-//---------------------------
-void   opSchedulerOperations::preacq_scripts_done()
-{
-    if (_status != PREACQ_SCRIPTS_START) return;
-    _status = PREACQ_SCRIPTS_DONE;
-    pre_acquisition();
-
 }
 //---------------------------
 void   opSchedulerOperations::postacq_params_done()
@@ -103,13 +73,7 @@ void   opSchedulerOperations::error_during_comm(const QString&)
         emit initError(this);
     }
 
-    if ((_status == INIT_SCRIPTS_DONE)||(_status== PREACQ_PARAM_START)||( _status == PREACQ_PARAM_DONE)||(_status==PREACQ_SCRIPTS_START)||(_status==POSTACQ_SCRIPTS_DONE))
-    {
-        _status = IDLE;
-        emit preAcquisitionError(this);
-    }
-
-    if ((_status == PREACQ_SCRIPTS_DONE)||(_status== POSTACQ_PARAM_START)||( _status == POSTACQ_PARAM_DONE)||(_status==POSTACQ_SCRIPTS_START))
+    if ((_status== POSTACQ_PARAM_START)||( _status == POSTACQ_PARAM_DONE)||(_status==POSTACQ_SCRIPTS_START))
     {
         _status = IDLE;
         emit postAcquisitionError(this);
@@ -181,47 +145,6 @@ void    opSchedulerOperations::init_device()
         emit initError(this);
     }
 }
-//----------------------------------------------------------------
-void    opSchedulerOperations::pre_acquisition()
-{
-    if (_status == HALT)
-    {
-        halt();
-        return;
-    }
-
-    if (_device != nullptr)
-    {
-        if ((_status == INIT_SCRIPTS_DONE)||(_status == POSTACQ_SCRIPTS_DONE))
-        {
-            _status = PREACQ_PARAM_START;
-            // Catch early errors
-            if (!_device->acquisition_pre())
-                emit preAcquisitionError(this);
-
-            return;
-        }
-
-        if (_status == PREACQ_PARAM_DONE)
-        {
-            _status = PREACQ_SCRIPTS_START;
-            if (!_device->acquisition_scripts())
-                emit preAcquisitionError(this);
-
-            return;
-        }
-
-        if (_status == PREACQ_SCRIPTS_DONE)
-        {
-            emit preAcquisitionDone(this);
-            return;
-        }
-    }
-    else
-    {
-        emit preAcquisitionError(this);
-    }
-}
 
 void opSchedulerOperations::set_idle()
 {
@@ -236,7 +159,7 @@ void opSchedulerOperations::halt()
     //if (_status==HALT) _device->disconnect(); //_status=IDLE;} else {_device->disconnect(); _status=HALT;}
 }
 //----------------------------------------------------------------
-void    opSchedulerOperations::post_acquisition()
+void    opSchedulerOperations::post_acquisition(bool restart)
 {
     if (_status == HALT)
     {
@@ -245,16 +168,18 @@ void    opSchedulerOperations::post_acquisition()
     }
     if (_device != nullptr)
     {
-        if (_status == PREACQ_SCRIPTS_DONE)
+        if (restart)
         {
-            _status = POSTACQ_PARAM_START;
-            // Catch early errors
-            if (!_device->postacquisition_pre())
-                emit postAcquisitionError(this);
+            if (_status == POSTACQ_SCRIPTS_DONE)
+            {
+                _status = POSTACQ_PARAM_START;
+                // Catch early errors
+                if (!_device->postacquisition_pre())
+                    emit postAcquisitionError(this);
 
-            return;
+                return;
+            }
         }
-
         if (_status == POSTACQ_PARAM_DONE)
         {
             _status = POSTACQ_SCRIPTS_START;
@@ -362,8 +287,6 @@ void    opScheduler::add_radar(radarInstance * device)
     connect(opworker, &opSchedulerOperations::error_on_connection,  this, &opScheduler::error_on_connection);
     connect(opworker, &opSchedulerOperations::initDone,             this, &opScheduler::initDone);
     connect(opworker, &opSchedulerOperations::initError,            this, &opScheduler::initError);
-    connect(opworker, &opSchedulerOperations::preAcquisitionDone,   this, &opScheduler::preAcquisitionDone);
-    connect(opworker, &opSchedulerOperations::preAcquisitionError,  this, &opScheduler::preAcquisitionError);
     connect(opworker, &opSchedulerOperations::postAcquisitionDone,   this, &opScheduler::postAcquisitionDone);
     connect(opworker, &opSchedulerOperations::postAcquisitionError,  this, &opScheduler::postAcquisitionError);
 
@@ -521,24 +444,6 @@ void opScheduler::acquisition_loop()
 
         for (auto &worker:_workers)
         {
-            worker->pre_acquisition();
-        }
-        return;
-    }
-
-    if (status.contains(PREACQ_SCRIPTS_DONE))
-    {
-        // Wait til all are SCRIPTS_DONE
-        for (auto ss: status)
-        { if (ss!=PREACQ_SCRIPTS_DONE) return;}
-    }
-
-    // Here we have all PREACQ_SCRIPTS_DONE
-    if (status.contains(PREACQ_SCRIPTS_DONE))
-    {
-        _run_scripts = true;
-        for (auto &worker:_workers)
-        {
             worker->post_acquisition();
         }
         return;
@@ -571,8 +476,8 @@ void opScheduler::acquisition_loop()
         }
 
         for (auto &worker:_workers)
-        {
-            worker->pre_acquisition();
+        {            
+            worker->post_acquisition(true);
         }
         return;
     }
@@ -641,55 +546,11 @@ void opScheduler::initError(opSchedulerOperations* op)
     }
 }
 //----------------------------
-void opScheduler::preAcquisitionDone(opSchedulerOperations* op)
-{
-    for (auto& worker: _workers)
-        if (worker->get_status()==PREACQ_SCRIPTS_DONE)
-            emit preacquisition_done(worker->get_device());
-
-
-    for (auto& worker: _workers)
-        if (worker->get_status()!=PREACQ_SCRIPTS_DONE)
-            return;
-
-    emit preacquisition_done_all();
-
-    acquisition_loop();
-}
-//----------------------------
-void opScheduler::preAcquisitionError(opSchedulerOperations* op)
-{
-    emit preacquisition_error(op->get_device());
-    if (_policy_on_error == HALT_ALL)
-    {
-        stop();
-        return;
-    }
-
-    if (_policy_on_error == CONTINUE_ON_ERROR)
-        return;
-
-
-    if (_policy_on_error == REINIT)
-    {
-        op->init_device();
-        return;
-    }
-
-    if (_policy_on_error == HALT_DEVICE)
-    {
-        op->halt();
-
-        //delete_radar(op->get_device());
-        return;
-    }
-}
-//----------------------------
 void opScheduler::postAcquisitionDone(opSchedulerOperations* op)
 {
     for (auto& worker: _workers)
         if (worker->get_status()==POSTACQ_SCRIPTS_DONE)
-            emit preacquisition_done(worker->get_device());
+            emit postacquisition_done(worker->get_device());
 
     for (auto& worker: _workers)
         if (worker->get_status()!=POSTACQ_SCRIPTS_DONE)

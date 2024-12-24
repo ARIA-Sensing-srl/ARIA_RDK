@@ -337,40 +337,6 @@
            </item>
           </layout>
          </widget>
-         <widget class="QGroupBox" name="groupBox_7">
-          <property name="title">
-           <string>Acquisition</string>
-          </property>
-          <layout class="QGridLayout" name="gridLayout_13">
-           <item row="0" column="0">
-            <widget class="QPushButton" name="btnAddAcquisitionParam">
-             <property name="text">
-              <string>New</string>
-             </property>
-             <property name="icon">
-              <iconset theme="document-new"/>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QPushButton" name="btnRemoveAcquisitionParam">
-             <property name="text">
-              <string>Remove</string>
-             </property>
-             <property name="icon">
-              <iconset theme="edit-cut"/>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="0" colspan="2">
-            <widget class="QTableWidget" name="tblParamsAcquisition">
-             <property name="contextMenuPolicy">
-              <enum>Qt::ContextMenuPolicy::CustomContextMenu</enum>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
          <widget class="QGroupBox" name="groupBox_8">
           <property name="title">
            <string>Post-acquisition</string>
@@ -454,40 +420,6 @@
            </item>
            <item row="1" column="0" colspan="2">
             <widget class="QTableWidget" name="tblScriptsInit">
-             <property name="contextMenuPolicy">
-              <enum>Qt::ContextMenuPolicy::CustomContextMenu</enum>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QGroupBox" name="groupBox_3">
-          <property name="title">
-           <string>Acquisition Scripts</string>
-          </property>
-          <layout class="QGridLayout" name="gridLayout_8">
-           <item row="0" column="0">
-            <widget class="QPushButton" name="btnAddAcquisitionScript">
-             <property name="text">
-              <string>New</string>
-             </property>
-             <property name="icon">
-              <iconset theme="document-new"/>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QPushButton" name="btnRemoveAcquisitionScript">
-             <property name="text">
-              <string>Remove</string>
-             </property>
-             <property name="icon">
-              <iconset theme="edit-cut"/>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="0" colspan="2">
-            <widget class="QTableWidget" name="tblScriptsAcquisition">
              <property name="contextMenuPolicy">
               <enum>Qt::ContextMenuPolicy::CustomContextMenu</enum>
              </property>

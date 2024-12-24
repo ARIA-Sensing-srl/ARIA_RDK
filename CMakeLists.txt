@@ -76,6 +76,9 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
 	uiElements/wndabout.h uiElements/wndabout.cpp uiElements/wndabout.ui
 	uiElements/wndfwupload.h uiElements/wndfwupload.cpp uiElements/wndfwupload.ui
 	icons/aria_rdk.qrc
+	octaveInterface/aria_rdk_interface_messages.h
+	octaveInterface/aria_rdk_interface_message.cpp
+
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET ARIA_RDK APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
@@ -171,8 +174,12 @@ target_link_libraries(ARIA_RDK PRIVATE JKQTPlotter${QT_VERSION_MAJOR}::JKQTPlott
 include(${VTK_USE_FILE})
 target_link_libraries(ARIA_RDK PRIVATE ${VTK_LIBRARIES})
 
-#Eigens
+#Eigen
 include_directories("/usr/local/include/eigen3/")
+
+#UWB Toolbox
+
+
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an

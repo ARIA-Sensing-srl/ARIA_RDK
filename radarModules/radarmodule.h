@@ -75,7 +75,6 @@ protected:
     std::shared_ptr<interfaceProtocol>          _protocol;
 
     QVector<int>                _init_commands;
-    QVector<int>                _acquisition_commands;
     QVector<int>                _postacquisition_commands;
 
     bool                        save_xml();
@@ -83,7 +82,6 @@ protected:
     bool                        save_xml(QDomDocument& document);
 
     QVector<octaveScript_ptr>       _init_scripts;
-    QVector<octaveScript_ptr>       _acquisition_scripts;
     QVector<octaveScript_ptr>       _post_acquisition_scripts;
 
     void                        copy_scripts(QVector<octaveScript_ptr>& dest, const QVector<octaveScript_ptr>& source);
@@ -168,49 +166,37 @@ public:
 
 
     QVector<int>                get_init_commands() {return _init_commands;}
-    QVector<int>                get_acquisition_commands() {return _acquisition_commands;}
     QVector<int>                get_postacquisition_commands() {return _postacquisition_commands;}
     void                        append_init_command(int param)              {if ((param>=0)&&(param<=_params.count())) _init_commands.append(param);}
-    void                        append_acquisition_command(int param)       {if ((param>=0)&&(param<=_params.count())) _acquisition_commands.append(param);}
     void                        append_postacquisition_command(int param)   {if ((param>=0)&&(param<=_params.count())) _postacquisition_commands.append(param);}
 
     void                        set_init_commands(QVector<int> commands) {_init_commands = commands;}
-    void                        set_acquisition_commands(QVector<int> commands) {_acquisition_commands = commands;}
     void                        set_postacquisition_commands(QVector<int> commands) {_postacquisition_commands = commands;}
     void                        remove_init_command(int param)              {if ((param>=0)&&(param<=_init_commands.count())) _init_commands.remove(param);}
-    void                        remove_acquisition_command(int param)       {if ((param>=0)&&(param<=_acquisition_commands.count())) _acquisition_commands.remove(param);}
     void                        remove_postacquisition_command(int param)   {if ((param>=0)&&(param<=_postacquisition_commands.count())) _postacquisition_commands.remove(param);}
 
     void                        set_init_command(int command_order, int command_id);
-    void                        set_acquisition_command(int command_order, int command_id);
     void                        set_postacquisition_command(int command_order, int command_id);
 
     int                         get_init_command(int command_order);
-    int                         get_acquisition_command(int command_order);
     int                         get_postacquisition_command(int command_order);
 
     QVector<octaveScript_ptr>       get_init_scripts()                          {return _init_scripts;}
-    QVector<octaveScript_ptr>       get_acquisition_scripts()                   {return _acquisition_scripts;}
     QVector<octaveScript_ptr>       get_postacquisition_scripts()               {return _post_acquisition_scripts;}
 
     void                        set_init_scripts(QVector<octaveScript_ptr> scripts) ;
-    void                        set_acquisition_scripts(QVector<octaveScript_ptr> scripts) ;
     void                        set_postacquisition_scripts(QVector<octaveScript_ptr> scripts);
 
     void                        append_init_script(octaveScript_ptr script);
-    void                        append_acquisition_script(octaveScript_ptr script);
     void                        append_postacquisition_script(octaveScript_ptr script);
 
     void                        remove_init_script(int nscript)                     {if ((nscript>=0)&&(nscript<=_init_scripts.count()))        _init_scripts.remove(nscript);}
-    void                        remove_acquisition_script(int nscript)              {if ((nscript>=0)&&(nscript<=_acquisition_scripts.count())) _acquisition_scripts.remove(nscript);}
     void                        remove_postacquisition_script(int nscript)          {if ((nscript>=0)&&(nscript<=_post_acquisition_scripts.count())) _post_acquisition_scripts.remove(nscript);}
 
     void                        set_init_script(int script_order, octaveScript_ptr script);
-    void                        set_acquisition_script(int script_order, octaveScript_ptr script);
     void                        set_postacquisition_script(int script_order, octaveScript_ptr script);
 
     octaveScript_ptr         get_init_script(int script_order);
-    octaveScript_ptr         get_acquisition_script(int script_order);
     octaveScript_ptr         get_postacquisition_script(int script_order);
 
     void                        clear_commands_tables();

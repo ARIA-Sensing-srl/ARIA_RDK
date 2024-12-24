@@ -58,8 +58,6 @@ public slots:
     void connection_done(radarInstance* device);
     void init_error(radarInstance* device);
     void init_done(radarInstance* device);
-    void preacquisition_error(radarInstance* device);
-    void preacquisition_done(radarInstance* device);
     void postacquisition_error(radarInstance* device);
     void postacquisition_done(radarInstance* device);
     void timeout_error();

@@ -74,7 +74,7 @@
    <item row="4" column="0" colspan="5">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>2</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -139,16 +139,6 @@
           <layout class="QGridLayout" name="gridLayout_3">
            <item row="0" column="0">
             <widget class="QTableWidget" name="tblScriptsInit"/>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QGroupBox" name="groupBox_3">
-          <property name="title">
-           <string>Pre-acquisition</string>
-          </property>
-          <layout class="QGridLayout" name="gridLayout_4">
-           <item row="0" column="0">
-            <widget class="QTableWidget" name="tblScriptsPreacq"/>
            </item>
           </layout>
          </widget>

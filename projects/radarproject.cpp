@@ -41,9 +41,16 @@ void    radarProject::set_workspace(octavews* ws)
     if (_workspace == nullptr) return;
     octaveInterface* interface = _workspace->data_interface();
     if (interface == nullptr) return;
-    //connect(interface, SIGNAL(updatedVariable(const std::string& )), this, SLOT(variable_updated(const std::string& )));
 
+#ifdef BIDIR_REALTIME
+    connect(interface, &octaveInterface::updatedVariable,  this, &radarProject::immediate_variable_updated);
     connect(interface, &octaveInterface::updatedVariables, this, &radarProject::variables_updated);
+#else
+    connect(interface, &octaveInterface::immediateUpdateVariable,   this, &radarProject::immediate_variable_updated);
+    connect(interface, &octaveInterface::inquiryVariable,           this, &radarProject::immediate_inquiry);
+    connect(interface, &octaveInterface::sendCommand,               this, &radarProject::immediate_command);
+    connect(interface, &octaveInterface::errorWhileRunning,         this, &radarProject::errorWhileRunning);
+#endif
 
     QVector<radarInstance*> devices = get_available_radars();
     for (auto& device : devices)
@@ -897,10 +904,6 @@ void   radarProject::add_module_scripts(radarModule* module)
     for (const auto& script: scripts)
         add_script( (script), pitem );
 
-    const QVector<octaveScript_ptr>& scripts_acq  = module->get_acquisition_scripts();
-    for (const auto& script: scripts_acq)
-        add_script( (script), pitem );
-
     const QVector<octaveScript_ptr>& scripts_post  = module->get_postacquisition_scripts();
     for (const auto& script: scripts_post)
         add_script( (script), pitem );
@@ -1508,17 +1511,36 @@ void    radarProject::update_radar_module_devices(projectItem* moduleitem)
         device->update_module();
     }
 }
+//-----------------------------------------------
+void    radarProject::errorWhileRunning()
+{
+}
 
 //-----------------------------------------------
-/*
-void    radarProject::variable_updated(const std::string& varname)
+void    radarProject::immediate_variable_updated(const std::string& varname)
 {
     QVector<radarInstance*> devices = get_available_radars();
     for (auto& device:devices)
         if (device!=nullptr)
-            device->update_variable(varname);
+            device->immediate_update_variable(varname);
 }
-*/
+//-----------------------------------------------
+void    radarProject::immediate_inquiry(const std::string& varname)
+{
+    QVector<radarInstance*> devices = get_available_radars();
+    for (auto& device:devices)
+        if (device!=nullptr)
+            device->immediate_inquiry_variable(varname);
+}
+//-----------------------------------------------
+void    radarProject::immediate_command(const std::string& varname)
+{
+    QVector<radarInstance*> devices = get_available_radars();
+    for (auto& device:devices)
+        if (device!=nullptr)
+            device->immediate_command(varname);
+}
+
 //-----------------------------------------------
 void    radarProject::variables_updated(const std::set<std::string>& varlist)
 {

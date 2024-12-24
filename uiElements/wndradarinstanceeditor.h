@@ -68,7 +68,6 @@ public slots:
 //    void                        currentPlotChanged(int);
     void                        itemChanged(QTableWidgetItem* item);
     void                        cbInitScriptChanged(int index);
-    void                        cbPreacqScriptChanged(int index);
     void                        cbPostacqScriptChanged(int index);
     void                        clearSerialOutput();
     void                        init();

@@ -22,10 +22,6 @@ enum SCHEDULER_STATUS{IDLE,
                         INIT_PRE_DONE,
                         INIT_SCRIPTS_STARTS,
                         INIT_SCRIPTS_DONE,
-                        PREACQ_PARAM_START,
-                        PREACQ_PARAM_DONE,
-                        PREACQ_SCRIPTS_START,
-                        PREACQ_SCRIPTS_DONE,
                         POSTACQ_PARAM_START,
                         POSTACQ_PARAM_DONE,
                         POSTACQ_SCRIPTS_START,
@@ -49,8 +45,7 @@ public:
 
     void                 connect_device();
     void                 init_device();
-    void                 pre_acquisition();
-    void                 post_acquisition();
+    void                 post_acquisition(bool restart=false);
     void                 set_idle();
     void                 halt();
 
@@ -60,8 +55,6 @@ public slots:
     void   device_connected_done();
     void   init_params_done();
     void   init_scripts_done();
-    void   preacq_params_done();
-    void   preacq_scripts_done();
     void   postacq_params_done();
     void   postacq_scripts_done();
 
@@ -71,9 +64,6 @@ signals:
 
     void initDone(opSchedulerOperations* op);
     void initError(opSchedulerOperations* op);
-
-    void preAcquisitionDone(opSchedulerOperations* op);
-    void preAcquisitionError(opSchedulerOperations* op);
 
     void postAcquisitionDone(opSchedulerOperations* op);
     void postAcquisitionError(opSchedulerOperations* op);
@@ -158,9 +148,6 @@ public slots:
     void initDone(opSchedulerOperations* op);
     void initError(opSchedulerOperations* op);
 
-    void preAcquisitionDone(opSchedulerOperations* op);
-    void preAcquisitionError(opSchedulerOperations* op);
-
     void postAcquisitionDone(opSchedulerOperations* op);
     void postAcquisitionError(opSchedulerOperations* op);
 
@@ -175,9 +162,6 @@ signals:
     void init_error(radarInstance* device);
     void init_done(radarInstance* device);
     void init_done_all();
-    void preacquisition_error(radarInstance* device);
-    void preacquisition_done(radarInstance* device);
-    void preacquisition_done_all();
     void postacquisition_error(radarInstance* device);
     void postacquisition_done(radarInstance* device);
     void postacquisition_done_all();

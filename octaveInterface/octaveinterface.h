@@ -29,6 +29,8 @@ private:
     QMutex                  sync;
     octave::interpreter     *_octave_engine; // This is the MAIN _octave_engine (only one _octave_engine)
     octavews                *_workspace;
+    //std::set<std::string>   _vars_immediate_update;
+    std::pair<std::string, std::string> _var_immediate_update;      // This is the variable / filename associated with the pipe
 #ifndef OCTAVE_THREAD
     bool                    _b_running_command; // true if we are running a command from the command line
     bool                    _b_running_script;
@@ -36,6 +38,7 @@ private:
 #endif
     //------------------------------------------------------------------------
     std::shared_ptr<class octaveScript> _current_script;
+    std::string                         _immediate_filename;
 public:
     octaveInterface();
     ~octaveInterface();
@@ -54,7 +57,6 @@ public:
     void                    run(std::shared_ptr<class octaveScript> script);
     void                    run(const QString &program);
     void                    set_pwd(const QString& path);
-
  /*--------------------------------------------
   * Workspace commands
   * ------------------------------------------*/
@@ -63,16 +65,20 @@ public:
     QString         appendVariable(QString name, const octave_value& val, bool internal, bool toOctave=false, QStringList indep=QStringList(), QStringList dep=QStringList());
 
     void            refreshWorkspace();
-    octave_value_list execute_feval(QString command, octave_value_list& in, int n_outputs);
+    octave_value_list
+                    execute_feval(QString command, octave_value_list& in, int n_outputs);
     int             findFunc(QString funcName,bool wait);
 
-    void              append_variable(QString name, const octave_value& val, bool internal= false);
-    void              refresh_workspace();
-    octavews*         get_workspace() {return _workspace;}
-    void              update_interpreter_internal_vars();
-    void              execute_feval(QString command, const string_vector& input, const string_vector& output); // NB we may have empty in some output var
-    bool              save_workspace_to_file(QString filename);
-
+    void            append_variable(QString name, const octave_value& val, bool internal= false);
+    void            refresh_workspace();
+    octavews*       get_workspace() {return _workspace;}
+    void            update_interpreter_internal_vars();
+    void            execute_feval(QString command, const string_vector& input, const string_vector& output); // NB we may have empty in some output var
+    bool            save_workspace_to_file(QString filename);
+    void            immediate_update_of_radar_var(const std::string& str, const std::string& filename);
+    void            immediate_inquiry_of_radar_var(const std::string& str, const std::string& filename);
+    void            immediate_command(const std::string& str, const std::string& filename);
+    void            remove_interface_file();
 signals:
     void            workerError(QString error);
     void            workspaceUpdated();
@@ -81,12 +87,16 @@ signals:
     void            workspaceVarAdded();
     void            workspaceVarModified();
     void            workspaceVarDeleted();
+    void            errorWhileRunning();
 #ifndef OCTAVE_THREAD
     void            commandCompleted(QString command, int errorcode);
 #endif
-signals:
     void            updatedVariable(const std::string& var);
     void            updatedVariables(const std::set<std::string>& vars);
+    void            immediateUpdateVariable(const std::string& var);
+    void            inquiryVariable(const std::string& var);
+    void            sendCommand(const std::string& var);
+
 };
 
 

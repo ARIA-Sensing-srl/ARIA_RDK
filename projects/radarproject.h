@@ -153,8 +153,12 @@ public:
     QVector<class antenna*>                     get_available_antennas();
     QVector<opScheduler*>                       get_available_scheduler();
 public slots:
-    //void            variable_updated(const std::string& varname);
+    void            immediate_variable_updated(const std::string& varname);
+    void            immediate_inquiry(const std::string& varname);
+    void            immediate_command(const std::string& varname);
+
     void            variables_updated(const std::set<std::string>& varlist);
+    void            errorWhileRunning();
 
 signals:
     void            item_updated(projectItem* ptr);

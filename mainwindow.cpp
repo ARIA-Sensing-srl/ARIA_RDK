@@ -24,6 +24,8 @@
 #include <octave.h>
 #include <interpreter.h>
 #include <radarmodule.h>
+#include <aria_rdk_interface_messages.h>
+extern std::string str_message_immediate_update;
 
 class octaveInterface         *interfaceData=nullptr;   // Convenient copy
 
@@ -49,6 +51,8 @@ extern QString cstr_handler;
 extern QString cstr_radar_modules;
 extern QString cstr_antenna_models;
 extern QString cstr_comm_protocol;
+
+MainWindow* MainWindow::mainWnd = nullptr;
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -104,7 +108,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_qd = new ThreadLogStream(std::cout); //Redirect Console output to QTextEdit
 
-    this->msgHandler = new MessageHandler(wndOctaveInterface==nullptr?nullptr:wndOctaveInterface->get_textoutput(), this);
+    msgHandler = new MessageHandler(wndOctaveInterface==nullptr?nullptr:wndOctaveInterface->get_textoutput(), this);
 
     connect(m_qd, &ThreadLogStream::sendLogString, msgHandler, &MessageHandler::catchMessage);
 
@@ -123,10 +127,14 @@ MainWindow::MainWindow(QWidget *parent)
     connect(elabThread->getData(), &octaveInterface::workerError, this, &MainWindow::octaveError);
 #else
     connect(interfaceData, &octaveInterface::workerError, this, &MainWindow::octaveError);
+    m_qd->setInterface(interfaceData);
+
 #endif
 
     if (wndOctaveInterface!=nullptr)
         wndOctaveInterface->update_octave_interface();
+
+    mainWnd = this;
 }
 
 MainWindow::~MainWindow()
@@ -145,7 +153,8 @@ MainWindow::~MainWindow()
 void MainWindow::QMessageOutput(QtMsgType , const QMessageLogContext &, const QString &msg)
 {
     if (msg == "QFSFileEngine::open: No file name specified") return;
-    std::cout<<msg.toStdString().c_str()<<std::endl;
+
+    std::cout<<msg.toStdString().c_str()<<std::endl;    
 }
 
 
@@ -191,8 +200,6 @@ void MainWindow::octaveInterfaceCreate()
             connect(elabThread->getData(), &octaveInterface::workspaceUpdated, wndOctaveInterface, &mdiOctaveInterface::updateVarTable);
         }
 #else
-//        connect(interfaceData, &octaveInterface::commandCompleted, wndOctaveInterface, &mdiOctaveInterface::octaveCompletedTask);
-//        connect(interfaceData, &octaveInterface::workspaceUpdated, wndOctaveInterface, &mdiOctaveInterface::updateVarTable);
         if ((interfaceData!=nullptr)&&(wndOctaveInterface!=nullptr))
         {
             connect(interfaceData,&octaveInterface::updatedVariable,    wndOctaveInterface,&mdiOctaveInterface::updatedSingleVar);

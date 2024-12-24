@@ -156,24 +156,18 @@ wndRadarModuleEditor::wndRadarModuleEditor(radarModule* module, radarProject *pr
 
 
     connect(ui->tblParamsInit, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(initParams_RightClick(QPoint)));
-    connect(ui->tblParamsAcquisition, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(acqParams_RightClick(QPoint)));
     connect(ui->tblParamsPostAcquisition, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(postacqParams_RightClick(QPoint)));
     connect(ui->tblScriptsInit, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(initScripts_RightClick(QPoint)));
-    connect(ui->tblScriptsAcquisition, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(acqScripts_RightClick(QPoint)));
     connect(ui->tblScriptsPostAcq, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(postacqScripts_RightClick(QPoint)));
 
     connect(ui->btnAddInitParam, SIGNAL(clicked()), this, SLOT(add_initParam()));
-    connect(ui->btnAddAcquisitionParam, SIGNAL(clicked()), this, SLOT(add_acquisitionParam()));
     connect(ui->btnAddPostAcqParam, SIGNAL(clicked()), this, SLOT(add_postAcquisitionParam()));
     connect(ui->btnRemoveInitParam, SIGNAL(clicked()), this, SLOT(remove_initParam()));
-    connect(ui->btnRemoveAcquisitionParam, SIGNAL(clicked()), this, SLOT(remove_acquisitionParam()));
     connect(ui->btnRemovePostAcqParam, SIGNAL(clicked()), this, SLOT(remove_postAcquisitionParam()));
 
     connect(ui->btnAddInitScript, SIGNAL(clicked()), this, SLOT(add_initScript()));
-    connect(ui->btnAddAcquisitionScript, SIGNAL(clicked()), this, SLOT(add_acquisitionScript()));
     connect(ui->btnAddPostAcquisitionScript, SIGNAL(clicked()), this, SLOT(add_postAcquisitionScript()));
     connect(ui->btnRemoveInitScript, SIGNAL(clicked()), this, SLOT(remove_initScript()));
-    connect(ui->btnRemoveAcquisitionScript, SIGNAL(clicked()), this, SLOT(remove_acquisitionScript()));
     connect(ui->btnRemovePostAcquisitionScript, SIGNAL(clicked()), this, SLOT(remove_postAcquisitionScript()));
 
     connect(ui->btnScanRadarDevices,SIGNAL(clicked()), this, SLOT(scanRadarDevices()));
@@ -2088,23 +2082,6 @@ void wndRadarModuleEditor::initParams_RightClick(QPoint pos)
 }
 //---------------------------------------------------------
 
-void wndRadarModuleEditor::acqParams_RightClick(QPoint pos)
-{
-    QList<QTableWidgetItem *> selected = ui->tblParamsAcquisition->selectedItems();
-
-    QMenu *menu = new QMenu(this);
-    QAction *paramNew = new QAction("Add new acquisition params");
-    QAction *paramRemove = new QAction("Remove acquisition param(s)");
-
-    paramRemove->setEnabled(selected.count()>0);
-    connect(paramNew, SIGNAL(triggered()), this, SLOT(add_acquisitionParam()));
-    connect(paramRemove, SIGNAL(triggered()), this,SLOT(remove_acquisitionParam()));
-    menu->addAction(paramNew);
-    menu->addAction(paramRemove);
-    menu->popup(ui->tblParamsAcquisition->viewport()->mapToGlobal(pos));
-}
-//---------------------------------------------------------
-
 void wndRadarModuleEditor::postacqParams_RightClick(QPoint pos)
 {
     QList<QTableWidgetItem *> selected = ui->tblParamsPostAcquisition->selectedItems();
@@ -2137,23 +2114,6 @@ void wndRadarModuleEditor::initScripts_RightClick(QPoint pos)
     menu->addAction(paramNew);
     menu->addAction(paramRemove);
     menu->popup(ui->tblScriptsInit->viewport()->mapToGlobal(pos));
-}
-//---------------------------------------------------------
-
-void wndRadarModuleEditor::acqScripts_RightClick(QPoint pos)
-{
-    QList<QTableWidgetItem *> selected = ui->tblScriptsAcquisition->selectedItems();
-
-    QMenu *menu = new QMenu(this);
-    QAction *paramNew = new QAction("Add new acquisition params");
-    QAction *paramRemove = new QAction("Remove acquisition param(s)");
-
-    paramRemove->setEnabled(selected.count()>0);
-    connect(paramNew, SIGNAL(triggered()), this, SLOT(add_acquisitionScript()));
-    connect(paramRemove, SIGNAL(triggered()), this,SLOT(remove_acquisitionScript()));
-    menu->addAction(paramNew);
-    menu->addAction(paramRemove);
-    menu->popup(ui->tblScriptsAcquisition->viewport()->mapToGlobal(pos));
 }
 //---------------------------------------------------------
 
@@ -2215,50 +2175,6 @@ void wndRadarModuleEditor::remove_initParam( )
     _radar_module->set_init_commands(commands);
 
     renumber_table(ui->tblParamsInit);
-}
-//---------------------------------------
-void wndRadarModuleEditor::add_acquisitionParam( )
-{
-    if (_radar_module==nullptr) return;
-
-    int n = ui->tblParamsAcquisition->rowCount();
-
-    ui->tblParamsAcquisition->insertRow(n);
-    QTableWidgetItem *item = new QTableWidgetItem();
-    item->setText(QString::number(n+1));
-    item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-    ui->tblParamsAcquisition->setItem(n, 0, item);
-
-    QComboBox *cb = new QComboBox();
-    cb->setObjectName("acquisitionParams"+QString::number(n+1));
-
-    fill_param_combobox(cb, 0);
-    ui->tblParamsAcquisition->setCellWidget(n,1 , cb);
-
-    QVector<int> params = _radar_module->get_acquisition_commands();
-    params.append(0);
-    _radar_module->set_acquisition_commands(params);
-
-}
-//---------------------------------------
-void wndRadarModuleEditor::remove_acquisitionParam( )
-{
-    if (_radar_module==nullptr) return;
-    command_tables_to_radar();
-    QList<QTableWidgetItem *> selected = ui->tblParamsAcquisition->selectedItems();
-    QVector<int> commands = _radar_module->get_acquisition_commands();
-
-    for (int n=selected.count()-1; n >=0  ; n--)
-    {
-        int row = selected[n]->row();
-        ui->tblParamsAcquisition->removeRow(row);
-
-        commands.removeAt(row);
-    }
-    _radar_module->set_acquisition_commands(commands);
-
-    renumber_table(ui->tblParamsAcquisition);
-
 }
 //---------------------------------------
 void wndRadarModuleEditor::add_postAcquisitionParam( )
@@ -2351,49 +2267,6 @@ void wndRadarModuleEditor::remove_initScript( )
 
 }
 //---------------------------------------
-void wndRadarModuleEditor::add_acquisitionScript( )
-{
-    octaveScript* script = add_new_script();
-    if (script==nullptr) return;
-
-    int n = ui->tblScriptsAcquisition->rowCount();
-
-    ui->tblScriptsAcquisition->insertRow(n);
-    QTableWidgetItem *item = new QTableWidgetItem();
-    item->setText(QString::number(n+1));
-    item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-    ui->tblScriptsAcquisition->setItem(n, 0, item);
-
-    item = new QTableWidgetItem();
-    item->setText(script->get_name());
-    item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-    ui->tblScriptsAcquisition->setItem(n, 1, item);
-
-    QVector<octaveScript_ptr> scripts = _radar_module->get_acquisition_scripts();
-    scripts.append(script);
-    _radar_module->set_acquisition_scripts(scripts);
-
-}
-//---------------------------------------
-void wndRadarModuleEditor::remove_acquisitionScript( )
-{
-    if (_radar_module==nullptr) return;
-
-    QList<QTableWidgetItem *> selected = ui->tblScriptsAcquisition->selectedItems();
-    QVector<octaveScript_ptr> scripts = _radar_module->get_acquisition_scripts();
-
-    for (int n=selected.count()-1; n >=0  ; n--)
-    {
-        int row = selected[n]->row();
-        ui->tblScriptsAcquisition->removeRow(row);
-        delete scripts[row];
-        scripts.removeAt(row);
-    }
-    _radar_module->set_acquisition_scripts(scripts);
-
-    renumber_table(ui->tblScriptsAcquisition);
-}
-//---------------------------------------
 void wndRadarModuleEditor::add_postAcquisitionScript( )
 {
     octaveScript* script = add_new_script();
@@ -2441,16 +2314,11 @@ void wndRadarModuleEditor::remove_postAcquisitionScript( )
 void wndRadarModuleEditor::init_tables()
 {
     ui->tblParamsInit->clear();
-    ui->tblParamsAcquisition->clear();
     ui->tblParamsPostAcquisition->clear();
 
     ui->tblParamsInit->setColumnCount(2);
     ui->tblParamsInit->setRowCount(0);
     ui->tblParamsInit->setHorizontalHeaderLabels(QStringList({"Sequence step","Parameter"}));
-
-    ui->tblParamsAcquisition->setColumnCount(2);
-    ui->tblParamsAcquisition->setRowCount(0);
-    ui->tblParamsAcquisition->setHorizontalHeaderLabels(QStringList({"Sequence step","Parameter"}));
 
     ui->tblParamsPostAcquisition->setColumnCount(2);
     ui->tblParamsPostAcquisition->setRowCount(0);
@@ -2460,28 +2328,20 @@ void wndRadarModuleEditor::init_tables()
     ui->tblScriptsInit->setRowCount(0);
     ui->tblScriptsInit->setHorizontalHeaderLabels(QStringList({"Sequence step","Script"}));
 
-    ui->tblScriptsAcquisition->setColumnCount(2);
-    ui->tblScriptsAcquisition->setRowCount(0);
-    ui->tblScriptsAcquisition->setHorizontalHeaderLabels(QStringList({"Sequence step","Script"}));
-
     ui->tblScriptsPostAcq->setColumnCount(2);
     ui->tblScriptsPostAcq->setRowCount(0);
     ui->tblScriptsPostAcq->setHorizontalHeaderLabels(QStringList({"Sequence step","Script"}));
 
     QVector<int> init_params        = _radar_module==nullptr? QVector<int>():_radar_module->get_init_commands();
-    QVector<int> acq_params         = _radar_module==nullptr? QVector<int>():_radar_module->get_acquisition_commands();
     QVector<int> postacq_params     = _radar_module==nullptr? QVector<int>():_radar_module->get_postacquisition_commands();
 
     ui->tblParamsInit->setRowCount(init_params.count());
-    ui->tblParamsAcquisition->setRowCount(acq_params.count());
     ui->tblParamsPostAcquisition->setRowCount(postacq_params.count());
 
     _init_scripts       = _radar_module == nullptr ? QVector<octaveScript_ptr>() : _radar_module->get_init_scripts();
-    _acq_scripts        = _radar_module == nullptr ? QVector<octaveScript_ptr>() : _radar_module->get_acquisition_scripts();
-    _postacq_scripts    = _radar_module == nullptr ? QVector<octaveScript_ptr>() : _radar_module->get_postacquisition_scripts();
+     _postacq_scripts    = _radar_module == nullptr ? QVector<octaveScript_ptr>() : _radar_module->get_postacquisition_scripts();
 
     ui->tblScriptsInit->setRowCount(_init_scripts.count());
-    ui->tblScriptsAcquisition->setRowCount(_acq_scripts.count());
     ui->tblScriptsPostAcq->setRowCount(_postacq_scripts.count());
 
     for (int n=0; n < init_params.count(); n++)
@@ -2496,20 +2356,6 @@ void wndRadarModuleEditor::init_tables()
 
         fill_param_combobox(cb, init_params[n]);
         ui->tblParamsInit->setCellWidget(n,1 , cb);
-    }
-
-    for (int n=0; n < acq_params.count(); n++)
-    {
-        QTableWidgetItem *item = new QTableWidgetItem();
-        item->setText(QString::number(n+1));
-        item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-        ui->tblParamsAcquisition->setItem(n, 0, item);
-
-        QComboBox *cb = new QComboBox();
-        cb->setObjectName("acqParam"+QString::number(n+1));
-
-        fill_param_combobox(cb, acq_params[n]);
-        ui->tblParamsAcquisition->setCellWidget(n,1 , cb);
     }
 
     for (int n=0; n < postacq_params.count(); n++)
@@ -2537,19 +2383,6 @@ void wndRadarModuleEditor::init_tables()
         item->setText(_init_scripts[n]->get_name());
         item->setFlags(item->flags() & ~Qt::ItemIsEditable);
         ui->tblScriptsInit->setItem(n, 1, item);
-    }
-
-    for (int n=0; n < _acq_scripts.count(); n++)
-    {
-        QTableWidgetItem *item = new QTableWidgetItem();
-        item->setText(QString::number(n+1));
-        item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-        ui->tblScriptsAcquisition->setItem(n, 0, item);
-
-        item = new QTableWidgetItem();
-        item->setText(_acq_scripts[n]->get_name());
-        item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-        ui->tblScriptsAcquisition->setItem(n, 1, item);
     }
 
     for (int n=0; n < _postacq_scripts.count(); n++)
@@ -2587,13 +2420,12 @@ void wndRadarModuleEditor::update_commands(QVector<radarParamPointer> previous_t
     // For each param in (init, acquisition, post-acquisition)
     if (_radar_module==nullptr) return;
     _radar_module->set_init_commands(update_commands(_radar_module->get_init_commands(), previous_table, new_table));
-    _radar_module->set_acquisition_commands(update_commands(_radar_module->get_acquisition_commands(), previous_table, new_table));
     _radar_module->set_postacquisition_commands(update_commands(_radar_module->get_postacquisition_commands(), previous_table, new_table));
 }
 
 void wndRadarModuleEditor::update_commands(QString old_param_name, QString new_param_name)
 {
-    QVector<QTableWidget*> tables({ui->tblParamsInit, ui->tblParamsAcquisition, ui->tblParamsPostAcquisition});
+    QVector<QTableWidget*> tables({ui->tblParamsInit, ui->tblParamsPostAcquisition});
     const QVector<QTableWidget*> _table_const = tables;
     for (auto table : _table_const)
     {
@@ -2658,18 +2490,6 @@ void  wndRadarModuleEditor::command_tables_to_radar()
     }
     _radar_module->set_init_commands(vecParams);
 
-    vecParams.resize(ui->tblParamsAcquisition->rowCount());
-
-    for (int n=0; n<ui->tblParamsAcquisition->rowCount(); n++)
-    {
-        QComboBox* cb = (QComboBox*)(ui->tblParamsAcquisition->cellWidget(n,1));
-        int index = cb->currentIndex();
-        if ((index  < 0)||(index>=_radar_module->get_param_count()))
-            continue;
-        vecParams[n]=index;
-    }
-    _radar_module->set_acquisition_commands(vecParams);
-
     vecParams.resize(ui->tblParamsPostAcquisition->rowCount());
 
     for (int n=0; n<ui->tblParamsPostAcquisition->rowCount(); n++)
@@ -2688,7 +2508,6 @@ void  wndRadarModuleEditor::script_tables_to_radar()
 {
     if (_radar_module==nullptr) return;
     _radar_module->set_init_scripts(_init_scripts);
-    _radar_module->set_acquisition_scripts(_acq_scripts);
     _radar_module->set_postacquisition_scripts(_postacq_scripts);
 }
 
