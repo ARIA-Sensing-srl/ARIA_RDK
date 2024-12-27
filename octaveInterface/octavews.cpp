@@ -214,6 +214,19 @@ void            octavews::workspace_to_interpreter()
 
 }
 
+// Update only workspace values from interpreter (e.g. immediate_update needs so)
+void            octavews::interpreter_to_workspace_update()
+{
+    if (_oct_int==nullptr)
+        return;
+
+    for (auto& var: _internal_variables)
+        var.second = _oct_int->varval(var.first);
+
+    for (auto& var: _octave_variables)
+        var.second = _oct_int->varval(var.first);
+}
+
 void            octavews::interpreter_to_workspace()
 {
     // get list of variables
@@ -226,9 +239,9 @@ void            octavews::interpreter_to_workspace()
     for (const auto& varname : varnames)
     {
         octave_value val = _oct_int->varval(varname);
-        oct_dataset::iterator vfound_int = _internal_variables.find(varname);
-        oct_dataset::iterator vfound_oct = _octave_variables.find(varname);
-
+//        oct_dataset::iterator vfound_int = _internal_variables.find(varname);
+//        oct_dataset::iterator vfound_oct = _octave_variables.find(varname);
+/*
         if (vfound_int != _internal_variables.end())
         {
             octave_value prev = _internal_variables[varname];
@@ -248,7 +261,7 @@ void            octavews::interpreter_to_workspace()
                 _octave_variables[varname] = val;
             }
             continue;
-        }
+        }*/
 
         _octave_variables[varname] = val;
         add_variable_to_updatelist(varname);

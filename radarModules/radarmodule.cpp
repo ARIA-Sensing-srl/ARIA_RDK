@@ -1487,10 +1487,16 @@ QByteArray      radarModule::encode_param_for_transmission(const QVector<radarPa
             int exp_size = 0;
             QByteArray payload;
             payload.append(params[0]->get_inquiry_value());
+
+            bool any_is_vector = false;
             for (auto param:params)
                 if (param!=nullptr)
+                {
+                    if (!param->is_scalar()) any_is_vector = true;
                     exp_size+=param->value_bytes_count();
-            if (exp_size != payload.length())
+                }
+
+            if ((!any_is_vector)&&(exp_size != payload.length()))
                 return QByteArray();
 
             out.append(_protocol->encode_tx(payload));

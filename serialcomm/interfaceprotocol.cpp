@@ -115,7 +115,7 @@ QByteArray    interfaceProtocol::decode_rx(const QByteArray& rx_data)
 
     QByteArray out;
 
-    if (rx_data.size()<2)
+    if (rx_data.size()<3)
         return out;
 
     if (!rx_data.startsWith(_start_command))
@@ -129,7 +129,9 @@ QByteArray    interfaceProtocol::decode_rx(const QByteArray& rx_data)
 
     QByteArray data = rx_data.mid(1,rx_data.size()-2);
 
-    for (const auto& byte : data)
+    out.push_back(data[0]);
+    // Skip first char since it is the command
+    for (const auto& byte : data.right(data.size()-1))
     {
         if (byte==_stuff_char)
         {

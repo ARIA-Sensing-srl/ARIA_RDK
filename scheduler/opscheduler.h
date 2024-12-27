@@ -22,10 +22,11 @@ enum SCHEDULER_STATUS{IDLE,
                         INIT_PRE_DONE,
                         INIT_SCRIPTS_STARTS,
                         INIT_SCRIPTS_DONE,
-                        POSTACQ_PARAM_START,
-                        POSTACQ_PARAM_DONE,
-                        POSTACQ_SCRIPTS_START,
-                        POSTACQ_SCRIPTS_DONE,
+                        ACQUISITION_PARAM_START,
+                        ACQUISITION_PARAM_DONE,
+                        ACQUISITION_SCRIPTS_START,
+                        ACQUISITION_SCRIPTS_DONE,
+                        ACQUISTION_RESTART,
                         HALT
                     };
 
@@ -45,7 +46,7 @@ public:
 
     void                 connect_device();
     void                 init_device();
-    void                 post_acquisition(bool restart=false);
+    void                 post_acquisition();
     void                 set_idle();
     void                 halt();
 

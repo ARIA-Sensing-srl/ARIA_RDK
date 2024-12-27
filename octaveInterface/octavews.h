@@ -47,6 +47,7 @@ public:
     bool            is_octave(const std::string& varname);
     void            workspace_to_interpreter_noautolist();
     void            workspace_to_interpreter();
+    void            interpreter_to_workspace_update();
     void            interpreter_to_workspace();
     void              set_variable(const std::string& varname, const octave_value& value);
     void              set_variable_no_immediate_update(const std::string& varname, const octave_value& value);

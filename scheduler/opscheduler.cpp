@@ -51,15 +51,15 @@ void   opSchedulerOperations::init_scripts_done()
 //---------------------------
 void   opSchedulerOperations::postacq_params_done()
 {
-    if (_status != POSTACQ_PARAM_START) return;
-    _status = POSTACQ_PARAM_DONE;
+    if (_status != ACQUISITION_PARAM_START) return;
+    _status = ACQUISITION_PARAM_DONE;
     post_acquisition();
 }
 //---------------------------
 void   opSchedulerOperations::postacq_scripts_done()
 {
-    if (_status != POSTACQ_SCRIPTS_START) return;
-    _status = POSTACQ_SCRIPTS_DONE;
+    if (_status != ACQUISITION_SCRIPTS_START) return;
+    _status = ACQUISITION_SCRIPTS_DONE;
     post_acquisition();
 
 }
@@ -73,7 +73,7 @@ void   opSchedulerOperations::error_during_comm(const QString&)
         emit initError(this);
     }
 
-    if ((_status== POSTACQ_PARAM_START)||( _status == POSTACQ_PARAM_DONE)||(_status==POSTACQ_SCRIPTS_START))
+    if ((_status== ACQUISITION_PARAM_START)||( _status == ACQUISITION_PARAM_DONE)||(_status==ACQUISITION_SCRIPTS_START))
     {
         _status = IDLE;
         emit postAcquisitionError(this);
@@ -130,6 +130,11 @@ void    opSchedulerOperations::init_device()
             _status = INIT_SCRIPTS_STARTS;
             if (!_device->init_scripts())
                 emit initError(this);
+            else
+            {
+                _status = INIT_SCRIPTS_DONE;
+                emit initDone(this);
+            }
 
             return;
         }
@@ -159,7 +164,7 @@ void opSchedulerOperations::halt()
     //if (_status==HALT) _device->disconnect(); //_status=IDLE;} else {_device->disconnect(); _status=HALT;}
 }
 //----------------------------------------------------------------
-void    opSchedulerOperations::post_acquisition(bool restart)
+void    opSchedulerOperations::post_acquisition()
 {
     if (_status == HALT)
     {
@@ -168,30 +173,29 @@ void    opSchedulerOperations::post_acquisition(bool restart)
     }
     if (_device != nullptr)
     {
-        if (restart)
+        if (_status == ACQUISITION_PARAM_DONE)
         {
-            if (_status == POSTACQ_SCRIPTS_DONE)
-            {
-                _status = POSTACQ_PARAM_START;
-                // Catch early errors
-                if (!_device->postacquisition_pre())
-                    emit postAcquisitionError(this);
-
-                return;
-            }
-        }
-        if (_status == POSTACQ_PARAM_DONE)
-        {
-            _status = POSTACQ_SCRIPTS_START;
+            _status = ACQUISITION_SCRIPTS_START;
             if (!_device->postacquisition_scripts())
                 emit postAcquisitionError(this);
 
             return;
         }
 
-        if (_status == POSTACQ_SCRIPTS_DONE)
+        if ((_status == INIT_SCRIPTS_DONE)||(_status == ACQUISTION_RESTART))
         {
+            _status = ACQUISITION_PARAM_START;
+            // Catch early errors
+            if (!_device->postacquisition_pre())
+                emit postAcquisitionError(this);
+
+        }
+
+        if (_status == ACQUISITION_SCRIPTS_DONE)
+        {
+            _status = ACQUISTION_RESTART;
             emit postAcquisitionDone(this);
+
             return;
         }
     }
@@ -449,15 +453,15 @@ void opScheduler::acquisition_loop()
         return;
     }
 
-    if (status.contains(POSTACQ_SCRIPTS_DONE))
+    if (status.contains(ACQUISTION_RESTART))
     {
         // Wait til all are SCRIPTS_DONE
         for (auto ss: status)
-        { if (ss!=POSTACQ_SCRIPTS_DONE) return;}
+        { if (ss!=ACQUISTION_RESTART) return;}
     }
 
-    // Here we have all POSTACQ_SCRIPTS_DONE
-    if (status.contains(POSTACQ_SCRIPTS_DONE))
+    // Here we have all ACQUISTION_RESTART
+    if (status.contains(ACQUISTION_RESTART))
     {
         if (_run_scripts)
         {
@@ -477,7 +481,7 @@ void opScheduler::acquisition_loop()
 
         for (auto &worker:_workers)
         {            
-            worker->post_acquisition(true);
+            worker->post_acquisition();
         }
         return;
     }
@@ -488,7 +492,7 @@ void opScheduler::timer_done()
     _timer_done=true;
 
     for (auto &worker:_workers)
-        if ((worker!=nullptr)&&(worker->get_status()!=POSTACQ_SCRIPTS_DONE))
+        if ((worker!=nullptr)&&(worker->get_status()!=ACQUISITION_SCRIPTS_DONE))
             if (worker->get_status()!=HALT)
             {
                 emit timeout_error();
@@ -549,11 +553,11 @@ void opScheduler::initError(opSchedulerOperations* op)
 void opScheduler::postAcquisitionDone(opSchedulerOperations* op)
 {
     for (auto& worker: _workers)
-        if (worker->get_status()==POSTACQ_SCRIPTS_DONE)
+        if (worker->get_status()==ACQUISTION_RESTART)
             emit postacquisition_done(worker->get_device());
 
     for (auto& worker: _workers)
-        if (worker->get_status()!=POSTACQ_SCRIPTS_DONE)
+        if (worker->get_status()!=ACQUISTION_RESTART)
             return;
 
     emit postacquisition_done_all();

@@ -8,6 +8,8 @@
 #include "qserialportinfo.h"
 #include "radarmodule.h"
 #include "radarproject.h"
+#include <octave.h>
+#include <interpreter.h>
 #define noop (void)0
 
 #undef SERIAL_CHECK_TX
@@ -24,7 +26,8 @@ radarInstance::radarInstance(radarModule* module) : radarModule("newRadar", DT_R
 #endif
     _serial_status(SS_IDLE),
     _serialport(nullptr),
-    _serial_timer(nullptr)
+    _serial_timer(nullptr),
+    _n_params_to_receive(0)
 {
     if (_ref_module != nullptr)
     {
@@ -759,18 +762,20 @@ bool radarInstance::transmit_param(radarParamPointer param)
 
     if (param==nullptr) return false;
     QVector<radarParamPointer> params = get_param_group(param);
-    for (auto& p: params)
+    if (param->get_status()!=RPS_MODIFIED)
+        return false;
+
+/*    for (auto& p: params)
         if (p!=nullptr)
         {
             if (p->get_status()!=RPS_MODIFIED)
                 return false;
-        }
+        }*/
     for (auto& p: params)
         if (p!=nullptr)
         {
             p->set_status(RPS_TRANSMITTING);
         }
-
 
     if (params.count()==0)
         return false;
@@ -1167,6 +1172,7 @@ void    radarInstance::update_module()
 //--------------------------------------------------
 void  radarInstance::clear_params_update_lists()
 {
+    _n_params_to_receive = 0;
     _params_to_inquiry.clear();
     _params_to_modify.clear();
     _params_updated.clear();
@@ -1190,13 +1196,17 @@ bool radarInstance::init_pre()
     {
         radarParamPointer par = _params[param_index];
         if (par==nullptr) continue;
+        QVector<radarParamPointer> params = get_param_group(par);
 
-        if (!_params_to_inquiry.contains(par))
+        RADARPARAMIOTYPE rpt_io = params[0]->get_io_type();
+
+        if ((rpt_io == RPT_IO_OUTPUT)||((rpt_io == RPT_IO_IO)&&(params[0]->has_inquiry_value()))||((rpt_io == RPT_IO_INPUT) && (params[0]->get_type()==RPT_VOID)))
         {
-            RADARPARAMIOTYPE rpt_io = par->get_io_type();
-
-            if ((rpt_io == RPT_IO_OUTPUT)||((rpt_io == RPT_IO_IO)&&(par->has_inquiry_value())))
-                _params_to_inquiry.append(par);
+            if (!_params_to_inquiry.contains(params[0]))
+            {
+                _n_params_to_receive+=params.length();
+                _params_to_inquiry.append(params[0]);
+            }
         }
     }
     _radar_operation = RADAROP_INIT_PARAMS;
@@ -1250,18 +1260,22 @@ bool radarInstance::init_scripts()
         radarParamPointer par = _params[param_index];
         if (par==nullptr) continue;
 
-        if (!_params_to_modify.contains(par))
+        RADARPARAMIOTYPE rpt_io = par->get_io_type();
+        QVector<radarParamPointer> params = get_param_group(par);
+        if ((rpt_io != RPT_IO_INPUT)&(par->get_type()!=RPT_VOID))
         {
-            RADARPARAMIOTYPE rpt_io = par->get_io_type();
-
-            if (rpt_io != RPT_IO_INPUT)
-                _params_to_modify.append(par);
+            if (!_params_to_modify.contains(params[0]))
+            {
+                _n_params_to_receive+=params.length();
+                _params_to_modify.append(params[0]);
+            }
         }
+
     }
 
     for (auto& script: _init_scripts)
         if (script != nullptr)
-            _workspace->data_interface()->run(script->get_text());
+            if (!_workspace->data_interface()->run(script->get_text())) return false;
 
     if (_params_to_modify.empty()||_init_scripts.empty())
     {
@@ -1269,7 +1283,11 @@ bool radarInstance::init_scripts()
         emit all_params_updated();
         emit_operation_done();
     }
+    if (!_params_to_modify.empty())
+    {
 
+        transmit_param_non_blocking(get_param_group(_params_to_modify[0]), false);
+    }
     return true;
 }
 //--------------------------------------------------
@@ -1310,13 +1328,17 @@ bool radarInstance::postacquisition_pre()
         radarParamPointer par = _params[param_index];
         if (par==nullptr) continue;
 
-        if (!_params_to_inquiry.contains(par))
+        QVector<radarParamPointer> params = get_param_group(par);
+        RADARPARAMIOTYPE rpt_io = params[0]->get_io_type();
+        if ((rpt_io == RPT_IO_OUTPUT)||((rpt_io == RPT_IO_IO)&&(params[0]->has_inquiry_value())))
         {
-            RADARPARAMIOTYPE rpt_io = par->get_io_type();
-
-            if ((rpt_io == RPT_IO_OUTPUT)||((rpt_io == RPT_IO_IO)&&(par->has_inquiry_value())))
-                _params_to_inquiry.append(par);
+            if (!_params_to_inquiry.contains(params[0]))
+            {
+                _n_params_to_receive+=params.length();
+                _params_to_inquiry.append(params[0]);
+            }
         }
+
     }
     _radar_operation = RADAROP_POSTACQ_PARAMS;
 
@@ -1364,24 +1386,33 @@ bool radarInstance::postacquisition_scripts()
         radarParamPointer par = _params[param_index];
         if (par==nullptr) continue;
 
-        if (!_params_to_modify.contains(par))
-        {
-            RADARPARAMIOTYPE rpt_io = par->get_io_type();
+        RADARPARAMIOTYPE rpt_io = par->get_io_type();
 
-            if (rpt_io != RPT_IO_INPUT)
-                _params_to_modify.append(par);
+        if ((rpt_io != RPT_IO_INPUT)&&(par->get_type()!=RPT_VOID))
+        {
+            QVector<radarParamPointer> params = get_param_group(par);
+            if (!_params_to_modify.contains(params[0]))
+            {
+                _n_params_to_receive+=params.length();
+                _params_to_modify.append(params[0]);
+            }
         }
     }
 
     for (auto& script: _post_acquisition_scripts)
         if (script != nullptr)
-            _workspace->data_interface()->run(script->get_text());
+            if (!_workspace->data_interface()->run(script->get_text())) return false;
 
     if (_params_to_modify.empty()||_post_acquisition_scripts.isEmpty())
     {
         clear_params_update_lists();
         emit all_params_updated();
         emit_operation_done();
+    }
+
+    if (!_params_to_modify.empty())
+    {
+        transmit_param_non_blocking(get_param_group(_params_to_modify[0]), false);
     }
     return true;
 }
@@ -1459,7 +1490,8 @@ void    radarInstance::immediate_update_variable(const std::string& varname)
     if (_workspace == nullptr)
         return;
 
-    octave_value var_value = _workspace->var_value(varname);
+    if (_workspace->data_interface()==nullptr) return;
+    octave_value var_value = _workspace->data_interface()->get_octave_engine()->varval(varname);
 
     if (varname.empty()) return;
 
@@ -1515,9 +1547,9 @@ void    radarInstance::immediate_inquiry_value(radarParamPointer param)
         return;
     if (param->get_type()==RPT_VOID)
         return;
-    if (!param->has_inquiry_value()) return;
-    QVector<radarParamPointer> params = get_param_group(param);
 
+    QVector<radarParamPointer> params = get_param_group(param);
+    if ((!params[0]->has_inquiry_value())&&(params[0]->get_io_type()==RPT_IO_IO)) return;
     if (params.count()==0)
         return;
     if (!is_connected()) return;
@@ -1614,7 +1646,17 @@ void    radarInstance::update_variables(const std::set<std::string>& varlist)
 
                     if (!_params_to_modify.contains(param))
                         if (param->get_status()==RPS_MODIFIED)
-                            _params_to_modify.append(param);
+                        {
+                            QVector<radarParamPointer> params = get_param_group(param);
+                            if ((params[0]->get_io_type() != RPT_IO_INPUT)&&(params[0]->get_type()!=RPT_VOID))
+                            {
+                                if (!_params_to_modify.contains(params[0]))
+                                {
+                                    _n_params_to_receive+=params.length();
+                                    _params_to_modify.append(params[0]);
+                                }
+                            }
+                        }
                 }
         }
     }
@@ -1656,16 +1698,28 @@ bool    radarInstance::inquiry_parameter(radarParamPointer param)
         return false;
 
     // Check if the parameter is already in the param
-    if (!_params_to_inquiry.contains(param))
+    if ((params[0]->get_io_type()!=RPT_IO_INPUT)&&(params[0]->has_inquiry_value()))
     {
-        if ((param->get_io_type()!=RPT_IO_INPUT)&&(param->has_inquiry_value()))
-            _params_to_inquiry.append(param);
-
-        if (param->get_io_type()==RPT_IO_OUTPUT)
-             _params_to_inquiry.append(param);
+        if (!_params_to_inquiry.contains(params[0]))
+        {
+            _n_params_to_receive+=params.length();
+            _params_to_inquiry.append(params[0]);
+        }
     }
 
-    return transmit_param_non_blocking(params, true);
+    if (params[0]->get_io_type()==RPT_IO_OUTPUT)
+    {
+        if (!_params_to_inquiry.contains(params[0]))
+        {
+            _n_params_to_receive+=params.length();
+            _params_to_inquiry.append(params[0]);
+        }
+    }
+
+
+    bool bOk =  transmit_param_non_blocking(params, true);
+    _params_to_inquiry.removeAll(params[0]);
+    return bOk;
 }
 
 
@@ -1816,10 +1870,7 @@ void    radarInstance::serial_timeout()
         _serialport->clear();
     }
 
-    for (auto& p: _params) if (p!=nullptr) p->set_status(RPS_IDLE);
     _serial_status = SS_TIMEOUT;
-
-
 }
 
 //--------------------------------------------------
@@ -1894,7 +1945,7 @@ bool    radarInstance::transmit_param_blocking(const QVector<radarParamPointer>&
     if (!is_connected()) return false;
 
     _serialport->clear(QSerialPort::Output);    
-
+    _n_params_to_receive+=params.length();
     QByteArray data_tx = encode_param_for_transmission(params,inquiry);
     _serial_status = SS_TRANSMITTING;
     _serialport->write(data_tx);
@@ -1909,22 +1960,20 @@ bool    radarInstance::transmit_param_blocking(const QVector<radarParamPointer>&
     }
     emit new_write_completed(_last_serial_tx);
 
-    if (_serialport->waitForReadyRead(kWriteTimeoutRx))
+    do
     {
-        // read request
-        serial_chain_data(_serialport->readAll());
-        if (_serial_status == SS_RECEIVEDONE) return true;
-        while (_serialport->waitForReadyRead(10))
+        if (_serialport->waitForReadyRead(kWriteTimeoutRx))
         {
             serial_chain_data(_serialport->readAll());
             if (_serial_status == SS_RECEIVEDONE) return true;
         }
+        else
+        {
+            serial_timeout();
+            return false;
+        }
     }
-    else
-    {
-        serial_timeout();
-        return false;
-    }
+    while(1);
     return true;
 }
 
@@ -1960,7 +2009,7 @@ bool    radarInstance::transmit_command_blocking(radarParamPointer param)
         if (!update_command_from_last_rx()) return false;
         _serial_status = SS_RECEIVEDONE;
         _serial_timer->stop();
-        emit new_read_completed(_last_serial_rx);
+
         if (_serial_status == SS_RECEIVEDONE) return true;
         while (_serialport->waitForReadyRead(10))
         {
@@ -1989,8 +2038,29 @@ bool    radarInstance::transmit_param_non_blocking(const QVector<radarParamPoint
     _serialport->clear(QSerialPort::Output);
 
     QByteArray data_tx = encode_param_for_transmission(params,inquiry);
+    if (inquiry)
+    {
+        if (!_params_to_inquiry.contains(params[0]))
+        {
+            _n_params_to_receive+=params.length();
+            _params_to_inquiry.append(params[0]);
+        }
+    }
+    else
+    {
+        if (!_params_to_modify.contains(params[0]))
+        {
+            _n_params_to_receive+=params.length();
+            _params_to_modify.append(params[0]);
+        }
+    }
 
     transmit_data(data_tx);
+
+    if (inquiry)
+        _params_to_inquiry.removeAll(params[0]);
+    else
+        _params_to_modify.removeAll(params[0]);
     return true;
 }
 //---------------------------------------------------
@@ -2007,16 +2077,19 @@ void radarInstance::emit_operation_done()
 void    radarInstance::param_is_updated(radarParamPointer param)
 {
     // We have an updated parameter
-    if ((_params_to_inquiry.isEmpty())&&(_params_to_modify.isEmpty())) return;
+   // if ((_params_to_inquiry.isEmpty())&&(_params_to_modify.isEmpty())) return;
 
+    QVector<radarParamPointer> params = get_param_group(param);
+    radarParamPointer ref = params[0];
     // Store it as updated
-    if (((_params_to_inquiry.contains(param))||(_params_to_modify.contains(param)))&&(param->is_linked_to_octave()))
-        _params_updated.append(param);
-
-    // Remove it from the list of parameters to be modified
-    _params_to_inquiry.removeAll(param);
-
-    if ((_params_to_inquiry.isEmpty())&&(_params_to_modify.isEmpty()))
+    //if (((_params_to_inquiry.contains(param))||(_params_to_modify.contains(param)))&&(param->is_linked_to_octave()))
+    if (param->is_linked_to_octave())
+    {
+        if (!_params_updated.contains(ref))
+            _params_updated.append(ref);
+    }
+    _n_params_to_receive--;
+    if (_n_params_to_receive==0)
     {
 #ifndef UPDATE_INSIDE
 
@@ -2042,7 +2115,14 @@ void    radarInstance::param_is_updated(radarParamPointer param)
         if (!param->is_command_group())
         {
             if (!_params_to_inquiry.isEmpty())
-                inquiry_parameter(_params_to_inquiry[0]);
+            {
+                inquiry_parameter(_params_to_inquiry[0]); return;
+            }
+            if (!_params_to_modify.isEmpty())
+            {
+                transmit_param_non_blocking(get_param_group(_params_to_modify[0]), false); return;
+            }
+
             return;
         }
 
@@ -2133,6 +2213,18 @@ bool    radarInstance::update_param_from_last_rx()
 
 
             QByteArray payload  = decoded.right(decoded.length()-expected_command_length);
+
+            // If we sent a command, we need to consider this
+            if (payload.isEmpty())
+            {
+                if ((param->get_io_type()==RPT_IO_INPUT)||(param->get_type()==RPT_VOID))
+                {
+                    param_is_updated(param);
+                    param->set_status(RPS_RECEIVED);
+
+                }
+                return true;
+            }
 
             if (param->is_command_group())
             {

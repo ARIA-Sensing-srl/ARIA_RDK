@@ -274,7 +274,7 @@ void    wndRadarInstanceEditor::cbInitScriptChanged(int index)
         QMessageBox::critical(this, tr("Error"), tr("Script not found in project"));
         return;
     }
-    if (row == ui->tblScriptsPostAcq->rowCount()-1)
+    if (row == ui->tblScriptsInit->rowCount()-1)
     {
         QVector<octaveScript*> scripts = _radar_instance->get_init_scripts();
         scripts.insert(row, script);
@@ -1001,11 +1001,14 @@ void wndRadarInstanceEditor::paramSliderReleased()
 
     radarParamPointer param = _radar_instance->get_param(row);
 
+    if (param->get_status()==RPS_IDLE)
+        param->set_status(RPS_MODIFIED);
+
     int value = slider->sliderPosition();
     octave_value val(value);
     _b_transmitting = true;
     if (param->is_valid(QVariant::fromValue<int>(value)))
-        _radar_instance->set_param_value(row,val,true, true);
+        _radar_instance->set_param_value(param,val,true, true);
 
     //update_serial_output();
     _b_transmitting = false;
@@ -1041,6 +1044,10 @@ void wndRadarInstanceEditor::cbEnumIndexChange(int index)
     }
     octave_value oval; oval = val;
     _b_transmitting = true;
+    radarParamPointer param = _radar_instance->get_param(row);
+    if (param->get_status()==RPS_IDLE)
+        param->set_status(RPS_MODIFIED);
+
     _radar_instance ->set_param_value(row, oval,true, true);
 
     //update_serial_output();
@@ -1152,7 +1159,8 @@ void    wndRadarInstanceEditor::itemChanged(QTableWidgetItem* item)
                 //qDebug() << "\n**** " << param->get_name() << " modification overlapping with current transfer. Discarded";
             }
 
-            _radar_instance->set_param_value(param,val,true, true);
+            if (param->get_status()==RPS_MODIFIED)
+                _radar_instance->set_param_value(param,val,true, true);
         }
     }
 
@@ -1205,7 +1213,6 @@ void wndRadarInstanceEditor::connect_radar()
     }
     else
     {
-
         // Put temp data into current device
         _radar_instance->set_fixed_id(ui->cbFixedId->isChecked());
         _radar_instance->set_fixed_port(ui->cbFixedPort->isChecked());
@@ -1220,9 +1227,6 @@ void wndRadarInstanceEditor::connect_radar()
         {
             for (auto& port: ports)
             {
-//                qDebug() << port.portName();
-//                qDebug() << _radar_instance->get_expected_portname();
-//                qDebug() << (port.portName() == _radar_instance->get_expected_portname() ? tr("Match") : tr("unmatch"));
                 if (port.portName() == _radar_instance->get_expected_portname())
                 {
                     _radar_instance->set_port(port);
@@ -1245,25 +1249,6 @@ void    wndRadarInstanceEditor::scan()
     wndScanModules* scanWnd = new wndScanModules(radar_modules,_radar_instance->get_root(), this);
     scanWnd->exec();
 }
-
-//-----------------------------------------------------------
-/*
-void    wndRadarInstanceEditor::update_serial_output()
-{
-    QString tx = _radar_instance->last_serial_tx().toHex(' ');
-    QString rx = _radar_instance->last_serial_rx().toHex(' ');
-
-    if (!tx.isEmpty())
-        ui->teSerialOutput->appendPlainText(QString("Command to radar: \t ")+tx);
-    if (!rx.isEmpty())
-        ui->teSerialOutput->appendPlainText(QString("Response: \t \t")+rx);
-
-    if (!_last_operation_result.isEmpty())
-        ui->teSerialOutput->appendPlainText(_last_operation_result);
-    _radar_instance->clear_serial_buffer();
-
-    _last_operation_result.clear();
-}*/
 
 //-----------------------------------------------------------
 void    wndRadarInstanceEditor::send_custom_string()
@@ -1457,12 +1442,6 @@ void    wndRadarInstanceEditor::variable_updated(const std::string& varname)
     if (ws == nullptr) return;
 
     octave_value val = ws->var_value(varname);
-    /*
-    if ((varname == _radar_instance->get_device_name().toStdString())&&(val.isstruct()))
-    {
-        init_parameter_table();
-        return;
-    }*/
 
     for (auto& param: _radar_instance->get_param_table())
     {
@@ -1557,6 +1536,7 @@ void    wndRadarInstanceEditor::rx_updated(const QByteArray& rx)
     if (!ui->cbSerialEcho->isChecked()) return;
     QString rx_string = rx.toHex(' ');
     ui->teSerialOutput->append(QString("<---\t")+rx_string);
+    ui->teSerialOutput->update();
 }
 //----------------------------------------------------
 void    wndRadarInstanceEditor::tx_timeout(const QString& strerror)

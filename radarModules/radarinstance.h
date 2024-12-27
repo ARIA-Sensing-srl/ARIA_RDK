@@ -58,6 +58,7 @@ private:
     QVector<radarParamPointer>  _params_to_modify;              // List of params that requires link to octave during init/preacq/postacq and update
     QVector<radarParamPointer>  _params_updated;                // List of params currently updated
     QVector<radarParamPointer>  _params_to_inquiry;             // List of params that requires link to octave during init/preacq/postacq and inquiry
+    int                         _n_params_to_receive;
     void                        clear_params_update_lists();
     OPERATION                   _radar_operation;
 

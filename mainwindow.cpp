@@ -678,8 +678,8 @@ void MainWindow::tree_project_double_click(QTreeWidgetItem* widget, int column)
         wndRadarInstanceEditor *radarInstanceEditor = new wndRadarInstanceEditor(radar_instance,modules,this);
         if (interfaceData!=nullptr)
         {
-            connect(interfaceData,&octaveInterface::updatedVariable,    radarInstanceEditor,&wndRadarInstanceEditor::variable_updated);
-            connect(interfaceData,&octaveInterface::updatedVariables,   radarInstanceEditor,&wndRadarInstanceEditor::variables_updated);
+//            connect(interfaceData,&octaveInterface::updatedVariable,    radarInstanceEditor,&wndRadarInstanceEditor::variable_updated);
+//            connect(interfaceData,&octaveInterface::updatedVariables,   radarInstanceEditor,&wndRadarInstanceEditor::variables_updated);
         }
         ui->mdiArea->addSubWindow(radarInstanceEditor);
         radarInstanceEditor->showMaximized();
@@ -964,8 +964,8 @@ void MainWindow::newDevice()
     wndRadarInstanceEditor *radarInstanceEditor = new wndRadarInstanceEditor(nullptr,modules,this);
     if (interfaceData!=nullptr)
     {
-        connect(interfaceData,&octaveInterface::updatedVariable, radarInstanceEditor,&wndRadarInstanceEditor::variable_updated);
-        connect(interfaceData,&octaveInterface::updatedVariables,radarInstanceEditor,&wndRadarInstanceEditor::variables_updated);
+//        connect(interfaceData,&octaveInterface::updatedVariable, radarInstanceEditor,&wndRadarInstanceEditor::variable_updated);
+//        connect(interfaceData,&octaveInterface::updatedVariables,radarInstanceEditor,&wndRadarInstanceEditor::variables_updated);
     }
     ui->mdiArea->addSubWindow(radarInstanceEditor);
     radarInstanceEditor->showMaximized();
@@ -1039,8 +1039,8 @@ void MainWindow::configureDevice()
                                                                             QVector<radarModule*>({((radarInstance*)(currentItem))->get_module()}),this);
     if (interfaceData!=nullptr)
     {
-        connect(interfaceData,&octaveInterface::updatedVariable, radarInstanceEditor,&wndRadarInstanceEditor::variable_updated);
-        connect(interfaceData,&octaveInterface::updatedVariables,radarInstanceEditor,&wndRadarInstanceEditor::variables_updated);
+//        connect(interfaceData,&octaveInterface::updatedVariable, radarInstanceEditor,&wndRadarInstanceEditor::variable_updated);
+//        connect(interfaceData,&octaveInterface::updatedVariables,radarInstanceEditor,&wndRadarInstanceEditor::variables_updated);
     }
     ui->mdiArea->addSubWindow(radarInstanceEditor);
     radarInstanceEditor->showMaximized();
