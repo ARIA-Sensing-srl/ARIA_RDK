@@ -16,6 +16,7 @@
 #include "QFile"
 #include <aria_rdk_interface_messages.h>
 #include <octaveinterface.h>
+#include "mdioctaveinterface.h"
 // MessageHandler
 /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 class MessageHandler : public QObject
@@ -42,9 +43,10 @@ private:
 class ThreadLogStream : public QObject, public std::basic_streambuf<char>
 {
 
+
     Q_OBJECT
 public:
-    ThreadLogStream(std::ostream &stream, QObject * parent = Q_NULLPTR) :QObject(parent), m_stream(stream), octInt(nullptr)
+    ThreadLogStream(std::ostream &stream, QObject * parent = Q_NULLPTR) :QObject(parent), m_stream(stream), octInt(nullptr), _wndOctave(nullptr)
     {
         m_old_buf = stream.rdbuf();
         stream.rdbuf(this);
@@ -82,6 +84,7 @@ protected:
         int n_inquiry= msg.lastIndexOf(QString::fromStdString(str_message_immediate_inquiry));
         int n_command= msg.lastIndexOf(QString::fromStdString(str_message_immediate_command));
 
+
         bool b_immediate_update = false;
         bool b_immediate_inquiry= false;
         bool b_immediate_command= false;
@@ -112,6 +115,16 @@ protected:
             }
         }
 
+        bool b_any_plot = false;
+        // Check for plots
+        int n_plot =  msg.lastIndexOf(QString::fromStdString(str_message_plot));
+        b_any_plot |= (n_plot >=0);
+
+        if (b_any_plot)
+        {
+
+        }
+
         long pos = 0;
         while (pos != static_cast<long>(std::string::npos))
         {
@@ -121,7 +134,8 @@ protected:
                 std::string tmp(m_string.begin(), m_string.begin() + pos);
                 QString msg = QString::fromStdString(tmp);
                 if (b_any_command) msg.clear();
-                emit sendLogString(msg);
+                if ((!b_any_command)&&(!b_any_plot))
+                    emit sendLogString(msg);
                 m_string.erase(m_string.begin(), m_string.begin() + pos + 1);
             }
         }
@@ -141,7 +155,8 @@ private:
     std::ostream &m_stream;
     std::streambuf *m_old_buf;
     std::string m_string;
-    octaveInterface *octInt;
+    octaveInterface*        octInt;
+    mdiOctaveInterface*     _wndOctave;
 signals:
     void sendLogString(const QString& str);
 

@@ -162,13 +162,16 @@ void wndPlot2d::populate_plot( plot_descriptor pl)
 
         if (!pl._indep_x.empty())
         {
-            line_graph->setXColumn(ds->getColumnNum(QString::fromStdString(pl._indep_x)));
-            QString xaxis_label = plotter->getXAxis()->getAxisLabel();
-            xaxis_label += QString::fromStdString(pl._indep_x) + " ";
-            plotter->getXAxis()->setAxisLabel(xaxis_label);
+            if (line_graph->getXColumn()==-1)
+                line_graph->setXColumn(ds->getColumnNum(QString::fromStdString(pl._indep_x)));
+
+            //QString xaxis_label = plotter->getXAxis()->getAxisLabel();
+            //xaxis_label += QString::fromStdString(pl._indep_x) + " ";
+            //plotter->getXAxis()->setAxisLabel(xaxis_label);
         }
         else
-            line_graph->setXColumn(ds->getColumnNum(get_var_indep_name(pl._indep_x, pl._dep)));
+            if (line_graph->getXColumn()==-1)
+                line_graph->setXColumn(ds->getColumnNum(get_var_indep_name(pl._indep_x, pl._dep)));
 
         if (!pl._dep.empty())
         {
@@ -182,11 +185,15 @@ void wndPlot2d::populate_plot( plot_descriptor pl)
             else
             {
                 QString name = get_var_name(pl._dep, g);
-                line_graph->setTitle(name);
-                line_graph->setYColumn(ds->getColumnNum(name));
+                if (line_graph->getTitle().isEmpty())
+                    line_graph->setTitle(name);
+                if (line_graph->getYColumn()==-1)
+                    line_graph->setYColumn(ds->getColumnNum(name));
             }
         }
+
     }
+    plotter->zoomToFit();
 
     redraw(pl);
 }
@@ -243,15 +250,35 @@ void        wndPlot2d::populate_boxplot( plot_descriptor pl)
     // q75
     QString median_name = basename + "{Median}";
     int var_id_median = ds->getColumnNum(median_name);
-    boxplot_graph->setPositionColumn(ds->getColumnNum(xname));
-    boxplot_graph->setMinColumn(var_id_min);
-    boxplot_graph->setPercentile25Column(var_id_q25);
-    boxplot_graph->setMedianColumn(var_id_median);
-    boxplot_graph->setMeanColumn(var_id_mean);
-    boxplot_graph->setPercentile75Column(var_id_q75);
-    boxplot_graph->setMaxColumn(var_id_max);
-    outlier_graph->setXColumn(ds->getColumnNum(outlier_name_x));
-    outlier_graph->setYColumn(ds->getColumnNum(outlier_name));
+
+    if (boxplot_graph->getPositionColumn()==-1)
+        boxplot_graph->setPositionColumn(ds->getColumnNum(xname));
+
+    if (boxplot_graph->getMinColumn()==-1)
+        boxplot_graph->setMinColumn(var_id_min);
+
+    if (boxplot_graph->getPercentile25Column()==-1)
+        boxplot_graph->setPercentile25Column(var_id_q25);
+
+    if (boxplot_graph->getMedianColumn()==-1)
+        boxplot_graph->setMedianColumn(var_id_median);
+
+    if (boxplot_graph->getMeanColumn()==-1)
+        boxplot_graph->setMeanColumn(var_id_mean);
+
+    if (boxplot_graph->getPercentile75Column()==-1)
+        boxplot_graph->setPercentile75Column(var_id_q75);
+
+    if (boxplot_graph->getMaxColumn()==-1)
+        boxplot_graph->setMaxColumn(var_id_max);
+
+    if (outlier_graph->getXColumn()==-1)
+        outlier_graph->setXColumn(ds->getColumnNum(outlier_name_x));
+
+    if (outlier_graph->getYColumn()==-1)
+        outlier_graph->setYColumn(ds->getColumnNum(outlier_name));
+
+    plotter->zoomToFit();
 
     redraw(pl);
 
@@ -299,15 +326,17 @@ void        wndPlot2d::populate_area( plot_descriptor pl)
 
         if (!pl._indep_x.empty())
         {
-            QString xaxis_label = plotter->getXAxis()->getAxisLabel();
-            xaxis_label += QString::fromStdString(pl._indep_x) + " ";
-            plotter->getXAxis()->setAxisLabel(xaxis_label);
+            //QString xaxis_label = plotter->getXAxis()->getAxisLabel();
+            //xaxis_label += QString::fromStdString(pl._indep_x) + " ";
+            //plotter->getXAxis()->setAxisLabel(xaxis_label);
 
-            filled_plot_graph->setXColumn(ds->getColumnNum(QString::fromStdString(pl._indep_x)));
+            if (filled_plot_graph->getXColumn()==-1)
+                filled_plot_graph->setXColumn(ds->getColumnNum(QString::fromStdString(pl._indep_x)));
         }
         else
         {
-            filled_plot_graph->setXColumn(ds->getColumnNum(get_var_indep_name(pl._indep_x, pl._dep)));
+            if (filled_plot_graph->getXColumn()==-1)
+                filled_plot_graph->setXColumn(ds->getColumnNum(get_var_indep_name(pl._indep_x, pl._dep)));
         }
 
         if (!pl._dep.empty())
@@ -316,14 +345,21 @@ void        wndPlot2d::populate_area( plot_descriptor pl)
             if (nrows==1)
             {
                 QString vname = QString::fromStdString(pl._dep);
-                filled_plot_graph->setYColumn(ds->getColumnNum(vname));
-                filled_plot_graph->setTitle(QString::fromStdString(pl._dep));
+
+                if (filled_plot_graph->getYColumn()==-1)
+                    filled_plot_graph->setYColumn(ds->getColumnNum(vname));
+
+                if (filled_plot_graph->getTitle().isEmpty())
+                    filled_plot_graph->setTitle(QString::fromStdString(pl._dep));
             }
             else
             {
                 QString name = get_var_name(pl._dep, g);
-                filled_plot_graph->setTitle(name);
-                filled_plot_graph->setYColumn(ds->getColumnNum(name));
+                if (filled_plot_graph->getTitle().isEmpty())
+                    filled_plot_graph->setTitle(name);
+
+                if (filled_plot_graph->getYColumn()==-1)
+                    filled_plot_graph->setYColumn(ds->getColumnNum(name));
             }
         }
     }
@@ -354,13 +390,16 @@ void        wndPlot2d::populate_barv( plot_descriptor pl)
 
         if (!pl._indep_x.empty())
         {
-            barv_graph->setXColumn(ds->getColumnNum(QString::fromStdString(pl._indep_x)));
+            if (barv_graph->getXColumn()==-1)
+                barv_graph->setXColumn(ds->getColumnNum(QString::fromStdString(pl._indep_x)));
+            /*
             QString xaxis_label = plotter->getXAxis()->getAxisLabel();
             xaxis_label += QString::fromStdString(pl._indep_x) + " ";
-            plotter->getXAxis()->setAxisLabel(xaxis_label);
+            plotter->getXAxis()->setAxisLabel(xaxis_label);*/
         }
         else
-            barv_graph->setXColumn(ds->getColumnNum(get_var_indep_name(pl._indep_x, pl._dep)));
+            if (barv_graph->getXColumn()==-1)
+                barv_graph->setXColumn(ds->getColumnNum(get_var_indep_name(pl._indep_x, pl._dep)));
 
         if (!pl._dep.empty())
         {
@@ -368,14 +407,19 @@ void        wndPlot2d::populate_barv( plot_descriptor pl)
             if (nrows==1)
             {
                 QString vname = QString::fromStdString(pl._dep);
-                barv_graph->setYColumn(ds->getColumnNum(vname));
-                barv_graph->setTitle(QString::fromStdString(pl._dep));
+                if (barv_graph->getYColumn()==-1)
+                    barv_graph->setYColumn(ds->getColumnNum(vname));
+
+                if (barv_graph->getTitle().isEmpty())
+                    barv_graph->setTitle(QString::fromStdString(pl._dep));
             }
             else
             {
                 QString name = get_var_name(pl._dep, g);
-                barv_graph->setTitle(name);
-                barv_graph->setYColumn(ds->getColumnNum(name));
+                if (barv_graph->getTitle().isEmpty())
+                    barv_graph->setTitle(name);
+                if (barv_graph->getYColumn()==-1)
+                    barv_graph->setYColumn(ds->getColumnNum(name));
             }
         }
     }
@@ -408,13 +452,16 @@ void        wndPlot2d::populate_scatter( plot_descriptor pl)
 
         if (!pl._indep_x.empty())
         {
-            scatter_graph->setXColumn(ds->getColumnNum(QString::fromStdString(pl._indep_x)));
+            if (scatter_graph->getXColumn()==-1)
+                scatter_graph->setXColumn(ds->getColumnNum(QString::fromStdString(pl._indep_x)));
+            /*
             QString xaxis_label = plotter->getXAxis()->getAxisLabel();
             xaxis_label += QString::fromStdString(pl._indep_x) + " ";
-            plotter->getXAxis()->setAxisLabel(xaxis_label);
+            plotter->getXAxis()->setAxisLabel(xaxis_label);*/
         }
         else
-            scatter_graph->setXColumn(ds->getColumnNum(get_var_indep_name(pl._indep_x, pl._dep)));
+            if (scatter_graph->getXColumn()==-1)
+                scatter_graph->setXColumn(ds->getColumnNum(get_var_indep_name(pl._indep_x, pl._dep)));
 
         if (!pl._dep.empty())
         {
@@ -422,14 +469,19 @@ void        wndPlot2d::populate_scatter( plot_descriptor pl)
             if (nrows==1)
             {
                 QString vname = QString::fromStdString(pl._dep);
-                scatter_graph->setYColumn(ds->getColumnNum(vname));
-                scatter_graph->setTitle(QString::fromStdString(pl._dep));
+                if (scatter_graph->getYColumn()==-1)
+                    scatter_graph->setYColumn(ds->getColumnNum(vname));
+
+                if (scatter_graph->getTitle().isEmpty())
+                    scatter_graph->setTitle(QString::fromStdString(pl._dep));
             }
             else
             {
                 QString name = get_var_name(pl._dep, g);
-                scatter_graph->setTitle(name);
-                scatter_graph->setYColumn(ds->getColumnNum(name));
+                if (scatter_graph->getTitle().isEmpty())
+                    scatter_graph->setTitle(name);
+                if (scatter_graph->getYColumn()==-1)
+                    scatter_graph->setYColumn(ds->getColumnNum(name));
             }
         }
     }
@@ -473,20 +525,23 @@ void        wndPlot2d::populate_dens( plot_descriptor pl)
     double ymin = ds->get(var_y,0);
     double ymax = ds->get(var_y,1);
 
-    density_graph->setImageColumn(ds->getColumnNum(QString::fromStdString(pl._dep)));
+
+    if (density_graph->getImageColumn()==-1)
+        density_graph->setImageColumn(ds->getColumnNum(QString::fromStdString(pl._dep)));
+
     density_graph->setNx(Nx);
     density_graph->setNy(Ny);
     density_graph->setX(xmin);
     density_graph->setY(ymin);
     density_graph->setWidth(xmax-xmin);
     density_graph->setHeight(ymax-ymin);
-
+/*
     if (!pl._indep_x.empty())
         plotter->getXAxis()->setAxisLabel(QString::fromStdString(pl._indep_x));
 
     if (!pl._indep_y.empty())
         plotter->getYAxis()->setAxisLabel(QString::fromStdString(pl._indep_y));
-
+*/
     plotter->getPlotter()->setMaintainAspectRatio(true);
     plotter->getPlotter()->setMaintainAxisAspectRatio(true);
     density_graph->setTitle(QString::fromStdString(pl._dep));
@@ -528,8 +583,11 @@ void        wndPlot2d::populate_vect2d( plot_descriptor pl)
     if (vect_graph==nullptr)
         return;
 
-    vect_graph->setDxColumn(ds->getColumnNum(QString::fromStdString(pl._dep)));
-    vect_graph->setDyColumn(ds->getColumnNum(QString::fromStdString(pl._depy)));
+    if (vect_graph->getDxColumn()==-1)
+        vect_graph->setDxColumn(ds->getColumnNum(QString::fromStdString(pl._dep)));
+
+    if (vect_graph->getDyColumn()==-1)
+        vect_graph->setDyColumn(ds->getColumnNum(QString::fromStdString(pl._depy)));
 
     QString xColumnName = pl._indep_x.empty()? get_var_indep_name("",get_vector_full_name(pl._dep,pl._depy).toStdString(),0) : QString::fromStdString(pl._indep_x);
     QString yColumnName = pl._indep_y.empty()? get_var_indep_name("",get_vector_full_name(pl._dep,pl._depy).toStdString(),1) : QString::fromStdString(pl._indep_y);
@@ -540,7 +598,7 @@ void        wndPlot2d::populate_vect2d( plot_descriptor pl)
         ));
 
     vect_graph->setTitle(get_vector_full_name(pl._dep,pl._depy));
-
+/*
     if ((!pl._indep_x.empty())&&(!pl._indep_y.empty()))
     {
         QString xaxis_label = QString::fromStdString(pl._indep_x);
@@ -549,7 +607,7 @@ void        wndPlot2d::populate_vect2d( plot_descriptor pl)
         plotter->getXAxis()->setAxisLabel(xaxis_label);
         plotter->getYAxis()->setAxisLabel(yaxis_label);
     }
-
+*/
     plotter->addGraph(vect_graph);
 
     redraw(pl);
@@ -578,13 +636,17 @@ void        wndPlot2d::populate_vertarrows( plot_descriptor pl)
 
         if (!pl._indep_x.empty())
         {
-            arrow_graph->setXColumn(ds->getColumnNum(QString::fromStdString(pl._indep_x)));
+            if (arrow_graph->getXColumn()==-1)
+                arrow_graph->setXColumn(ds->getColumnNum(QString::fromStdString(pl._indep_x)));
+            /*
             QString xaxis_label = plotter->getXAxis()->getAxisLabel();
             xaxis_label += QString::fromStdString(pl._indep_x) + " ";
             plotter->getXAxis()->setAxisLabel(xaxis_label);
+            */
         }
         else
-            arrow_graph->setXColumn(ds->getColumnNum(get_var_indep_name(pl._indep_x, pl._dep)));
+            if (arrow_graph->getXColumn()==-1)
+                arrow_graph->setXColumn(ds->getColumnNum(get_var_indep_name(pl._indep_x, pl._dep)));
 
         if (!pl._dep.empty())
         {
@@ -592,14 +654,19 @@ void        wndPlot2d::populate_vertarrows( plot_descriptor pl)
             if (nrows==1)
             {
                 QString vname = QString::fromStdString(pl._dep);
-                arrow_graph->setYColumn(ds->getColumnNum(vname));
-                arrow_graph->setTitle(QString::fromStdString(pl._dep));
+                if (arrow_graph->getYColumn()==-1)
+                    arrow_graph->setYColumn(ds->getColumnNum(vname));
+
+                if (arrow_graph->getTitle().isEmpty())
+                    arrow_graph->setTitle(QString::fromStdString(pl._dep));
             }
             else
             {
                 QString name = get_var_name(pl._dep, g);
-                arrow_graph->setTitle(name);
-                arrow_graph->setYColumn(ds->getColumnNum(name));
+                if (arrow_graph->getTitle().isEmpty())
+                    arrow_graph->setTitle(name);
+                if (arrow_graph->getYColumn()==-1)
+                    arrow_graph->setYColumn(ds->getColumnNum(name));
             }
         }
     }
@@ -1931,7 +1998,7 @@ void wndPlot2d::octave_to_box_plotdata(std::string varname, std::string indep)
         {
 
             double val = val_real(r,sample);
-            qDebug() << "-- :" << val;
+            //qDebug() << "-- :" << val;
 
             if ((val>vmax)||(val<vmin))
             {
@@ -1982,16 +2049,20 @@ void wndPlot2d::octave_to_plotdata(std::string varname)
 
     clear_prev_var(varname);
 
+    QString sVarName = QString::fromStdString(varname);
+
     if ((nd0==1)||(nd1==1))
     {
         int length = nd0 == 1 ? nd1 : nd0;
         // Check if the variable is already present into the column database
-        int var_id = ds->getColumnNum(QString::fromStdString(varname));
+        int var_id = ds->getColumnNum(sVarName);
 
         if (var_id == -1)
-            var_id = ds->addColumn(QString::fromStdString(varname));
+            var_id = ds->addColumn(sVarName);
 
-        ds->resizeColumn(var_id, length);
+        if (ds->getRows(var_id)!=length)
+            ds->resizeColumn(var_id, length);
+
         for (int n=0; n < length; n++)
             ds->set(var_id, n, val_real(n));
 
@@ -2006,6 +2077,8 @@ void wndPlot2d::octave_to_plotdata(std::string varname)
         ymax = nd0;
     }
 
+
+
     for (int row = 0; row < xmax ; row++)
     {
         QString tname = QString::fromStdString(varname) + "(" + QString::number(row) + ")";
@@ -2016,11 +2089,14 @@ void wndPlot2d::octave_to_plotdata(std::string varname)
         if (var_id == -1)
             var_id = ds->addColumn(tname);
 
-        ds->resizeColumn(var_id, ymax);
+        if (ds->getRows(var_id)!=ymax)
+            ds->resizeColumn(var_id, ymax);
+
 
         for (int col = 0; col < ymax; col++)
             ds->set(var_id, col, val_real(row,col));
     }
+
 }
 
 
@@ -2112,7 +2188,7 @@ void wndPlot2d::octave_to_vectordata(std::string varname_x, std::string varname_
     // The two are swapped since, in octave, first dimension is rows
     size_t nCols = dims_x(1), nRows = dims_x(0);
 
-
+    int stot = nRows*nCols;
     std::pair<size_t,size_t> columnXY;
     int cxy_first = ds->getColumnNum(name_indep_x);
     int cxy_second= ds->getColumnNum(name_indep_y);
@@ -2122,8 +2198,13 @@ void wndPlot2d::octave_to_vectordata(std::string varname_x, std::string varname_
     {
         columnXY.first = cxy_first;
         columnXY.second= cxy_second;
-        ds->resizeColumn(cxy_first,nRows*nCols);
-        ds->resizeColumn(cxy_second,nRows*nCols);
+
+
+        if (ds->getRows(cxy_first)!=stot)
+            ds->resizeColumn(cxy_first,stot);
+
+        if (ds->getRows(cxy_second)!=stot)
+            ds->resizeColumn(cxy_second,stot);
     }
 
     if ((!xname.empty())&&(!yname.empty()))
@@ -2153,14 +2234,16 @@ void wndPlot2d::octave_to_vectordata(std::string varname_x, std::string varname_
     if (var_id_x==-1)
         var_id_x = ds->addColumn(nCols*nRows, QString::fromStdString(varname_x));
     else
-        ds->resizeColumn(var_id_x, nRows*nCols);
+        if (ds->getRows(var_id_x)!=stot)
+        ds->resizeColumn(var_id_x, stot);
 
 
     int var_id_y = ds->getColumnNum(QString::fromStdString(varname_y));
     if (var_id_y==-1)
         var_id_y = ds->addColumn(nCols*nRows, QString::fromStdString(varname_y));
     else
-        ds->resizeColumn(var_id_y, nRows*nCols);
+        if (ds->getRows(var_id_y)!=stot)
+            ds->resizeColumn(var_id_y, stot);
 
 
     // The JTKQ is row major
@@ -2281,7 +2364,8 @@ void wndPlot2d::octave_to_densitydata(std::string varname_x,  std::string yname,
     if (var_id_x==-1)
         var_id_x = ds->addImageColumn(nCols, nRows, QString::fromStdString(varname_x));
     else
-        ds->resizeColumn(var_id_x, nRows*nCols);
+        if (ds->getRows(var_id_x)!=nRows*nCols)
+            ds->resizeColumn(var_id_x, nRows*nCols);
 
 
     // The JTKQ is row major

@@ -6,5 +6,5 @@
 extern std::string str_message_immediate_update;
 extern std::string str_message_immediate_inquiry;
 extern std::string str_message_immediate_command;
-
+extern std::string str_message_plot;
 #endif // ARIA_RDK_INTERFACE_MESSAGES_H
