@@ -230,7 +230,7 @@ void octaveInterface::run(std::shared_ptr<octaveScript> script)
     }
 }
 
-bool    octaveInterface::run(const QString &program)
+bool    octaveInterface::run(const QString &program, bool remove_immediate_error_msg)
 {
     if (_b_running_command)
         return false;
@@ -247,14 +247,16 @@ bool    octaveInterface::run(const QString &program)
     }
     catch (const octave::exit_exception& ex)
     {
-        emit workerError(QString("Octave exit-exception while executing current script\n")+QString::number(ex.exit_status()));
+        if (!remove_immediate_error_msg)
+            emit workerError(QString("Octave exit-exception while executing current script\n")+QString::number(ex.exit_status()));
         //fi.remove();
         _b_running_command = false;
         return false;
     }
     catch (const octave::execution_exception&)
     {
-        emit workerError(QString("Octave execution exception while executing current script"));
+        if (!remove_immediate_error_msg)
+            emit workerError(QString("Octave execution exception while executing current script"));
         //fi.remove();
         _b_running_command = false;
         return false;

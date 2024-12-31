@@ -160,7 +160,7 @@ void opSchedulerOperations::set_idle()
 void opSchedulerOperations::halt()
 {
     _status = HALT;
-    _device->disconnect();
+    //_device->disconnect();
     //if (_status==HALT) _device->disconnect(); //_status=IDLE;} else {_device->disconnect(); _status=HALT;}
 }
 //----------------------------------------------------------------

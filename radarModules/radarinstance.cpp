@@ -1050,7 +1050,7 @@ void    radarInstance::update_module()
 
         if (param==nullptr)
         {
-            to_delete.append(param->get_name());
+//            to_delete.append(param->get_name());
             continue;
         }
         radarParamPointer param_ref = _ref_module->get_param(param->get_name());
@@ -1083,13 +1083,13 @@ void    radarInstance::update_module()
 
         if (pref == nullptr)
         {
-            to_delete_ref.append(pref->get_name());
+//            to_delete_ref.append(pref->get_name());
             continue;
         }
 
         radarParamPointer pdev = get_param(np);
         if (pdev == nullptr)
-            to_add.append(pdev->get_name());
+            to_add.append(pref->get_name());
     }
     if (!(to_delete.isEmpty() && to_update.isEmpty() && to_add.isEmpty() && to_update_preserve_actual.isEmpty()))
     {
@@ -1101,13 +1101,9 @@ void    radarInstance::update_module()
             // Save alias, plot and compound
             bool bcompound = param->is_compound_name();
             QString alias  = param->get_alias_octave_name();
-            PLOT_TYPE plot = param->get_plot_type();
-            bool bplot     = param->is_plotted();
             (*param) = (*ref);
             param->set_alias_octave_name(alias);
             param->set_compound_name(bcompound);
-            param->set_plot_type(plot);
-            param->set_plotted(bplot);
         }
 
         for (const auto& nupdate : to_update_preserve_actual)
@@ -1134,8 +1130,6 @@ void    radarInstance::update_module()
             radarParamPointer new_param = _ref_module->get_param(np)->clone();
             append_param(new_param);
         }
-
-        save_xml();
     }
 
     if (!to_delete_ref.isEmpty())
@@ -1275,7 +1269,7 @@ bool radarInstance::init_scripts()
 
     for (auto& script: _init_scripts)
         if (script != nullptr)
-            if (!_workspace->data_interface()->run(script->get_text())) return false;
+            if (!_workspace->data_interface()->run(script->get_text(),true)) return false;
 
     if (_params_to_modify.empty()||_init_scripts.empty())
     {
@@ -1401,7 +1395,7 @@ bool radarInstance::postacquisition_scripts()
 
     for (auto& script: _post_acquisition_scripts)
         if (script != nullptr)
-            if (!_workspace->data_interface()->run(script->get_text())) return false;
+            if (!_workspace->data_interface()->run(script->get_text(),true)) return false;
 
     if (_params_to_modify.empty()||_post_acquisition_scripts.isEmpty())
     {

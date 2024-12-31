@@ -662,7 +662,6 @@ template<typename T> bool    radarParameter<T>::save_xml(QDomDocument& owner, QD
     element.setAttribute("command_string", _command_string);
     element.setAttribute("size",strSizeToString(get_size()));
 
-
     if (is_linked_to_octave())
     {
         element.setAttribute("name_compound",_b_compound_name ? "true":"false");
@@ -1358,6 +1357,12 @@ bool    radarParameter<enumElem>::save_xml(QDomDocument& owner, QDomElement& roo
     element.setAttribute("param_group",_group);
     element.setAttribute("command_string",_command_string);
     element.setAttribute("size",strSizeToString(get_size()));
+
+    if (is_linked_to_octave())
+    {
+        element.setAttribute("name_compound",_b_compound_name ? "true":"false");
+        element.setAttribute("octave_alias",_var);
+    }
 
     element.setAttribute("plotted",_b_plotted? QString("true"):QString("false"));
 

@@ -13,6 +13,8 @@
 #include <QWidget>
 #include <QDialog>
 
+#define EXPORT_VOID
+
 #define COL_NAME 0
 #define COL_DEFAULT_VALUE 1
 #define COL_SETVALUE 2
@@ -533,54 +535,24 @@ void    wndRadarInstanceEditor::param_to_table_row(int row, radarParamPointer cu
     ui->tblParams->setItem(row,COL_READVALUE, item);
     update_read_value(row);
     // Current value (shown)
-    /*
-    item = new QTableWidgetItem();
-    data = current_param->value_to_variant();
-    item = new QTableWidgetItem();
-
-    if (data.count()==0)
-        val_text = "[ empty data ]";
-    else
-    {
-        QString val0 = (default_value->get_type() == RPT_INT8) ||  (default_value->get_type() == RPT_UINT8 )? QString::number(data[0].toInt()) : data[0].toString();
-        item->setFlags(item->flags() ^ Qt::ItemIsEditable);
-        val_text = data.count() == 1 ? val0 : QString("[") + val0 + "... ]";
-        item->setText(val_text);
-        ui->tblParams->setItem(row,COL_READVALUE,item);
-    }*/
 
    // Exported to Octave
     QCheckBox* cb = new QCheckBox();
     cb->setChecked(current_param->is_linked_to_octave() && (current_param->get_type()!=RPT_VOID));
     connect(cb, &QCheckBox::checkStateChanged, this, &wndRadarInstanceEditor::linkToOctaveChanged);
     ui->tblParams->setCellWidget(row,COL_EXPORT_OCTAVE,cb);
+#ifndef EXPORT_VOID
     cb->setEnabled(current_param->get_type() != RPT_VOID);
-/*
-    // Plot
-    QComboBox *plotcb = new QComboBox();
-    //PTJK_PLOT, PTJK_SCATTER, PTJK_AREA, PTJK_BARV, PTJK_DENS, PTJK_VERTARROWS, PTJK_BOXPLOT, PTJK_VECT2D, PTJK_CONTOUR,
-    plotcb->addItem("[none]");
-    plotcb->addItem("Plot");
-    plotcb->addItem("Scatter");
-    plotcb->addItem("Area");
-    plotcb->addItem("Vertical Bars");
-    plotcb->addItem("Density");
-    plotcb->addItem("Vertical Arrows");
-    plotcb->addItem("Box Plot");
-    plotcb->addItem("2D quiver");
-    plotcb->addItem("Contour");
-    if (current_param->is_plotted())
-        plotcb->setCurrentIndex((int)(current_param->get_plot_type()+1));
-    else
-        plotcb->setCurrentIndex(0);
-    connect(plotcb,SIGNAL(currentIndexChanged(int)),this,SLOT(currentPlotChanged(int)));
-    plotcb->setEnabled((current_param->get_type() != RPT_VOID)&&(current_param->is_linked_to_octave()));
-    ui->tblParams->setCellWidget(row,COL_PLOTTYPE,plotcb);
-*/
+#endif
+
     // alias
     QTableWidgetItem* item_alias = new QTableWidgetItem();
     item_alias->setText(current_param->get_alias_octave_name());
+#ifdef EXPORT_VOID
+    if (!current_param->is_linked_to_octave())
+#else
     if ((current_param->get_type()==RPT_VOID)||(!current_param->is_linked_to_octave()))
+#endif
         item_alias->setFlags(item_alias->flags() ^ Qt::ItemIsEditable);
 
     ui->tblParams->setItem(row,COL_ALIAS, item_alias);
@@ -588,7 +560,11 @@ void    wndRadarInstanceEditor::param_to_table_row(int row, radarParamPointer cu
     // compound
     QCheckBox *cb_comp = new QCheckBox();
     cb_comp->setChecked(current_param->is_compound_name());
+#ifndef EXPORT_VOID
     cb_comp->setEnabled((current_param->get_type()!=RPT_VOID)&&(current_param->is_linked_to_octave())&&(!current_param->get_alias_octave_name().isEmpty()));
+#else
+    cb_comp->setEnabled((current_param->is_linked_to_octave())&&(!current_param->get_alias_octave_name().isEmpty()));
+#endif
 
     connect(cb_comp, &QCheckBox::checkStateChanged, this, &wndRadarInstanceEditor::compoundNameChanged);
     ui->tblParams->setCellWidget(row, COL_COMPOUND_NAME,cb_comp);
@@ -610,14 +586,6 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
         if (btnInquiry!=nullptr) ui->tblParams->setCellWidget(row,COL_SETVALUE,btnInquiry);
         connect(btnInquiry, SIGNAL(clicked()), this, SLOT(inquiry_parameter()));
 
-/*        QTableWidgetItem* item = new QTableWidgetItem(); //ui->tblParams->item(row,COL_SETVALUE);
-        if (item!=nullptr)
-        {
-            item->setText("output");
-            item->setFlags(item->flags() ^ Qt::ItemIsEditable);
-            ui->tblParams->setItem(row,COL_SETVALUE, item);
-
-        }*/
         return;
     }
 
@@ -635,14 +603,7 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
             btnSendCommand->setText("Send cmd");
             if (btnSendCommand!=nullptr) ui->tblParams->setCellWidget(row,COL_SETVALUE,btnSendCommand);
             connect(btnSendCommand, &QPushButton::clicked, this, &wndRadarInstanceEditor::send_command);
-                /*
-                QTableWidgetItem* item = new QTableWidgetItem(); //ui->tblParams->item(row,COL_SETVALUE);
-                if (item != nullptr)
-                {
-                    item->setText("[void]");
-                    item->setFlags(item->flags() ^ Qt::ItemIsEditable);
-                    ui->tblParams->setItem(row,COL_SETVALUE, item);
-                }*/
+
             }
             break;
             case RPT_UINT8:
@@ -1032,7 +993,7 @@ void wndRadarInstanceEditor::cbEnumIndexChange(int index)
     std::shared_ptr<radarParameter<enumElem>> rpEnum =  std::dynamic_pointer_cast<radarParameter<enumElem>>(_radar_instance->get_param(row));
     if (rpEnum==nullptr) return;
     radarEnum avail = rpEnum->get_list_available_values();
-    int64NDArray val;
+    uint8NDArray val;
     val.resize(dim_vector({1,1}));
 
     for (auto& item : avail)
@@ -1084,7 +1045,11 @@ void    wndRadarInstanceEditor::linkToOctaveChanged(Qt::CheckState newLinkState)
     if (param==nullptr) return;
     QCheckBox* cb = (QCheckBox*)ui->tblParams->cellWidget(row, COL_EXPORT_OCTAVE);
     if (cb==nullptr) return;
-    bool linked =cb->checkState() == Qt::Checked && (param->get_type()!=RPT_VOID);
+    bool linked =cb->checkState() == Qt::Checked
+#ifndef EXPORT_VOID
+                    && (param->get_type()!=RPT_VOID)
+#endif
+        ;
 
     QTableWidgetItem* item = ui->tblParams->item(row,COL_ALIAS);
     if (linked)
@@ -1411,8 +1376,8 @@ void    wndRadarInstanceEditor::run()
     {
         // Here we may create different radar_devices (confirm
         _scheduler->stop();
-        delete _scheduler;
-        _scheduler = nullptr;
+//        delete _scheduler;
+//        _scheduler = nullptr;
     }
     else
         _scheduler->run();
