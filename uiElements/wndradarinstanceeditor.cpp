@@ -452,31 +452,46 @@ void    wndRadarInstanceEditor::init_parameter_table()
 {
     ui->tblParams->clear();
     ui->tblParams->setColumnCount(7);
-    ui->tblParams->setRowCount(_radar_instance->get_param_count());
-    ui->tblParams->setHorizontalHeaderLabels(QStringList({"Parameter","Default Value","Current Value","Current Value", "Exported to Octave","Alias", "Compound"}));
-    connect(ui->tblParams, &QTableWidget::itemChanged, this, &wndRadarInstanceEditor::itemChanged);
 
-    QVector<radarParamPointer> params = _radar_instance->get_param_table();
-    ui->tblParams->setRowCount(params.count());
 
     radarModule*            ref = _radar_instance->get_module();
     if (ref==nullptr)
-     {
+    {
         QMessageBox::critical(this,"Error","Unspecified model for ptable fill");
         return;
     }
-   for (int row = 0; row < params.count(); row++)
-   {
+
+    QVector<radarParamPointer> params = _radar_instance->get_param_table();
+    QVector<radarParamPointer> p_to_del;
+    for (int row = 0; row < params.count(); row++)
+    {
         radarParamPointer param = params[row];      // This is the actual value.
         radarParamPointer defpar= ref->get_param(param->get_name());
         if (defpar==nullptr)
         {
             QMessageBox::critical(this, "Error", QString("Parameter :")+param->get_name()+" does not have reference");
-            return;
+            p_to_del.append(param);
+            continue;
         }
+    }
+
+    for (auto p : p_to_del)
+    {
+        _radar_instance->remove_param(p->get_name());
+    }
+    params = _radar_instance->get_param_table();
+
+    ui->tblParams->setHorizontalHeaderLabels(QStringList({"Parameter","Default Value","Current Value","Current Value", "Exported to Octave","Alias", "Compound"}));
+    connect(ui->tblParams, &QTableWidget::itemChanged, this, &wndRadarInstanceEditor::itemChanged);
+    ui->tblParams->setRowCount(params.count());
+
+
+   for (int row = 0; row < params.count(); row++)
+   {
+        radarParamPointer param = params[row];      // This is the actual value.
+        radarParamPointer defpar= ref->get_param(param->get_name());
         param_to_table_row(row, param, defpar);
         update_read_value(row);
-
    }
 }
 //-----------------------------------------------------------
@@ -538,7 +553,11 @@ void    wndRadarInstanceEditor::param_to_table_row(int row, radarParamPointer cu
 
    // Exported to Octave
     QCheckBox* cb = new QCheckBox();
-    cb->setChecked(current_param->is_linked_to_octave() && (current_param->get_type()!=RPT_VOID));
+    cb->setChecked(current_param->is_linked_to_octave()
+#ifndef EXPORT_VOID
+                   && (current_param->get_type()!=RPT_VOID)
+#endif
+                   );
     connect(cb, &QCheckBox::checkStateChanged, this, &wndRadarInstanceEditor::linkToOctaveChanged);
     ui->tblParams->setCellWidget(row,COL_EXPORT_OCTAVE,cb);
 #ifndef EXPORT_VOID

@@ -985,7 +985,7 @@ bool radarInstance::load_xml()
             }
 
         }
-        if (_params.count()!=expected_size) return false;
+      //  if (_params.count()!=expected_size) return false;
     }
 
     // Load scripts
@@ -1009,7 +1009,7 @@ bool radarInstance::load_xml()
         }
         while(!script.isNull());
 
-        if (_init_scripts.count()!=num_scripts) return false;
+        //if (_init_scripts.count()!=num_scripts) return false;
     }
 
     scripts = radar_node.firstChildElement("post_acquisition_scripts");
@@ -1030,7 +1030,7 @@ bool radarInstance::load_xml()
         }
         while(!script.isNull());
 
-        if (_post_acquisition_scripts.count()!=num_scripts) return false;
+        //if (_post_acquisition_scripts.count()!=num_scripts) return false;
     }
     return true;
 }
