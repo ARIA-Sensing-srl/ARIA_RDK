@@ -946,7 +946,7 @@ bool radarInstance::load_xml()
     QDomElement parameter_list = radar_node.firstChildElement("actual_params");
     if (!parameter_list.isNull())
     {
-        int expected_size = parameter_list.attribute("count","0").toInt();
+        //int expected_size = parameter_list.attribute("count","0").toInt();
 
         QDomElement param_elem = parameter_list.firstChildElement("parameter");
 
@@ -991,10 +991,10 @@ bool radarInstance::load_xml()
     // Load scripts
 
     QDomElement scripts = radar_node.firstChildElement("init_scripts");
-    bool bOk;
+    //bool bOk;
     if (!scripts.isNull())
     {
-        int num_scripts = scripts.attribute("count","0").toInt(&bOk);
+        //int num_scripts = scripts.attribute("count","0").toInt(&bOk);
         QDomElement script = scripts.firstChildElement("script");
         _init_scripts.resize(0);
 
@@ -1016,7 +1016,7 @@ bool radarInstance::load_xml()
 
     if (!scripts.isNull())
     {
-        int num_scripts = scripts.attribute("count","0").toInt(&bOk);
+        //int num_scripts = scripts.attribute("count","0").toInt(&bOk);
         QDomElement script = scripts.firstChildElement("script");
         _post_acquisition_scripts.resize(0);
         do

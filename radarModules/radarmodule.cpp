@@ -679,7 +679,7 @@ bool radarModule::load_xml()
 
     if (!antenna_root.isNull())
     {
-        bool bOk = false;
+        //bool bOk = false;
         //int antenna_count = antenna_root.attribu  te("count").toInt(&bOk);
         //if (!bOk) return false;
 

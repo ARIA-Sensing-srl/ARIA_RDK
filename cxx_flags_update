@@ -1,0 +1,21 @@
+---Debug
+--New
+
+
+-g -O3 -feliminate-unused-debug-types -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -Wformat -Wformat-security -m64 -fasynchronous-unwind-tables -Wp,-D_REENTRANT -fno-semantic-interposition -ffat-lto-objects -fno-trapping-math -mrelax-cmpxchg-loop -ffunction-sections  -fvisibility-inlines-hidden -std=gnu++17 -DQT_QML_DEBUG
+
+
+--Original
+
+-g -O3 -feliminate-unused-debug-types -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -Wformat -Wformat-security -m64 -fasynchronous-unwind-tables -Wp,-D_REENTRANT -ftree-loop-distribute-patterns -Wl,-z,now -Wl,-z,relro -fno-semantic-interposition -ffat-lto-objects -fno-trapping-math -Wl,-sort-common -Wl,--enable-new-dtags -mrelax-cmpxchg-loop -ffunction-sections  -fvisibility-inlines-hidden -Wl,--enable-new-dtags -std=gnu++17 -DQT_QML_DEBUG
+
+
+
+---Release
+--New
+
+-g -O3 -feliminate-unused-debug-types -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -Wformat -Wformat-security -m64 -fasynchronous-unwind-tables -Wp,-D_REENTRANT -fno-semantic-interposition -ffat-lto-objects -fno-trapping-math -mrelax-cmpxchg-loop -ffunction-sections  -fvisibility-inlines-hidden -std=gnu++17
+
+--Original
+
+-g -O3 -feliminate-unused-debug-types -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -Wformat -Wformat-security -m64 -fasynchronous-unwind-tables -Wp,-D_REENTRANT -ftree-loop-distribute-patterns -Wl,-z,now -Wl,-z,relro -fno-semantic-interposition -ffat-lto-objects -fno-trapping-math -Wl,-sort-common -Wl,--enable-new-dtags -mrelax-cmpxchg-loop -ffunction-sections  -fvisibility-inlines-hidden -Wl,--enable-new-dtags -std=gnu++17

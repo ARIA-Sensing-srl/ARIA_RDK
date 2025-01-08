@@ -54,7 +54,7 @@ void wndScanModules::scanRadarModules()
 {
     projectItem* item;
 
-    int n=0;
+    //int n=0;
 
     auto selected = ui->tblSerialPorts->selectionModel()->selectedRows();
     QList<QSerialPortInfo> selectedPorts;

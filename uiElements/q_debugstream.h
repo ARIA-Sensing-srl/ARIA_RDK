@@ -16,7 +16,7 @@
 #include "QFile"
 #include <aria_rdk_interface_messages.h>
 #include <octaveinterface.h>
-#include "mdioctaveinterface.h"
+
 // MessageHandler
 /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 class MessageHandler : public QObject
@@ -46,7 +46,7 @@ class ThreadLogStream : public QObject, public std::basic_streambuf<char>
 
     Q_OBJECT
 public:
-    ThreadLogStream(std::ostream &stream, QObject * parent = Q_NULLPTR) :QObject(parent), m_stream(stream), octInt(nullptr), _wndOctave(nullptr)
+    ThreadLogStream(std::ostream &stream, QObject * parent = Q_NULLPTR) :QObject(parent), m_stream(stream), octInt(nullptr)//, _wndOctave(nullptr)
     {
         m_old_buf = stream.rdbuf();
         stream.rdbuf(this);
@@ -156,7 +156,7 @@ private:
     std::streambuf *m_old_buf;
     std::string m_string;
     octaveInterface*        octInt;
-    mdiOctaveInterface*     _wndOctave;
+    //mdiOctaveInterface*     _wndOctave;
 signals:
     void sendLogString(const QString& str);
 
