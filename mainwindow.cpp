@@ -1166,8 +1166,6 @@ void MainWindow::deleteModule()
     if (!project->get_last_error().isEmpty())
     {QMessageBox::critical(this,tr("Error"), project->get_last_error()); return;}
 
-
-
     updateProjectTree();
 
     project->save_project_file();
@@ -1178,4 +1176,11 @@ void MainWindow::fw_upload()
 {
     wndFWUpload wndFWUpload(this);
     wndFWUpload.exec();
+}
+
+//---------------------------------------------------------------
+void MainWindow::cleanUpFiles()
+{
+	if (m_qd == nullptr) return;
+	m_qd->cleanUpFile();
 }

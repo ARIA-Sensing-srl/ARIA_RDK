@@ -14,6 +14,7 @@
 #include "QTextEdit"
 #include "QDateTime"
 #include "QFile"
+#include "QFileInfo"
 #include <aria_rdk_interface_messages.h>
 #include <octaveinterface.h>
 
@@ -46,7 +47,7 @@ class ThreadLogStream : public QObject, public std::basic_streambuf<char>
 
     Q_OBJECT
 public:
-    ThreadLogStream(std::ostream &stream, QObject * parent = Q_NULLPTR) :QObject(parent), m_stream(stream), octInt(nullptr)//, _wndOctave(nullptr)
+	ThreadLogStream(std::ostream &stream, QObject * parent = Q_NULLPTR) :QObject(parent), m_stream(stream), octInt(nullptr), m_interface_file("")
     {
         m_old_buf = stream.rdbuf();
         stream.rdbuf(this);
@@ -59,8 +60,15 @@ public:
             emit sendLogString(QString::fromStdString(m_string));
         }
         m_stream.rdbuf(m_old_buf);
+		cleanUpFile();
     }
     void setInterface(octaveInterface* interface) {octInt = interface;}
+	void cleanUpFile() {if (m_interface_file.empty()) return;
+						QFileInfo fi(QString::fromStdString(m_interface_file));
+						if (fi.fileName()!=".rdk_tmp.atp") return;
+						std::remove(m_interface_file.c_str());
+						m_interface_file.clear();
+		}
 protected:
     virtual int_type overflow(int_type v)
     {
@@ -141,12 +149,13 @@ protected:
         }
         if ((octInt!=nullptr)&&(!varname.isEmpty())&&(!filepath.isEmpty()))
         {
+			m_interface_file = filepath.toStdString();
             if (b_immediate_update)
-                octInt->immediate_update_of_radar_var(varname.toStdString(),filepath.toStdString());
+				octInt->immediate_update_of_radar_var(varname.toStdString(),m_interface_file);
             if (b_immediate_inquiry)
-                octInt->immediate_inquiry_of_radar_var(varname.toStdString(),filepath.toStdString());
+				octInt->immediate_inquiry_of_radar_var(varname.toStdString(),m_interface_file);
             if (b_immediate_command)
-                octInt->immediate_command(varname.toStdString(),filepath.toStdString());
+				octInt->immediate_command(varname.toStdString(),m_interface_file);
         }
 
         return n;
@@ -156,6 +165,7 @@ private:
     std::streambuf *m_old_buf;
     std::string m_string;
     octaveInterface*        octInt;
+	std::string	m_interface_file;
     //mdiOctaveInterface*     _wndOctave;
 signals:
     void sendLogString(const QString& str);

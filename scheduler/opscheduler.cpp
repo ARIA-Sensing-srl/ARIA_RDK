@@ -5,7 +5,7 @@
  */
 
 #include "opscheduler.h"
-
+#include "../mainwindow.h"
 //----------------------------------------------------------------
 // Singe device worker class
 opSchedulerOperations::opSchedulerOperations(radarInstance* device, octaveInterface* octint) :
@@ -374,17 +374,23 @@ void        opScheduler::stop(radarInstance* device)
 
         _b_running = false;
         emit halted(nullptr);
+		if (MainWindow::mainWnd!=nullptr)
+			MainWindow::mainWnd->cleanUpFiles();
     }
     else
     {
         for (auto& worker : _workers)
+		{
             if (worker!=nullptr)
                 if (worker->get_device() == device)
                 {
                     worker->halt();
                     emit halted(device);
                 }
+		}
         //delete_radar(device);
+		if (MainWindow::mainWnd!=nullptr)
+			MainWindow::mainWnd->cleanUpFiles();
 
         if (_workers.isEmpty())
         {

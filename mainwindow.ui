@@ -320,6 +320,9 @@
    </property>
   </action>
   <action name="actionNew_Device">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>New Device</string>
    </property>

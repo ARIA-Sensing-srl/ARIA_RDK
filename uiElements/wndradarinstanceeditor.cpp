@@ -7,6 +7,7 @@
 #include "wndradarinstanceeditor.h"
 #include "ui_wndradarinstanceeditor.h"
 #include "wndscanmodules.h"
+
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QEvent>
@@ -403,10 +404,12 @@ void wndRadarInstanceEditor::confirm()
         _radar_instance->set_expected_portname(ui->leRadarPort->text());
 
         if (add_new)
-        {   root->add_radar_instance(_radar_instance);
+		{
+			root->add_radar_instance(_radar_instance);
             if (!root->get_last_error().isEmpty())
             {
                 QMessageBox::critical(this, "Error", root->get_last_error());
+				(*_radar_instance) = (*_backup);
                 return;
             }
             root->save_project_file();

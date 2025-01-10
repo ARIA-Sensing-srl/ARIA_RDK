@@ -110,6 +110,9 @@ public slots:
 
 // About
     void showAbout();
+// Clean-up octave interface files
+	void cleanUpFiles();
+
 protected:
     void closeEvent(QCloseEvent *event);
 
