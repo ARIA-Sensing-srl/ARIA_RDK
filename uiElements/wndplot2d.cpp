@@ -1943,7 +1943,8 @@ void wndPlot2d::octave_to_box_plotdata(std::string varname, std::string indep)
 		ds->resizeColumn(var_id_q75, nrows);
     //------------
     // q25
-    QString mean_name = basename + "{Mean}";
+	QString mean_name = basename + "{Mean}";
+	// Check if qwt_plot stcaz
     int var_id_mean = ds->getColumnNum(mean_name);
 
     if (var_id_mean == -1)
