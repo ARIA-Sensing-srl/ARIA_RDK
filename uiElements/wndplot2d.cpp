@@ -179,21 +179,28 @@ void wndPlot2d::populate_plot( plot_descriptor pl)
             if (nrows==1)
             {
                 QString vname = QString::fromStdString(pl._dep);
-                line_graph->setYColumn(ds->getColumnNum(vname));
-                line_graph->setTitle(QString::fromStdString(pl._dep));
+				if (line_graph->getYColumn()==-1)
+				{
+					line_graph->setYColumn(ds->getColumnNum(vname));
+					line_graph->setTitle(QString::fromStdString(pl._dep));
+				}
+
+
             }
             else
             {
                 QString name = get_var_name(pl._dep, g);
-                if (line_graph->getTitle().isEmpty())
-                    line_graph->setTitle(name);
+
                 if (line_graph->getYColumn()==-1)
+				{
                     line_graph->setYColumn(ds->getColumnNum(name));
+					line_graph->setTitle(name);
+				}
             }
         }
 
     }
-    plotter->zoomToFit();
+	//plotter->zoomToFit();
 
     redraw(pl);
 }
@@ -529,6 +536,9 @@ void        wndPlot2d::populate_dens( plot_descriptor pl)
     if (density_graph->getImageColumn()==-1)
         density_graph->setImageColumn(ds->getColumnNum(QString::fromStdString(pl._dep)));
 
+	redraw(pl);
+	return;
+
     density_graph->setNx(Nx);
     density_graph->setNy(Ny);
     density_graph->setX(xmin);
@@ -546,9 +556,9 @@ void        wndPlot2d::populate_dens( plot_descriptor pl)
     plotter->getPlotter()->setMaintainAxisAspectRatio(true);
     density_graph->setTitle(QString::fromStdString(pl._dep));
     density_graph->getColorBarRightAxis()->setAxisLabel(QString::fromStdString(pl._dep)+ " intensity");
-    plotter->addGraph(density_graph);
+	//plotter->addGraph(density_graph);
 
-    redraw(pl);
+
 
 
 }
@@ -589,15 +599,20 @@ void        wndPlot2d::populate_vect2d( plot_descriptor pl)
     if (vect_graph->getDyColumn()==-1)
         vect_graph->setDyColumn(ds->getColumnNum(QString::fromStdString(pl._depy)));
 
-    QString xColumnName = pl._indep_x.empty()? get_var_indep_name("",get_vector_full_name(pl._dep,pl._depy).toStdString(),0) : QString::fromStdString(pl._indep_x);
-    QString yColumnName = pl._indep_y.empty()? get_var_indep_name("",get_vector_full_name(pl._dep,pl._depy).toStdString(),1) : QString::fromStdString(pl._indep_y);
+	if ((vect_graph->getXColumn()==-1)||(vect_graph->getYColumn()))
+	{
+		QString xColumnName = pl._indep_x.empty()? get_var_indep_name("",get_vector_full_name(pl._dep,pl._depy).toStdString(),0) : QString::fromStdString(pl._indep_x);
+		QString yColumnName = pl._indep_y.empty()? get_var_indep_name("",get_vector_full_name(pl._dep,pl._depy).toStdString(),1) : QString::fromStdString(pl._indep_y);
 
-    vect_graph->setXYColumns(QPair<int,int>(
-         ds->getColumnNum(xColumnName),
-         ds->getColumnNum(yColumnName)
-        ));
+		vect_graph->setXYColumns(QPair<int,int>(
+			 ds->getColumnNum(xColumnName),
+			 ds->getColumnNum(yColumnName)
+			));
 
-    vect_graph->setTitle(get_vector_full_name(pl._dep,pl._depy));
+		vect_graph->setTitle(get_vector_full_name(pl._dep,pl._depy));
+	}
+
+
 /*
     if ((!pl._indep_x.empty())&&(!pl._indep_y.empty()))
     {
@@ -608,7 +623,7 @@ void        wndPlot2d::populate_vect2d( plot_descriptor pl)
         plotter->getYAxis()->setAxisLabel(yaxis_label);
     }
 */
-    plotter->addGraph(vect_graph);
+	//plotter->addGraph(vect_graph);
 
     redraw(pl);
 }
@@ -757,6 +772,7 @@ void wndPlot2d::update_graphs_vector(plot_descriptor& pl, JKQTPlotter* plotter)
         pl._graph.push_back( graph_vector);
         graph_vector->setVectorLengthMode(JKQTPVectorFieldGraph::AutoscaleLength);
         graph_vector->setVectorLineWidthMode(JKQTPVectorFieldGraph::AutoscaleLineWidthFromLength);
+		plotter->addGraph(graph_vector);
     }
     redraw(pl);
 }
@@ -785,6 +801,7 @@ void wndPlot2d::update_graphs_density(plot_descriptor& pl, JKQTPlotter* plotter)
     {
         JKQTPColumnMathImage* graph_vector = (JKQTPColumnMathImage*)create_graph(pl,plotter);
         pl._graph.push_back( graph_vector);
+		plotter->addGraph(graph_vector);
     }
 
     redraw(pl);
