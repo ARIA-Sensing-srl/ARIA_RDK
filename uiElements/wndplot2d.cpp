@@ -1836,7 +1836,8 @@ void wndPlot2d::default_indep_vect(const std::string& indep, const std::string& 
         var_id = ds->addColumn(indep_name);
 
     int length = get_var_length(dep);
-    ds->resizeColumn(var_id, length);
+	if (ds->getRows(var_id)!=length)
+		ds->resizeColumn(var_id, length);
     for (int n=0; n < length; n++)
         ds->set(var_id, n, (double)(n));
 
@@ -1861,7 +1862,10 @@ void wndPlot2d::default_indep_box_plotvect(const std::string& indep, const std::
         var_id = ds->addColumn(indep_name);
 
     int length = _workspace->var_value(dep).dims()(0);
-    ds->resizeColumn(var_id, length);
+
+	if (ds->getRows(var_id)!=length)
+		ds->resizeColumn(var_id, length);
+
     for (int n=0; n < length; n++)
         ds->set(var_id, n, (double)(n));
 
@@ -1905,7 +1909,8 @@ void wndPlot2d::octave_to_box_plotdata(std::string varname, std::string indep)
     if (var_id_min == -1)
         var_id_min = ds->addColumn(min_name);
 
-    ds->resizeColumn(var_id_min, nrows);
+	if (ds->getRows(var_id_min)!=nrows)
+		ds->resizeColumn(var_id_min, nrows);
     //------------
     // max
     QString max_name = basename + "{max}";
@@ -1914,7 +1919,8 @@ void wndPlot2d::octave_to_box_plotdata(std::string varname, std::string indep)
     if (var_id_max == -1)
         var_id_max = ds->addColumn(max_name);
 
-    ds->resizeColumn(var_id_max, nrows);
+	if (ds->getRows(var_id_max)!=nrows)
+		ds->resizeColumn(var_id_max, nrows);
     //------------
     // q25
     QString q25_name = basename + "{Q25}";
@@ -1923,7 +1929,8 @@ void wndPlot2d::octave_to_box_plotdata(std::string varname, std::string indep)
     if (var_id_q25 == -1)
         var_id_q25 = ds->addColumn(q25_name);
 
-    ds->resizeColumn(var_id_q25, nrows);
+	if (ds->getRows(var_id_q25)!=nrows)
+		ds->resizeColumn(var_id_q25, nrows);
     //------------
     // q75
     QString q75_name = basename + "{Q75}";
@@ -1932,7 +1939,8 @@ void wndPlot2d::octave_to_box_plotdata(std::string varname, std::string indep)
     if (var_id_q75 == -1)
         var_id_q75 = ds->addColumn(q75_name);
 
-    ds->resizeColumn(var_id_q75, nrows);
+	if (ds->getRows(var_id_q75)!=nrows)
+		ds->resizeColumn(var_id_q75, nrows);
     //------------
     // q25
     QString mean_name = basename + "{Mean}";
@@ -1941,7 +1949,8 @@ void wndPlot2d::octave_to_box_plotdata(std::string varname, std::string indep)
     if (var_id_mean == -1)
         var_id_mean = ds->addColumn(mean_name);
 
-    ds->resizeColumn(var_id_mean, nrows);
+	if (ds->getRows(var_id_mean)!=nrows)
+		ds->resizeColumn(var_id_mean, nrows);
     //------------
     // q75
     QString median_name = basename + "{Median}";
@@ -1950,8 +1959,10 @@ void wndPlot2d::octave_to_box_plotdata(std::string varname, std::string indep)
     if (var_id_median == -1)
         var_id_median = ds->addColumn(median_name);
 
-    ds->resizeColumn(var_id_median, nrows);
-    NDArray row; row.resize(dim_vector({1, nsamples}));
+	if (ds->getRows(var_id_mean)!=nrows)
+		ds->resizeColumn(var_id_median, nrows);
+
+	NDArray row; row.resize(dim_vector({1, nsamples}));
 
     //---------------------
     // get indep variable as well, so that we
@@ -2344,8 +2355,11 @@ void wndPlot2d::octave_to_densitydata(std::string varname_x,  std::string yname,
     if (y_id==-1)
         y_id = ds->addColumn(get_var_indep_name(yname,varname_x,1));
 
-    ds->resizeColumn(x_id,3);
-    ds->resizeColumn(y_id,3);
+	if (ds->getRows(x_id)!=3)
+		ds->resizeColumn(x_id,3);
+
+	if (ds->getRows(y_id)!=3)
+		ds->resizeColumn(y_id,3);
     // Put into column the required values (x|y Min, x|y Max and number of samples)
     if (xname.empty())
     {
