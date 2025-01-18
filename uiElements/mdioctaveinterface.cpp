@@ -306,14 +306,17 @@ void mdiOctaveInterface::workspaceTableRightClick(QPoint pos)
     QMenu* dens   = menu->addMenu("Density");
     QMenu* arrow  = menu->addMenu("Arrow plot");
     QMenu* vector = menu->addMenu("2D Vector field");
+	QMenu* qwtplot= menu->addMenu("Fast plot");
+	QMenu* qwtscatter = menu->addMenu("Fast scatter plot");
+	QMenu* qwtimage   = menu->addMenu("Fast density plot");
     //---------- PLOT --------------------------
-    QAction *plotNewPlot       = new QAction("New plot (each curve into own plot)");
-    QAction *plotNewSinglePlot = new QAction("New plot (all data into the same plot)");
-    QAction *plotNewSinglePlotXData = new QAction("New plot (x, y1,...yn)");
+	QAction *plotNewPlot       = new QAction("New plot (each curve into own plot)");
+	QAction *plotNewSinglePlot = new QAction("New plot (all data into the same plot)");
+	QAction *plotNewSinglePlotXData = new QAction("New plot (x, y1,...yn)");
 
-    connect(plotNewPlot, SIGNAL(triggered()), this, SLOT(variablePlot()));
-    connect(plotNewSinglePlot, SIGNAL(triggered()), this, SLOT(variablePlotAllInOne()));
-    connect(plotNewSinglePlotXData, SIGNAL(triggered()), this, SLOT(variablePlotXData()));
+	connect(plotNewPlot, &QAction::triggered, this, &mdiOctaveInterface::variablePlot);
+	connect(plotNewSinglePlot, &QAction::triggered, this, &mdiOctaveInterface::variablePlotAllInOne);
+	connect(plotNewSinglePlotXData, &QAction::triggered, this, &mdiOctaveInterface::variablePlotXData);
 
     plotNewSinglePlotXData->setEnabled(ui->workspaceList->selectionModel()->selectedRows().count()>=2);
 
@@ -321,88 +324,127 @@ void mdiOctaveInterface::workspaceTableRightClick(QPoint pos)
     plot->addAction(plotNewSinglePlot);
     plot->addAction(plotNewSinglePlotXData);
     //---------- SCATTER --------------------------
-    QAction *plotNewScatterPlot        = new QAction("New scatter-plot (each curve into own plot)");
-    QAction *plotNewSingleScatterPlot = new QAction("New scatter-plot (all data into the same plot)");
-    QAction *plotNewSingleScatterPlotXData   = new QAction("New scatter-plot (x, y1,...yn)");
+	QAction *plotNewScatterPlot        = new QAction("New scatter-plot (each curve into own plot)");
+	QAction *plotNewSingleScatterPlot = new QAction("New scatter-plot (all data into the same plot)");
+	QAction *plotNewSingleScatterPlotXData   = new QAction("New scatter-plot (x, y1,...yn)");
 
     scatter->addAction(plotNewScatterPlot);
     scatter->addAction(plotNewSingleScatterPlot);
     scatter->addAction(plotNewSingleScatterPlotXData);
 
-    connect(plotNewScatterPlot, SIGNAL(triggered()), this, SLOT(variableScatterPlot()));
-    connect(plotNewSingleScatterPlot, SIGNAL(triggered()), this, SLOT(variableScatterPlotAllInOne()));
-    connect(plotNewSingleScatterPlotXData, SIGNAL(triggered()), this, SLOT(variableScatterPlotXData()));
+	connect(plotNewScatterPlot, &QAction::triggered, this, &mdiOctaveInterface::variableScatterPlot);
+	connect(plotNewSingleScatterPlot, &QAction::triggered, this, &mdiOctaveInterface::variableScatterPlotAllInOne);
+	connect(plotNewSingleScatterPlotXData, &QAction::triggered, this, &mdiOctaveInterface::variableScatterPlotXData);
     //---------- BOXPLOT --------------------------
-    QAction *plotNewBoxPlot        = new QAction("New Box-plot (each curve into own plot)");
-    QAction *plotNewSingleBoxPlot = new QAction("New Box-plot (all data into the same plot)");
-    QAction *plotNewSingleBoxPlotXData   = new QAction("New Box-plot (x, y1,...yn)");
+	QAction *plotNewBoxPlot        = new QAction("New Box-plot (each curve into own plot)");
+	QAction *plotNewSingleBoxPlot = new QAction("New Box-plot (all data into the same plot)");
+	QAction *plotNewSingleBoxPlotXData   = new QAction("New Box-plot (x, y1,...yn)");
 
     boxplot->addAction(plotNewBoxPlot);
     boxplot->addAction(plotNewSingleBoxPlot);
     boxplot->addAction(plotNewSingleBoxPlotXData);
 
-    connect(plotNewBoxPlot, SIGNAL(triggered()), this, SLOT(variableBoxPlot()));
-    connect(plotNewSingleBoxPlot, SIGNAL(triggered()), this, SLOT(variableBoxPlotAllInOne()));
-    connect(plotNewSingleBoxPlotXData, SIGNAL(triggered()), this, SLOT(variableBoxPlotXData()));
+	connect(plotNewBoxPlot, &QAction::triggered, this, &mdiOctaveInterface::variableBoxPlot);
+	connect(plotNewSingleBoxPlot, &QAction::triggered, this, &mdiOctaveInterface::variableBoxPlotAllInOne);
+	connect(plotNewSingleBoxPlotXData, &QAction::triggered, this, &mdiOctaveInterface::variableBoxPlotXData);
 
     //---------- AREA --------------------------
-    QAction *plotNewAreaPlot        = new QAction("New Area-plot (each curve into own plot)");
-    QAction *plotNewSingleAreaPlot = new QAction("New Area-plot (all data into the same plot)");
-    QAction *plotNewSingleAreaPlotXData   = new QAction("New Area-plot (x, y1,...yn)");
+	QAction *plotNewAreaPlot        = new QAction("New Area-plot (each curve into own plot)");
+	QAction *plotNewSingleAreaPlot = new QAction("New Area-plot (all data into the same plot)");
+	QAction *plotNewSingleAreaPlotXData   = new QAction("New Area-plot (x, y1,...yn)");
 
     area->addAction(plotNewAreaPlot);
     area->addAction(plotNewSingleAreaPlot);
     area->addAction(plotNewSingleAreaPlotXData);
 
-    connect(plotNewAreaPlot, SIGNAL(triggered()), this, SLOT(variableAreaPlot()));
-    connect(plotNewSingleAreaPlot, SIGNAL(triggered()), this, SLOT(variableAreaPlotAllInOne()));
-    connect(plotNewSingleAreaPlotXData, SIGNAL(triggered()), this, SLOT(variableAreaPlotXData()));
+	connect(plotNewAreaPlot, &QAction::triggered, this, &mdiOctaveInterface::variableAreaPlot);
+	connect(plotNewSingleAreaPlot, &QAction::triggered, this, &mdiOctaveInterface::variableAreaPlotAllInOne);
+	connect(plotNewSingleAreaPlotXData, &QAction::triggered, this, &mdiOctaveInterface::variableAreaPlotXData);
 
     //---------- BAR --------------------------
-    QAction *plotNewBarPlot        = new QAction("New vBar-plot (each curve into own plot)");
-    QAction *plotNewSingleBarPlot = new QAction("New vBar-plot (all data into the same plot)");
-    QAction *plotNewSingleBarPlotXData   = new QAction("New vBar-plot (x, y1,...yn)");
+	QAction *plotNewBarPlot        = new QAction("New vBar-plot (each curve into own plot)");
+	QAction *plotNewSingleBarPlot = new QAction("New vBar-plot (all data into the same plot)");
+	QAction *plotNewSingleBarPlotXData   = new QAction("New vBar-plot (x, y1,...yn)");
 
     barv->addAction(plotNewBarPlot);
     barv->addAction(plotNewSingleBarPlot);
     barv->addAction(plotNewSingleBarPlotXData);
 
-    connect(plotNewBarPlot, SIGNAL(triggered()), this, SLOT(variableBarPlot()));
-    connect(plotNewSingleBarPlot, SIGNAL(triggered()), this, SLOT(variableBarPlotAllInOne()));
-    connect(plotNewSingleBarPlotXData, SIGNAL(triggered()), this, SLOT(variableBarPlotXData()));
+	connect(plotNewBarPlot, &QAction::triggered, this, &mdiOctaveInterface::variableBarPlot);
+	connect(plotNewSingleBarPlot, &QAction::triggered, this, &mdiOctaveInterface::variableBarPlotAllInOne);
+	connect(plotNewSingleBarPlotXData, &QAction::triggered, this, &mdiOctaveInterface::variableBarPlotXData);
 
     //---------- ARROW-------------------------
-    QAction *plotNewArrowPlot        = new QAction("New vert. arrow plot (each curve into own plot)");
-    QAction *plotNewSingleArrowPlot = new QAction("New vert. arrow plot (all data into the same plot)");
-    QAction *plotNewSingleArrowPlotXData   = new QAction("New vert. arrow plot (x, y1,...yn)");
+	QAction *plotNewArrowPlot        = new QAction("New vert. arrow plot (each curve into own plot)");
+	QAction *plotNewSingleArrowPlot = new QAction("New vert. arrow plot (all data into the same plot)");
+	QAction *plotNewSingleArrowPlotXData   = new QAction("New vert. arrow plot (x, y1,...yn)");
 
     arrow->addAction(plotNewArrowPlot);
     arrow->addAction(plotNewSingleArrowPlot);
     arrow->addAction(plotNewSingleArrowPlotXData);
 
-    connect(plotNewArrowPlot, SIGNAL(triggered()), this, SLOT(variableArrowPlot()));
-    connect(plotNewSingleArrowPlot, SIGNAL(triggered()), this, SLOT(variableArrowPlotAllInOne()));
-    connect(plotNewSingleArrowPlotXData, SIGNAL(triggered()), this, SLOT(variableArrowPlotXData()));
+	connect(plotNewArrowPlot, &QAction::triggered, this, &mdiOctaveInterface::variableArrowPlot);
+	connect(plotNewSingleArrowPlot, &QAction::triggered, this, &mdiOctaveInterface::variableArrowPlotAllInOne);
+	connect(plotNewSingleArrowPlotXData, &QAction::triggered, this, &mdiOctaveInterface::variableArrowPlotXData);
 
     //---------- DENSITY-------------------------
-    QAction *plotNewDensityPlot        = new QAction("New density plot (each image into own plot");
-    QAction *plotNewDensityPlotXData   = new QAction("New density plot (rows,cols, data_1,  ... rows_n, cols_n, data_xn, data_n)");
+	QAction *plotNewDensityPlot        = new QAction("New density plot (each image into own plot");
+	QAction *plotNewDensityPlotXData   = new QAction("New density plot (rows,cols, data_1,  ... rows_n, cols_n, data_xn, data_n)");
 
     dens->addAction(plotNewDensityPlot);
     dens->addAction(plotNewDensityPlotXData);
 
-    connect(plotNewDensityPlot, SIGNAL(triggered()), this, SLOT(variableDensityPlot()));
-    connect(plotNewDensityPlotXData, SIGNAL(triggered()), this, SLOT(variableDensityPlotXData()));
+	connect(plotNewDensityPlot, &QAction::triggered, this, &mdiOctaveInterface::variableDensityPlot);
+	connect(plotNewDensityPlotXData, &QAction::triggered, this, &mdiOctaveInterface::variableDensityPlotXData);
     //---------- VECTOR-------------------------
-    QAction *plotNewVectorPlot      = new QAction("New vector plot (each quiver into own plot");
-    QAction *plotNewVectorPlotXData = new QAction("New vector plot (rows,cols, data_x1, data_y1, ... rows_n, rows_n, data_xn, data_yn");
+	QAction *plotNewVectorPlot      = new QAction("New vector plot (each quiver into own plot");
+	QAction *plotNewVectorPlotXData = new QAction("New vector plot (rows,cols, data_x1, data_y1, ... rows_n, rows_n, data_xn, data_yn");
 
     vector->addAction(plotNewVectorPlot);
     vector->addAction(plotNewVectorPlotXData);
-    connect(plotNewVectorPlot, SIGNAL(triggered()), this, SLOT(variableVectorPlot()));
-    connect(plotNewVectorPlotXData, SIGNAL(triggered()), this, SLOT(variableVectorPlotXData()));
+	connect(plotNewVectorPlot, &QAction::triggered, this, &mdiOctaveInterface::variableVectorPlot);
+	connect(plotNewVectorPlotXData, &QAction::triggered, this, &mdiOctaveInterface::variableVectorPlotXData);
 
-    menu->popup(ui->workspaceList->viewport()->mapToGlobal(pos));
+	//---------- QWT PLOT-------------------------
+	QAction *plotQwtNewPlot       = new QAction("New plot (each curve into own plot)");
+	QAction *plotQwtNewSinglePlot = new QAction("New plot (all data into the same plot)");
+	QAction *plotQwtNewSinglePlotXData = new QAction("New plot (x, y1,...yn)");
+
+	qwtplot->addAction(plotQwtNewPlot);
+	qwtplot->addAction(plotQwtNewSinglePlot);
+	qwtplot->addAction(plotQwtNewSinglePlotXData);
+
+	connect(plotQwtNewPlot, &QAction::triggered, this, &mdiOctaveInterface::variableQwtPlot);
+	connect(plotQwtNewSinglePlot, &QAction::triggered, this, &mdiOctaveInterface::variableQwtPlotAllInOne);
+	connect(plotQwtNewSinglePlotXData, &QAction::triggered, this, &mdiOctaveInterface::variableQwtPlotXData);
+
+	plotNewSinglePlotXData->setEnabled(ui->workspaceList->selectionModel()->selectedRows().count()>=2);
+	//---------- QWT SCATTER --------------------------
+	QAction *plotNewQwtScatterPlot        = new QAction("New scatter-plot (each curve into own plot)");
+	QAction *plotNewQwtSingleScatterPlot = new QAction("New scatter-plot (all data into the same plot)");
+	QAction *plotNewQwtSingleScatterPlotXData   = new QAction("New scatter-plot (x, y1,...yn)");
+
+	qwtscatter->addAction(plotNewQwtScatterPlot);
+	qwtscatter->addAction(plotNewQwtSingleScatterPlot);
+	qwtscatter->addAction(plotNewQwtSingleScatterPlotXData);
+
+	connect(plotNewQwtScatterPlot, &QAction::triggered, this, &mdiOctaveInterface::variableQwtScatterPlot);
+	connect(plotNewQwtSingleScatterPlot, &QAction::triggered, this, &mdiOctaveInterface::variableQwtScatterPlotAllInOne);
+	connect(plotNewQwtSingleScatterPlotXData, &QAction::triggered, this, &mdiOctaveInterface::variableQwtScatterPlotXData);
+
+
+	//---------- DENSITY-------------------------
+	QAction *plotNewQwtDensityPlot        = new QAction("New density plot (each image into own plot");
+	QAction *plotNewQwtDensityPlotXData   = new QAction("New density plot (rows,cols, data_1,  ... rows_n, cols_n, data_xn, data_n)");
+
+	qwtimage->addAction(plotNewQwtDensityPlot);
+	qwtimage->addAction(plotNewQwtDensityPlotXData);
+
+	connect(plotNewQwtDensityPlot, &QAction::triggered, this, &mdiOctaveInterface::variableQwtDensityPlot);
+	connect(plotNewQwtDensityPlotXData, &QAction::triggered, this, &mdiOctaveInterface::variableQwtDensityPlotXData);
+
+
+	menu->popup(ui->workspaceList->viewport()->mapToGlobal(pos));
 }
 
 // ---------------------------------------------------------------------------------
@@ -1169,17 +1211,19 @@ void mdiOctaveInterface::updatedSingleVar(const std::string& varname)
 // ---------------------------------------------------------------------------------
 void mdiOctaveInterface::updatedVars(const std::set<std::string>& varlist)
 {
-    if (varlist.empty()) return;
-    for (auto &v : varlist)
+	if (varlist.empty()) return;
+	for (auto &v : varlist)
         updatedSingleVar(v);
 
-    for (const auto& child: _plot2d_children)
+	for (const auto& child: _plot2d_children)
         if (child!=nullptr)
             child->update_workspace(_workspace);
 
-    for (const auto& child: _plot2d_children)
-        if (child!=nullptr)
-            child->update_workspace(_workspace);
+	for (const auto& child: _plot_qwt_children)
+	{
+		if (child==nullptr) continue;
+		child->update_data(varlist);
+	}
 
 }
 
@@ -1194,6 +1238,7 @@ void    mdiOctaveInterface::delete_children(wndPlot2d* child)
 {
     if (_b_deleting) return;
     _plot2d_children.removeAll(child);
+
 }
 // ---------------------------------------------------------------------------------
 void mdiOctaveInterface::saveWorkspaceData()
@@ -1210,4 +1255,267 @@ void mdiOctaveInterface::saveWorkspaceData()
         return;
 
     _workspace->save_to_file(projectFile.toStdString());
+}
+
+// ---------------------------------------------------------------------------------
+void mdiOctaveInterface::variableQwtPlot()
+{
+	dlgQWTPlot*  wnd2d = new dlgQWTPlot(this, _workspace, PTQWT_PLOT);
+
+	connect(_interfaceData, &octaveInterface::workspaceUpdated, wnd2d, &dlgQWTPlot::update_workspace);
+	connect(_interfaceData, &octaveInterface::updatedVariables, wnd2d, &dlgQWTPlot::update_data);
+
+	ui->mdiArea->addSubWindow(wnd2d);
+	wnd2d->showMaximized();
+	_plot_qwt_children.append(wnd2d);
+
+	QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+	QStringList	     vars;
+	foreach (QModelIndex index, indexList)
+	{
+		int row = index.row();
+		// Get var name
+		QString varname = ui->workspaceList->item(row,1)->text();
+		vars.append(varname);
+		//wnd2d->add_plot(varname,"");
+		//QString last_error = wnd2d->last_error();
+		//if (!last_error.isEmpty())
+		//{
+		//	QMessageBox::critical(this,"Error creating plot",last_error);
+			//return;
+		//}
+	}
+
+	if (vars.size()==1)
+	{
+		wnd2d->assign_vars(vars[0]);
+	}
+
+	return;
+}
+
+void mdiOctaveInterface::variableQwtPlotAllInOne()
+{
+	wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+	ui->mdiArea->addSubWindow(wnd2d);
+	wnd2d->showMaximized();
+	_plot2d_children.append(wnd2d);
+
+	QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+	int plot = -1;
+	foreach (QModelIndex index, indexList)
+	{
+		int row = index.row();
+		// Get var name
+		QString varname = ui->workspaceList->item(row,1)->text();
+		wnd2d->add_plot(varname,"", plot);
+		QString last_error = wnd2d->last_error();
+		if (!last_error.isEmpty())
+		{
+			QMessageBox::critical(this,"Error creating plot",last_error);
+			//return;
+		}
+		plot = 0;
+	}
+	return;
+}
+
+void mdiOctaveInterface::variableQwtPlotXData()
+{
+	QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+	if (indexList.count()<2)
+		return;
+
+	wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+	ui->mdiArea->addSubWindow(wnd2d);
+	wnd2d->showMaximized();
+	_plot2d_children.append(wnd2d);
+
+	int plot = -1;
+	QString xname="";
+	foreach (QModelIndex index, indexList)
+	{
+		int row = index.row();
+		// Get var name
+		QString varname = ui->workspaceList->item(row,1)->text();
+
+		if (plot==-1)
+		{
+			xname = varname;
+			plot = 0;
+			continue;
+		}
+		wnd2d->add_plot(varname,xname, plot);
+		QString last_error = wnd2d->last_error();
+		if (!last_error.isEmpty())
+		{
+			QMessageBox::critical(this,"Error creating plot",last_error);
+			//return;
+		}
+	}
+	return;
+}
+
+// ---------------------------------------------------------------------------------
+// Scatterplot callback
+
+void mdiOctaveInterface::variableQwtScatterPlot()
+{
+	wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+	ui->mdiArea->addSubWindow(wnd2d);
+	wnd2d->showMaximized();
+
+	_plot2d_children.append(wnd2d);
+
+	QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+
+	foreach (QModelIndex index, indexList)
+	{
+		int row = index.row();
+		// Get var name
+		QString varname = ui->workspaceList->item(row,1)->text();
+		wnd2d->add_scatterplot(varname,"");
+		QString last_error = wnd2d->last_error();
+		if (!last_error.isEmpty())
+		{
+			QMessageBox::critical(this,"Error creating plot",last_error);
+			//return;
+		}
+	}
+	return;
+}
+
+void mdiOctaveInterface::variableQwtScatterPlotAllInOne()
+{
+	wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+	ui->mdiArea->addSubWindow(wnd2d);
+	wnd2d->showMaximized();
+	_plot2d_children.append(wnd2d);
+
+	QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+	int plot = -1;
+	foreach (QModelIndex index, indexList)
+	{
+		int row = index.row();
+		// Get var name
+		QString varname = ui->workspaceList->item(row,1)->text();
+		wnd2d->add_scatterplot(varname,"", plot);
+		QString last_error = wnd2d->last_error();
+		if (!last_error.isEmpty())
+		{
+			QMessageBox::critical(this,"Error creating plot",last_error);
+			//return;
+		}
+		plot = 0;
+	}
+	return;
+}
+
+void mdiOctaveInterface::variableQwtScatterPlotXData()
+{
+	QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+	if (indexList.count()<2)
+		return;
+
+	wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+	ui->mdiArea->addSubWindow(wnd2d);
+	wnd2d->showMaximized();
+	_plot2d_children.append(wnd2d);
+
+	int plot = -1;
+	QString xname="";
+	foreach (QModelIndex index, indexList)
+	{
+		int row = index.row();
+		// Get var name
+		QString varname = ui->workspaceList->item(row,1)->text();
+
+		if (plot==-1)
+		{
+			xname = varname;
+			plot = 0;
+			continue;
+		}
+		wnd2d->add_scatterplot(varname,xname, plot);
+		QString last_error = wnd2d->last_error();
+		if (!last_error.isEmpty())
+		{
+			QMessageBox::critical(this,"Error creating plot",last_error);
+			//return;
+		}
+	}
+	return;
+}
+// ---------------------------------------------------------------------------------
+// 7. Qwt Density
+void mdiOctaveInterface::variableQwtDensityPlot()
+{
+	dlgQWTPlot*  wnd2d = new dlgQWTPlot(this, _workspace, PTQWT_DENSITY);
+
+	connect(_interfaceData, &octaveInterface::workspaceUpdated, wnd2d, &dlgQWTPlot::update_workspace);
+	connect(_interfaceData, &octaveInterface::updatedVariables, wnd2d, &dlgQWTPlot::update_data);
+
+	ui->mdiArea->addSubWindow(wnd2d);
+	wnd2d->showMaximized();
+	_plot_qwt_children.append(wnd2d);
+
+	QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+	QStringList	     vars;
+	foreach (QModelIndex index, indexList)
+	{
+		int row = index.row();
+		// Get var name
+		QString varname = ui->workspaceList->item(row,1)->text();
+		vars.append(varname);
+		//wnd2d->add_plot(varname,"");
+		//QString last_error = wnd2d->last_error();
+		//if (!last_error.isEmpty())
+		//{
+		//	QMessageBox::critical(this,"Error creating plot",last_error);
+		//return;
+		//}
+	}
+
+	if (vars.size()==1)
+	{
+		wnd2d->assign_vars(vars[0]);
+	}
+
+	return;
+}
+
+
+void mdiOctaveInterface::variableQwtDensityPlotXData()
+{
+	wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+	ui->mdiArea->addSubWindow(wnd2d);
+	wnd2d->showMaximized();
+	_plot2d_children.append(wnd2d);
+
+	QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+	if (indexList.count()%3!=0)
+	{
+		QMessageBox::critical(this, "Error", "Multiple of 3 selection is needed");
+		return;
+	}
+
+
+	for (int n=0; n < indexList.count(); n+=3)
+	{
+
+		// Get var and indep var names
+		QString namex   = ui->workspaceList->item(indexList.at(n).row(),1)->text();
+		QString namey   = ui->workspaceList->item(indexList.at(n+1).row(),1)->text();
+
+		QString varname = ui->workspaceList->item(indexList.at(n+2).row(),1)->text();
+		wnd2d->add_density_plot(varname,namex,namey);
+
+		QString last_error = wnd2d->last_error();
+		if (!last_error.isEmpty())
+		{
+			QMessageBox::critical(this,"Error creating plot",last_error);
+			//return;
+		}
+	}
+	return;
 }

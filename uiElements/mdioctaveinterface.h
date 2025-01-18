@@ -15,6 +15,7 @@
 #include <ov.h>
 #include <radarparameter.h>
 #include <octavescript.h>
+#include <dlgqwtplot.h>
 namespace Ui {
 class mdiOctaveInterface;
 }
@@ -86,6 +87,17 @@ public slots:
     // 8. Vector plot
     void variableVectorPlot();
     void variableVectorPlotXData();
+	// 8. Plot
+	void variableQwtPlot();
+	void variableQwtPlotAllInOne();
+	void variableQwtPlotXData();
+	// 9. Scatter
+	void variableQwtScatterPlot();
+	void variableQwtScatterPlotAllInOne();
+	void variableQwtScatterPlotXData();
+	// 10. Density
+	void variableQwtDensityPlot();
+	void variableQwtDensityPlotXData();
 
     // Updated var(s)
     void updatedSingleVar(const std::string& varname);
@@ -100,6 +112,7 @@ private:
 
     QVector<class wndOctaveScript*>     _scripts_children;
     QVector<class wndPlot2d*>           _plot2d_children;
+	QVector<class dlgQWTPlot*>			_plot_qwt_children;
     bool                                _b_deleting;
 };
 

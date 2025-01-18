@@ -12,6 +12,8 @@ find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets LinguistTools Sql SerialPo
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Sql SerialPort)
 find_package(JKQTPlotter${QT_VERSION_MAJOR} REQUIRED)
 
+find_library( QWT NAMES qwt qwt6 PATHS /usr/local/qwt-6.3.0/lib REQUIRED )
+set(ENV{QT_PLUGIN_PATH} "${QWT_ROOT}/plugins:$QT_PLUGIN_PATH")
 find_package(VTK REQUIRED)
 
 set(TS_FILES ARIA_RDK_en_US.ts)
@@ -78,6 +80,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
 	icons/aria_rdk.qrc
 	octaveInterface/aria_rdk_interface_messages.h
 	octaveInterface/aria_rdk_interface_message.cpp
+	uiElements/dlgqwtplot.h uiElements/dlgqwtplot.cpp uiElements/dlgqwtplot.ui
+	uiElements/plotdata.h uiElements/plotdata.cpp
 
     )
 # Define target properties for Android with Qt 6 as:
@@ -177,6 +181,9 @@ target_link_libraries(ARIA_RDK PRIVATE ${VTK_LIBRARIES})
 #Eigen
 include_directories("/usr/local/include/eigen3/")
 
+# QWT
+target_link_libraries( ARIA_RDK PRIVATE ${QWT} )
+
 #UWB Toolbox
 
 
@@ -208,14 +215,16 @@ include_directories(AFTER "/usr/include/octave-9.2.0/octave")
 include_directories(ARIA_RDK PRIVATE ${PROJECT_SOURCE_DIR}/../armadillo-12.6.7/package/include/)
 #SigPack
 add_compile_definitions(HAVE_FFTW)
-include_directories(ARIA_RDK PRIVATE ${PROJECT_SOURCE_DIR}/../sigpack-1.2.7/sigpack)
+include_directories(ARIA_RDK PRIVATEinclude_directories(AFTER ${PROJECT_SOURCE_DIR}/uiElements/) ${PROJECT_SOURCE_DIR}/../sigpack-1.2.7/sigpack)
 include_directories(AFTER ${PROJECT_SOURCE_DIR}/octaveInterface/)
 include_directories(AFTER ${PROJECT_SOURCE_DIR}/controller/)
 include_directories(AFTER ${PROJECT_SOURCE_DIR}/projects/)
 include_directories(AFTER ${PROJECT_SOURCE_DIR}/radarModules)
 include_directories(AFTER ${PROJECT_SOURCE_DIR}/serialcomm)
 include_directories(AFTER ${PROJECT_SOURCE_DIR}/utils/)
-include_directories(AFTER ${PROJECT_SOURCE_DIR}/uiElements/)
+
+
+include_directories(/usr/local/qwt-6.3.0/include)
 install(TARGETS ARIA_RDK
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

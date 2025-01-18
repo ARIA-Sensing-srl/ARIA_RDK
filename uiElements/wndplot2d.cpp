@@ -184,8 +184,6 @@ void wndPlot2d::populate_plot( plot_descriptor pl)
 					line_graph->setYColumn(ds->getColumnNum(vname));
 					line_graph->setTitle(QString::fromStdString(pl._dep));
 				}
-
-
             }
             else
             {
@@ -303,7 +301,7 @@ void        wndPlot2d::redraw(plot_descriptor& pl)
         pl._init_zoom = true;
     }
     else
-        plotter->redrawPlot();
+		plotter->redrawPlot();
 
 }
 
@@ -533,7 +531,7 @@ void        wndPlot2d::populate_dens( plot_descriptor pl)
     double ymax = ds->get(var_y,1);
 
 
-    if (density_graph->getImageColumn()==-1)
+	if (density_graph->getImageColumn()==-1)
         density_graph->setImageColumn(ds->getColumnNum(QString::fromStdString(pl._dep)));
 
 	redraw(pl);
@@ -590,13 +588,13 @@ void        wndPlot2d::populate_vect2d( plot_descriptor pl)
 
     JKQTPVectorFieldGraph* vect_graph = (JKQTPVectorFieldGraph*)pl._graph[0];
 
-    if (vect_graph==nullptr)
+	if (vect_graph==nullptr)
         return;
 
-    if (vect_graph->getDxColumn()==-1)
+	if (vect_graph->getDxColumn()==-1)
         vect_graph->setDxColumn(ds->getColumnNum(QString::fromStdString(pl._dep)));
 
-    if (vect_graph->getDyColumn()==-1)
+	if (vect_graph->getDyColumn()==-1)
         vect_graph->setDyColumn(ds->getColumnNum(QString::fromStdString(pl._depy)));
 
 	if ((vect_graph->getXColumn()==-1)||(vect_graph->getYColumn()))
@@ -825,44 +823,44 @@ void wndPlot2d::update_graphs_per_dep(plot_descriptor& pl, JKQTPlotter* plotter)
 
     size_t number_graphs = size_t(nd0 < nd1 ? nd0 : nd1);
 
-    if (number_graphs == pl._graph.size())
-        return;
+	if (number_graphs != pl._graph.size())
+	{
 
-    // Delete what is not needed
-    for (size_t n=number_graphs; n < pl._graph.size(); n++)
-    {
-        JKQTPPlotElement *plot_elem = (JKQTPPlotElement *)pl._graph[n];
+		// Delete what is not needed
+		for (size_t n=number_graphs; n < pl._graph.size(); n++)
+		{
+			JKQTPPlotElement *plot_elem = (JKQTPPlotElement *)pl._graph[n];
 
-        if (plot_elem==nullptr)
-            continue;
+			if (plot_elem==nullptr)
+				continue;
 
-        //deleteGraph will delete the plot element too
-        plotter->deleteGraph(plot_elem);
-        pl._graph[n] = nullptr;
+			//deleteGraph will delete the plot element too
+			plotter->deleteGraph(plot_elem);
+			pl._graph[n] = nullptr;
 
-    }
-    if (number_graphs<pl._graph.size())
-    {
-        pl._graph.resize(number_graphs);
-        return;
-    }
+		}
+		if (number_graphs<pl._graph.size())
+		{
+			pl._graph.resize(number_graphs);
+			return;
+		}
 
-    // Create graphs not present
-    int n0 = pl._graph.size();
-    for (size_t n = n0 ; n < number_graphs; n++)
-    {
-        JKQTPPlotElement* new_graph = create_graph(pl, plotter);
+		// Create graphs not present
+		int n0 = pl._graph.size();
+		for (size_t n = n0 ; n < number_graphs; n++)
+		{
+			JKQTPPlotElement* new_graph = create_graph(pl, plotter);
 
-        plotter->addGraph(new_graph);
-        if (new_graph==nullptr)
-        {
-            _last_error = "Couldn't create graph";
-            qDebug() << _last_error;
-            return;
-        }
-        pl._graph.emplace_back(new_graph);
-    }
-
+			plotter->addGraph(new_graph);
+			if (new_graph==nullptr)
+			{
+				_last_error = "Couldn't create graph";
+				qDebug() << _last_error;
+				return;
+			}
+			pl._graph.emplace_back(new_graph);
+		}
+	}
 
     redraw(pl);
 
@@ -1907,26 +1905,26 @@ void wndPlot2d::octave_to_box_plotdata(std::string varname, std::string indep)
     int var_id_min = ds->getColumnNum(min_name);
 
     if (var_id_min == -1)
-        var_id_min = ds->addColumn(min_name);
+	{   var_id_min = ds->addColumn(min_name); }
 
 	if (ds->getRows(var_id_min)!=nrows)
-		ds->resizeColumn(var_id_min, nrows);
+	{ ds->resizeColumn(var_id_min, nrows);}
     //------------
     // max
     QString max_name = basename + "{max}";
     int var_id_max = ds->getColumnNum(max_name);
 
     if (var_id_max == -1)
-        var_id_max = ds->addColumn(max_name);
+	{ var_id_max = ds->addColumn(max_name); }
 
 	if (ds->getRows(var_id_max)!=nrows)
-		ds->resizeColumn(var_id_max, nrows);
+	{	ds->resizeColumn(var_id_max, nrows); }
     //------------
     // q25
     QString q25_name = basename + "{Q25}";
     int var_id_q25 = ds->getColumnNum(q25_name);
 
-    if (var_id_q25 == -1)
+	if (var_id_q25 == -1)
         var_id_q25 = ds->addColumn(q25_name);
 
 	if (ds->getRows(var_id_q25)!=nrows)
@@ -1936,7 +1934,7 @@ void wndPlot2d::octave_to_box_plotdata(std::string varname, std::string indep)
     QString q75_name = basename + "{Q75}";
     int var_id_q75 = ds->getColumnNum(q75_name);
 
-    if (var_id_q75 == -1)
+	if (var_id_q75 == -1)
         var_id_q75 = ds->addColumn(q75_name);
 
 	if (ds->getRows(var_id_q75)!=nrows)
@@ -1948,20 +1946,20 @@ void wndPlot2d::octave_to_box_plotdata(std::string varname, std::string indep)
     int var_id_mean = ds->getColumnNum(mean_name);
 
     if (var_id_mean == -1)
-        var_id_mean = ds->addColumn(mean_name);
+	{ var_id_mean = ds->addColumn(mean_name); }
 
 	if (ds->getRows(var_id_mean)!=nrows)
-		ds->resizeColumn(var_id_mean, nrows);
+	{ ds->resizeColumn(var_id_mean, nrows);}
     //------------
     // q75
     QString median_name = basename + "{Median}";
     int var_id_median = ds->getColumnNum(median_name);
 
     if (var_id_median == -1)
-        var_id_median = ds->addColumn(median_name);
+	{ var_id_median = ds->addColumn(median_name);}
 
 	if (ds->getRows(var_id_mean)!=nrows)
-		ds->resizeColumn(var_id_median, nrows);
+	{ ds->resizeColumn(var_id_median, nrows); }
 
 	NDArray row; row.resize(dim_vector({1, nsamples}));
 
@@ -2353,7 +2351,7 @@ void wndPlot2d::octave_to_densitydata(std::string varname_x,  std::string yname,
         x_id = ds->addColumn(get_var_indep_name(xname,varname_x,0));
 
     int y_id = ds->getColumnNum(get_var_indep_name(yname,varname_x,1));
-    if (y_id==-1)
+	if (y_id==-1)
         y_id = ds->addColumn(get_var_indep_name(yname,varname_x,1));
 
 	if (ds->getRows(x_id)!=3)
