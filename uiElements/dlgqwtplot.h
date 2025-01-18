@@ -53,7 +53,7 @@ private:
 	virtual void drawItems( QPainter*, const QRectF&,
 						   const QwtScaleMap maps[QwtAxis::AxisPositions] ) const QWT_OVERRIDE;
 
-	class Spectrogram* m_spectrogram;
+	class QwtImageSCPlot* m_spectrogram;
 
 	int m_mapType;
 	int m_alpha;
@@ -93,6 +93,7 @@ private:
 	Ui::dlgQWTPlot *ui;
 	QwtPlotGrid					*_plotgrid;
 	QwtPlotZoomer*				zoomer;
+	QwtDensityPlot*				_density_plot_ref;
 public:
 	PLOT_TYPE get_plot_type() {return _plotdata==nullptr ? PT_NONE : _plotdata->get_plot_type();}
 	void assign_vars(QString yname, QString xname="");
@@ -102,10 +103,12 @@ public:
 public slots:
 	void update_data(const std::set<std::string>& varlist);
 	void update_workspace();
+	void zoomAll();
+	void cbContourChanged(Qt::CheckState state);
 };
 
 
-class Spectrogram : public QwtPlotSpectrogram
+class QwtImageSCPlot : public QwtPlotSpectrogram
 {
 public:
 	int elapsed() const

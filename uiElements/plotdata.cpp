@@ -439,7 +439,7 @@ void    plotData_plot::update_min_max(QwtPlot_MinMaxUpdate policy)
 
 //--------------------------------------------------------------------------
 // Density raster
-plotData_Density::plotData_Density(octavews* ws, QwtPlot* parent) : plotData(ws,parent,PTQWT_DENSITY)
+plotData_Density::plotData_Density(octavews* ws, QwtPlot* parent) : QwtRasterData(), plotData(ws,parent,PTQWT_DENSITY)
 {
 
 	setAttribute( QwtRasterData::WithoutGaps, true );

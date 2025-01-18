@@ -15,6 +15,7 @@ dlgQWTPlot::dlgQWTPlot(QWidget *parent, octavews* ws, PLOT_TYPE pt)
 {
 	ui->setupUi(this);
 	zoomer = nullptr;
+	_density_plot_ref = nullptr;
 	switch(pt)
 	{
 	case PTQWT_PLOT:
@@ -39,17 +40,21 @@ dlgQWTPlot::dlgQWTPlot(QWidget *parent, octavews* ws, PLOT_TYPE pt)
 		_plotgrid->enableXMin(true);
 		_plotgrid->enableYMin(true);
 
+		ui->cbContour->setEnabled(false);
 		break;
 	}
 
 	case PTQWT_DENSITY:
 	{
 		delete ui->plot;
-		ui->plot = new QwtDensityPlot(this);
+		ui->plot =_density_plot_ref= new QwtDensityPlot(this);
 		ui->plot->setObjectName("plot");
 
-		ui->gridLayout->addWidget(ui->plot, 1, 0, 1, 4);
+		ui->gridLayout->addWidget(ui->plot, 1, 0, 1, 6);
 		_plotdata = std::make_shared<plotData_Density>(ws,ui->plot);
+		ui->cbContour->setEnabled(true);
+
+		connect(ui->cbContour, &QCheckBox::checkStateChanged, this, &dlgQWTPlot::cbContourChanged);
 		break;
 	}
 	default:
@@ -77,6 +82,8 @@ dlgQWTPlot::dlgQWTPlot(QWidget *parent, octavews* ws, PLOT_TYPE pt)
 	zoomer->setRubberBandPen( c );
 	zoomer->setTrackerPen( c );
 
+	connect(ui->btnZoomAll, &QPushButton::clicked, this, &dlgQWTPlot::zoomAll);
+
 }
 
 dlgQWTPlot::~dlgQWTPlot()
@@ -89,13 +96,11 @@ dlgQWTPlot::~dlgQWTPlot()
 	delete ui;
 }
 
-void dlgQWTPlot::update_data(const std::set<std::string>& varlist)
+void dlgQWTPlot::zoomAll()
 {
-	if (_plotdata==nullptr) return;
-	if (_plotdata->update_data(varlist))
+	_plotdata->update_min_max(FULL);
+	if ((_plotdata->get_plot_type()==PTQWT_PLOT)||(_plotdata->get_plot_type()==PTQWT_SCATTER))
 	{
-		QwtPlot_MinMaxUpdate zoomPolicy = QwtPlot_MinMaxUpdate (ui->cbZoom->currentIndex());
-		_plotdata->update_min_max(zoomPolicy);
 		double xmin = _plotdata->get_xmin();
 		double xmax = _plotdata->get_xmax();
 		double ymin = _plotdata->get_ymin();
@@ -103,6 +108,31 @@ void dlgQWTPlot::update_data(const std::set<std::string>& varlist)
 		ui->plot->setAxisScale(QwtPlot::xBottom, xmin, xmax);
 		ui->plot->setAxisScale(QwtPlot::yLeft, ymin, ymax);
 		ui->plot->replot();
+
+	}
+}
+
+void dlgQWTPlot::update_data(const std::set<std::string>& varlist)
+{
+	if (_plotdata==nullptr) return;
+	if (_plotdata->update_data(varlist))
+	{
+		if ((_plotdata->get_plot_type()==PTQWT_PLOT)||(_plotdata->get_plot_type()==PTQWT_SCATTER))
+		{
+			QwtPlot_MinMaxUpdate zoomPolicy = QwtPlot_MinMaxUpdate (ui->cbZoom->currentIndex());
+			_plotdata->update_min_max(zoomPolicy);
+			double xmin = _plotdata->get_xmin();
+			double xmax = _plotdata->get_xmax();
+			double ymin = _plotdata->get_ymin();
+			double ymax = _plotdata->get_ymax();
+			ui->plot->setAxisScale(QwtPlot::xBottom, xmin, xmax);
+			ui->plot->setAxisScale(QwtPlot::yLeft, ymin, ymax);
+			ui->plot->replot();
+		}
+		if (_plotdata->get_plot_type()==PTQWT_SCATTER)
+		{
+
+		}
 	}
 }
 
@@ -111,17 +141,23 @@ void dlgQWTPlot::update_workspace()
 	if (_plotdata==nullptr) return;
 	if (_plotdata->update_data())
 	{
-		QwtPlot_MinMaxUpdate zoomPolicy = QwtPlot_MinMaxUpdate (ui->cbZoom->currentIndex());
-		_plotdata->update_min_max(zoomPolicy);
-		double xmin = _plotdata->get_xmin();
-		double xmax = _plotdata->get_xmax();
-		double ymin = _plotdata->get_ymin();
-		double ymax = _plotdata->get_ymax();
-		ui->plot->setAxisScale(QwtPlot::xBottom, xmin, xmax);
-		ui->plot->setAxisScale(QwtPlot::yLeft, ymin, ymax);
-		ui->plot->replot();
-	}
+		if ((_plotdata->get_plot_type()==PTQWT_PLOT)||(_plotdata->get_plot_type()==PTQWT_SCATTER))
+		{
+			QwtPlot_MinMaxUpdate zoomPolicy = QwtPlot_MinMaxUpdate (ui->cbZoom->currentIndex());
+			_plotdata->update_min_max(zoomPolicy);
+			double xmin = _plotdata->get_xmin();
+			double xmax = _plotdata->get_xmax();
+			double ymin = _plotdata->get_ymin();
+			double ymax = _plotdata->get_ymax();
+			ui->plot->setAxisScale(QwtPlot::xBottom, xmin, xmax);
+			ui->plot->setAxisScale(QwtPlot::yLeft, ymin, ymax);
+			ui->plot->replot();
+		}
+		if (_plotdata->get_plot_type()==PTQWT_SCATTER)
+		{
 
+		}
+	}
 }
 
 void dlgQWTPlot::assign_vars(QString yname, QString xname)
@@ -157,9 +193,17 @@ bool dlgQWTPlot::has_var(QString vname)
 	return _plotdata->has_var_in_list(vname);
 }
 
-QwtDensityPlot::QwtDensityPlot(QWidget*)
+
+void dlgQWTPlot::cbContourChanged(Qt::CheckState state)
 {
-	m_spectrogram = new Spectrogram();
+	if (_plotdata->get_plot_type()!=PTQWT_DENSITY) return;
+	if (_density_plot_ref==nullptr) return;
+	_density_plot_ref->showContour(state = Qt::Checked);
+}
+
+QwtDensityPlot::QwtDensityPlot(QWidget* parent) : QwtPlot(parent),  m_alpha(255)
+{
+	m_spectrogram = new QwtImageSCPlot();
 	m_spectrogram->setRenderThreadCount( 0 ); // use system specific thread count
 	m_spectrogram->setCachePolicy( QwtPlotRasterItem::PaintCache );
 
@@ -186,33 +230,6 @@ QwtDensityPlot::QwtDensityPlot(QWidget*)
 	plotLayout()->setAlignCanvasToScales( true );
 
 	setColorMap( QwtDensityPlot::RGBMap );
-
-	// LeftButton for the zooming
-	// MidButton for the panning
-	// RightButton: zoom out by 1
-	// Ctrl+RighButton: zoom out to full size
-/*
-	QwtPlotZoomer* zoomer = new MyZoomer( canvas() );
-	zoomer->setMousePattern( QwtEventPattern::MouseSelect2,
-							Qt::RightButton, Qt::ControlModifier );
-	zoomer->setMousePattern( QwtEventPattern::MouseSelect3,
-							Qt::RightButton );
-
-	QwtPlotPanner* panner = new QwtPlotPanner( canvas() );
-	panner->setAxisEnabled( QwtAxis::YRight, false );
-	panner->setMouseButton( Qt::MiddleButton );
-
-	// Avoid jumping when labels with more/less digits
-	// appear/disappear when scrolling vertically
-
-	const int extent = QwtPainter::horizontalAdvance(
-		axisWidget( QwtAxis::YLeft )->fontMetrics(), "100.00" );
-
-	axisScaleDraw( QwtAxis::YLeft )->setMinimumExtent( extent );
-
-	const QColor c( Qt::darkBlue );
-	zoomer->setRubberBandPen( c );
-	zoomer->setTrackerPen( c );*/
 }
 
 void QwtDensityPlot::showContour( bool on )
@@ -325,15 +342,15 @@ void QwtDensityPlot::drawItems( QPainter* painter, const QRectF& canvasRect,
 
 	if ( m_spectrogram )
 	{
-		Spectrogram* spectrogram = static_cast< Spectrogram* >( m_spectrogram );
-
+		QwtImageSCPlot* spectrogram = static_cast< QwtImageSCPlot* >( m_spectrogram );
+/*
 		QString info( "%1 x %2 pixels: %3 ms" );
 		info = info.arg( spectrogram->renderedSize().width() );
 		info = info.arg( spectrogram->renderedSize().height() );
 		info = info.arg( spectrogram->elapsed() );
 
 		QwtDensityPlot* plot = const_cast< QwtDensityPlot* >( this );
-		plot->Q_EMIT rendered( info );
+		plot->Q_EMIT rendered( info );*/
 	}
 }
 

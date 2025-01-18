@@ -175,7 +175,7 @@ public:
 };
 //-------------------------------------------------------------
 // Data for density graphs
-class plotData_Density : public plotData, public QwtRasterData
+class plotData_Density : public QwtRasterData, public plotData
 {
 private:
 	QPair <QString, ArraySize> xaxis;
