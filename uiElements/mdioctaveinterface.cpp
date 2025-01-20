@@ -1478,7 +1478,7 @@ void mdiOctaveInterface::variableQwtDensityPlot()
 
 	if (vars.size()==1)
 	{
-		wnd2d->assign_vars(vars[0]);
+		wnd2d->assign_vars(vars[0],"","");
 	}
 
 	return;

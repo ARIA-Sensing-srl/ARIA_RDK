@@ -33,7 +33,7 @@ public:
 	~plotData() {};
 	// Simple plots
 	virtual void set_data_plot(QString var_name, QString x_name) {};
-	virtual void set_data_plot(QStringList var_name, QString x_name) {};
+	virtual void set_data_plot(QStringList var_name, QStringList x_name) {};
 	virtual void set_data_plot(QString var_name, QString x_name, QString y_name) {};
 	virtual void clean_data() {};
 	inline octavews* workspace() {return _ws;}
@@ -49,6 +49,8 @@ public:
 	virtual double get_xmin() {return -1.0;}
 	virtual double get_ymax() {return 1.0;}
 	virtual double get_ymin() {return -1.0;}
+	virtual double get_zmax() {return 1.0;}
+	virtual double get_zmin() {return -1.0;}
 	virtual void   update_min_max(QwtPlot_MinMaxUpdate policy = FULL) {};
 };
 
@@ -74,7 +76,7 @@ public:
 	~plotData_plot();
 	void    update_min_max(QwtPlot_MinMaxUpdate policy = FULL) override;
 	void set_data_plot(QString var_name, QString x_name) override;
-	void set_data_plot(QStringList var_name, QString x_name) override;
+	void set_data_plot(QStringList var_name, QStringList x_name) override;
 	void set_data_plot(QString var_name, QString x_name, QString y_name) override {};
 	bool update_data(const std::set<std::string>& varlist) override;
 	bool update_data()  override;
@@ -88,91 +90,13 @@ public:
 	double get_xmin() override {return _xmin*(_xmin > 0 ? 0.9 : 1.1);}
 	double get_ymax() override {return _ymax*(_ymax > 0 ? 1.1 : 0.9);}
 	double get_ymin() override {return _ymin*(_ymin > 0 ? 0.9 : 1.1);}
+	double get_zmax() override {return 1.0;}
+	double get_zmin() override {return -1.0;}
 
 };
 
 
 
-class LinearColorMap : public QwtLinearColorMap
-{
-public:
-	LinearColorMap( int formatType )
-		: QwtLinearColorMap( Qt::darkCyan, Qt::red )
-	{
-		setFormat( ( QwtColorMap::Format ) formatType );
-
-		addColorStop( 0.1, Qt::cyan );
-		addColorStop( 0.6, Qt::green );
-		addColorStop( 0.95, Qt::yellow );
-	}
-};
-
-class HueColorMap : public QwtHueColorMap
-{
-public:
-	HueColorMap( int formatType )
-		: QwtHueColorMap( QwtColorMap::Indexed )
-	{
-		setFormat( ( QwtColorMap::Format ) formatType );
-
-		//setHueInterval( 240, 60 );
-		//setHueInterval( 240, 420 );
-		setHueInterval( 0, 359 );
-		setSaturation( 150 );
-		setValue( 200 );
-	}
-};
-
-class SaturationColorMap : public QwtSaturationValueColorMap
-{
-public:
-	SaturationColorMap( int formatType )
-	{
-		setFormat( ( QwtColorMap::Format ) formatType );
-
-		setHue( 220 );
-		setSaturationInterval( 0, 255 );
-		setValueInterval( 255, 255 );
-	}
-};
-
-class ValueColorMap : public QwtSaturationValueColorMap
-{
-public:
-	ValueColorMap( int formatType )
-	{
-		setFormat( ( QwtColorMap::Format ) formatType );
-
-		setHue( 220 );
-		setSaturationInterval( 255, 255 );
-		setValueInterval( 70, 255 );
-	}
-};
-
-class SVColorMap : public QwtSaturationValueColorMap
-{
-public:
-	SVColorMap( int formatType )
-	{
-		setFormat( ( QwtColorMap::Format ) formatType );
-
-		setHue( 220 );
-		setSaturationInterval( 100, 255 );
-		setValueInterval( 70, 255 );
-	}
-};
-
-class AlphaColorMap : public QwtAlphaColorMap
-{
-public:
-	AlphaColorMap( int formatType )
-	{
-		setFormat( ( QwtColorMap::Format ) formatType );
-
-		//setColor( QColor("DarkSalmon") );
-		setColor( QColor("SteelBlue") );
-	}
-};
 //-------------------------------------------------------------
 // Data for density graphs
 class plotData_Density : public QwtRasterData, public plotData
@@ -180,15 +104,20 @@ class plotData_Density : public QwtRasterData, public plotData
 private:
 	QPair <QString, ArraySize> xaxis;
 	QPair <QString, ArraySize> yaxis;
-	//double**
-	double _xmin, _xmax, _ymin, _ymax;
+
+	QPair <QString, ArraySize> zvalues; // zvalues[x][y] (col major for quick transfer from Octave
+	double _xmin, _xmax, _ymin, _ymax, _zmin, _zmax;
 	QwtInterval m_intervals[3];
+	void	fill_data_x(const NDArray &xdata);
+	void	fill_data_y(const NDArray &ydata);
+	void	fill_data_z(const NDArray &zdata);
+
 public:
 	plotData_Density(octavews* ws = nullptr, QwtPlot* parent=nullptr);
 	~plotData_Density();
 	void    update_min_max(QwtPlot_MinMaxUpdate policy = FULL) override;
 	void set_data_plot(QString var_name, QString x_name) override {};
-	void set_data_plot(QStringList var_name, QString x_name) override {};
+	void set_data_plot(QStringList var_name, QStringList x_name) override {};
 	void set_data_plot(QString var_name, QString x_name, QString y_name) override;
 	bool update_data(const std::set<std::string>& varlist) override;
 	bool update_data()  override;
@@ -202,11 +131,10 @@ public:
 	double get_xmin() override {return _xmin*(_xmin > 0 ? 0.9 : 1.1);}
 	double get_ymax() override {return _ymax*(_ymax > 0 ? 1.1 : 0.9);}
 	double get_ymin() override {return _ymin*(_ymin > 0 ? 0.9 : 1.1);}
+	double get_zmax() override {return _zmax;}
+	double get_zmin() override {return _zmin;}
 
 	virtual QwtInterval interval( Qt::Axis axis ) const QWT_OVERRIDE;
 	virtual double value( double x, double y ) const QWT_OVERRIDE;
-
-
-
 };
 #endif // PLOTDATA_H

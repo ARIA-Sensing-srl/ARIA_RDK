@@ -2,6 +2,7 @@
 #include <QColor>
 #include <dlgqwtplot.h>
 
+inline double SQR(double x) {return x*x;}
 
 
 plotData_plot::~plotData_plot()
@@ -92,9 +93,11 @@ void plotData_plot::set_data_plot(QString var_name, QString x_name)
 }
 
 
-void plotData_plot::set_data_plot(QStringList var_name, QString x_name)
+void plotData_plot::set_data_plot(QStringList var_name, QStringList x_name)
 {
-
+	if (var_name.count()!=x_name.count()) return;
+	for (int n=0; n < var_name.count(); n++)
+		set_data_plot(var_name[n],x_name[n]);
 }
 
 /*
@@ -439,14 +442,18 @@ void    plotData_plot::update_min_max(QwtPlot_MinMaxUpdate policy)
 
 //--------------------------------------------------------------------------
 // Density raster
-plotData_Density::plotData_Density(octavews* ws, QwtPlot* parent) : QwtRasterData(), plotData(ws,parent,PTQWT_DENSITY)
+plotData_Density::plotData_Density(octavews* ws, QwtPlot* parent) : QwtRasterData(), plotData(ws,parent,PTQWT_DENSITY),
+	xaxis({"",ArraySize({0,nullptr})}),
+	yaxis({"",ArraySize({0,nullptr})}),
+	zvalues("",ArraySize({0,nullptr})),
+	_xmin(-1.5), _xmax(1.5), _ymin(-1.5), _ymax(1.5), _zmin(-1.0), _zmax(1.0)
 {
 
 	setAttribute( QwtRasterData::WithoutGaps, true );
 
-	m_intervals[ Qt::XAxis ] = QwtInterval( -1.5, 1.5 );
-	m_intervals[ Qt::YAxis ] = QwtInterval( -1.5, 1.5 );
-	m_intervals[ Qt::ZAxis ] = QwtInterval( 0.0, 10.0 );
+	m_intervals[ Qt::XAxis ] = QwtInterval( _xmin, _xmax );
+	m_intervals[ Qt::YAxis ] = QwtInterval( _ymin, _ymax );
+	m_intervals[ Qt::ZAxis ] = QwtInterval( _zmin, _zmax );
 }
 
 
@@ -458,7 +465,69 @@ plotData_Density::~plotData_Density()
 
 void    plotData_Density::update_min_max(QwtPlot_MinMaxUpdate policy)
 {
+	if (policy==CUSTOM) return;
 
+	size_t npt_x = xaxis.second.first;
+	size_t npt_y = yaxis.second.first;
+
+	double* zValPtr = zvalues.second.second;
+
+	if (xaxis.second.second!=nullptr)
+	{
+		_xmin = *(xaxis.second.second);
+		_xmax = *(xaxis.second.second + npt_x -1 );
+	}
+	else
+	{
+		_xmin = 0;
+		_xmax = double(npt_x-1);
+	}
+
+	if (yaxis.second.second!=nullptr)
+	{
+		_ymin = *(yaxis.second.second);
+		_ymax = *(yaxis.second.second + npt_y -1);
+	}
+	else
+	{
+		_ymin = 0;
+		_ymax = double(npt_y-1);
+	}
+
+	double zmax = -9e99, zmin = 9e99;
+
+	if (zValPtr==nullptr) return;
+
+	for (size_t x = 0; x < npt_x; x++)
+		for (size_t y = 0; y < npt_y; y++, zValPtr++)
+		{
+			double zVal = *zValPtr;
+			if (zVal < zmin) zmin = zVal;
+			if (zVal > zmax) zmax = zVal;
+		}
+
+	if (policy == MAXHOLD)
+	{
+		if (zmax > _zmax)
+			_zmax = zmax;
+		else
+			_zmax = 0.999 * _zmax + 0.001 * zmax;
+
+
+		if (zmin < _zmin)
+			_zmin = zmin;
+		else
+			_zmin = 0.999 * _zmin + 0.001 * zmin;
+	}
+	else
+	{
+		_zmin = zmin; _zmax = zmax;
+	}
+
+
+	m_intervals[ Qt::XAxis ] = QwtInterval( _xmin, _xmax );
+	m_intervals[ Qt::YAxis ] = QwtInterval( _ymin, _ymax );
+	m_intervals[ Qt::ZAxis ] = QwtInterval( _zmin, _zmax );
 }
 
 QwtInterval plotData_Density::interval( Qt::Axis axis ) const
@@ -471,35 +540,413 @@ QwtInterval plotData_Density::interval( Qt::Axis axis ) const
 
 double plotData_Density::value( double x, double y ) const
 {
+/*
 	const double c = 0.842;
 	//const double c = 0.33;
 
 	const double v1 = x * x + ( y - c ) * ( y + c );
 	const double v2 = x * ( y + c ) + x * ( y + c );
 
-	return 1.0 / ( v1 * v1 + v2 * v2 );
+	return 1.0 / ( v1 * v1 + v2 * v2 );*/	
+	if (zvalues.second.second==nullptr) return 0.0;
+
+	size_t npt_x = xaxis.second.first;
+	size_t npt_y = yaxis.second.first;
+	double x0=0, x1=0;
+	double y0=0, y1=0;
+	size_t ix0=0, ix1=0, iy0=0, iy1=0;
+	if (xaxis.second.second==nullptr)
+	{
+		if (x < 0)
+		{
+			ix0 = ix1 = (x0 = x1 = 0);
+		}
+		else
+			if (x >= npt_x - 1)
+			{
+				ix1 = ix0 = (ix0 = ix1 = npt_x -1);
+			}
+			else
+			{
+				ix0 = (x0 = floor(x));
+				ix1 = (x1 = ceil(x));
+			}
+	}
+	else
+	{
+		double *xPtr = xaxis.second.second;
+		double *xMax = xPtr + (npt_x-1);
+		if (x < *xPtr)
+		{
+			ix0 = ix1 = 0;
+			x0 = x1 = *xPtr;
+		}
+		else
+			if (x > *xMax)
+			{
+				ix0 = ix1 = npt_x-1;
+				x0 = x1 = *xMax;
+			}
+			else
+			{
+				for (size_t n=0; n < npt_x-1; n++)
+				{
+					if ((x >= *xPtr)&&( x < *(++xPtr)))
+					{
+						ix0 = n;
+						ix1 = n+1;
+						x1  = *xPtr;
+						x0 = *(xPtr-1);
+						break;
+					}
+				}
+			}
+	}
+
+	if (yaxis.second.second==nullptr)
+	{
+		if (y < 0)
+		{
+			iy0 = iy1 = (y0 = y1 = 0);
+		}
+		else
+			if (y >= npt_y - 1)
+			{
+				iy1 = iy0 = (iy0 = iy1 = npt_y -1);
+			}
+			else
+			{
+				iy0 = (y0 = floor(x));
+				iy1 = (y1 = ceil(x));
+			}
+	}
+	else
+	{
+		double *yPtr = yaxis.second.second;
+		double *yMax = yPtr + (npt_y-1);
+		if (y < *yPtr)
+		{
+			iy0 = iy1 = 0;
+			y0 = y1 = *yPtr;
+		}
+		else
+			if (y > *yMax)
+			{
+				iy0 = iy1 = npt_y-1;
+				y0  = y1 = *yMax;
+			}
+			else
+			{
+				for (size_t n=0; n < npt_y-1; n++)
+				{
+					if ((y >= *yPtr)&&( y < *(++yPtr)))
+					{
+						iy0 = n;
+						iy1 = n+1;
+						y1  = *yPtr;
+						y0 = *(yPtr-1);
+						break;
+					}
+				}
+			}
+	}
+
+	size_t i00 = ix0 * (npt_y) + iy0;
+	size_t i10 = ix1 * (npt_y) + iy0;
+	size_t i01 = ix0 * (npt_y) + iy1;
+	size_t i11 = ix1 * (npt_y) + iy1;
+
+	double* zv = zvalues.second.second;
+	double z00 = zv[i00];
+	double z10 = zv[i10];
+	double z01 = zv[i01];
+	double z11 = zv[i11];
+
+	double d0 = SQR(x-x0)+SQR(y-y0);
+	double d1 = SQR(x-x1)+SQR(y-y1);
+	// Let's assume a dual tet surface for linear interpolation
+
+	double val;
+	if (d0 < d1)
+	{
+		// p(x,y) = p(x0,y0) + dp/dx * (x-x0) + dp/dy * (y-y0)
+		val = z00;
+		if (ix0!=ix1)
+		{
+			double dx = x1-x0;
+			double dp_dx = (z10-z00)/(dx);
+			val += dp_dx * (x-x0);
+		}
+		if(iy0!=iy1)
+		{
+			double dy = y1-y0;
+			double dp_dy = (z01-z00)/(dy);
+			val += dp_dy * (y-y0);
+		}
+	}
+	else
+	{
+		// p(x,y) = p(x1,y1) + dp/dx * (x-x1) + dp/dy * (y-y1)
+		val = z11;
+		if (ix0!=ix1)
+		{
+			double dx = x0-x1;
+			double dp_dx = (z01-z11)/(dx);
+			val += dp_dx * (x-x1);
+		}
+		if(iy0!=iy1)
+		{
+			double dy = y0-y1;
+			double dp_dy = (z10-z11)/(dy);
+			val += dp_dy * (y-y1);
+		}
+
+	}
+	return val;
+
+}
+
+void	plotData_Density::fill_data_x(const NDArray &xdata)
+{
+	size_t npt = xdata.numel();
+	if (xaxis.second.first!=npt)
+	{
+		if (xaxis.second.second!=nullptr)
+			delete xaxis.second.second;
+		xaxis.second = ArraySize(npt, new double[npt]);
+	}
+	memcpy(xaxis.second.second, xdata.data(), npt*sizeof(double));
+}
+void	plotData_Density::fill_data_y(const NDArray &ydata)
+{
+	size_t npt = ydata.numel();
+	if (yaxis.second.first!=npt)
+	{
+		if (yaxis.second.second!=nullptr)
+			delete yaxis.second.second;
+		yaxis.second = ArraySize(npt, new double[npt]);
+	}
+	memcpy(yaxis.second.second, ydata.data(), npt*sizeof(double));
+}
+
+
+void	plotData_Density::fill_data_z(const NDArray &zdata)
+{
+	size_t npt = zdata.numel();
+	if (zvalues.second.first!=npt)
+	{
+		if (zvalues.second.second!=nullptr)
+			delete zvalues.second.second;
+		zvalues.second = ArraySize(npt, new double[npt]);
+	}
+	memcpy(zvalues.second.second, zdata.data(), npt*sizeof(double));
 }
 
 
 
 void plotData_Density::set_data_plot(QString var_name, QString x_name, QString y_name)
 {
+	clean_data();
 
+	if (workspace()==nullptr) return;
+
+	octave_value zov = workspace()->var_value(var_name.toStdString());
+
+	if (!x_name.isEmpty())
+	{
+		octave_value xov = workspace()->var_value(x_name.toStdString());
+		if (xov.iscomplex())
+			return;
+
+		xaxis.first = x_name;
+		fill_data_x(xov.array_value());		
+	}
+	else
+	{
+		size_t nptx = zov.dims()(1);
+		NDArray xs(dim_vector({1,(octave_idx_type)nptx}));
+		for (size_t ix=0; ix < nptx; ix++)
+			xs(ix)=(double)(ix);
+		xaxis.first="";
+		fill_data_x(xs);
+	}
+
+	if (!y_name.isEmpty())
+	{
+		octave_value yov = workspace()->var_value(y_name.toStdString());
+		if (yov.iscomplex())
+			return;
+
+		yaxis.first = y_name;
+		fill_data_y(yov.array_value());
+	}
+	else
+	{
+		size_t npty = zov.dims()(0);
+		NDArray ys(dim_vector({1,(octave_idx_type)npty}));
+		for (size_t iy=0; iy < npty; iy++)
+			ys(iy)=(double)(iy);
+		yaxis.first="";
+		fill_data_y(ys);
+	}
+
+	zvalues.first = var_name;
+	if (zov.iscomplex())
+	{
+		fill_data_z(zov.complex_array_value().abs());
+	}
+	else
+	{
+		fill_data_z(zov.array_value());
+	}
 }
 
 bool plotData_Density::update_data(const std::set<std::string>& varlist)
 {
-	return false;
+	bool bModified = false;
+	for (auto& var: varlist)
+	{
+		if (var == xaxis.first.toStdString())
+		{
+			octave_value xov = workspace()->var_value(xaxis.first.toStdString());
+			if (xov.iscomplex())
+				return false;
+			fill_data_x(xov.array_value());
+
+			bModified = true;
+		}
+
+		if (var == yaxis.first.toStdString())
+		{
+			octave_value yov = workspace()->var_value(yaxis.first.toStdString());
+			if (yov.iscomplex())
+				return false;
+			fill_data_y(yov.array_value());
+
+			bModified = true;
+		}
+
+		if (var == zvalues.first.toStdString())
+		{
+			octave_value zov = workspace()->var_value(zvalues.first.toStdString());
+			if (zov.iscomplex())
+				return false;
+			fill_data_y(zov.iscomplex() ? zov.complex_array_value().abs() : zov.array_value());
+
+			if (xaxis.first.isEmpty())
+			{
+				size_t currentSizeX = xaxis.second.first;
+				size_t requiredSizeX= zov.dims()(1);
+				if (currentSizeX!=requiredSizeX)
+				{
+					if (xaxis.second.second!=nullptr)
+					{
+						delete xaxis.second.second;
+						xaxis.second = ArraySize(requiredSizeX, new double[requiredSizeX]);
+					}
+					for (size_t x=0; x < requiredSizeX; x++)
+						xaxis.second.second[x]=double(x);
+				}
+			}
+
+			if (yaxis.first.isEmpty())
+			{
+				size_t currentSizeY = yaxis.second.first;
+				size_t requiredSizeY= zov.dims()(0);
+				if (currentSizeY!=requiredSizeY)
+				{
+					if (yaxis.second.second!=nullptr)
+					{
+						delete yaxis.second.second;
+						yaxis.second = ArraySize(requiredSizeY, new double[requiredSizeY]);
+					}
+					for (size_t y=0; y < requiredSizeY; y++)
+						yaxis.second.second[y]=double(y);
+				}
+			}
+
+			bModified = true;
+		}
+	}
+	return bModified;
 }
 
 bool plotData_Density::update_data()
 {
-	return false;
+	octave_value zov = workspace()->var_value(zvalues.first.toStdString());
+	if (xaxis.first.isEmpty())
+	{
+		size_t currentSizeX = xaxis.second.first;
+		size_t requiredSizeX= zov.dims()(1);
+		if (currentSizeX!=requiredSizeX)
+		{
+			if (xaxis.second.second!=nullptr)
+			{
+				delete xaxis.second.second;
+				xaxis.second = ArraySize(requiredSizeX, new double[requiredSizeX]);
+			}
+			for (size_t x=0; x < requiredSizeX; x++)
+				xaxis.second.second[x]=double(x);
+		}
+	}
+	else
+	{
+		octave_value xov = workspace()->var_value(xaxis.first.toStdString());
+		if (xov.iscomplex())
+			return false;
+		fill_data_x(xov.array_value());
+	}
+
+	if (yaxis.first.isEmpty())
+	{
+		size_t currentSizeY = yaxis.second.first;
+		size_t requiredSizeY= zov.dims()(0);
+		if (currentSizeY!=requiredSizeY)
+		{
+			if (yaxis.second.second!=nullptr)
+			{
+				delete yaxis.second.second;
+				yaxis.second = ArraySize(requiredSizeY, new double[requiredSizeY]);
+			}
+			for (size_t y=0; y < requiredSizeY; y++)
+				yaxis.second.second[y]=double(y);
+		}
+	}
+	else
+	{
+		octave_value yov = workspace()->var_value(yaxis.first.toStdString());
+		if (yov.iscomplex())
+			return false;
+
+		fill_data_y(yov.array_value());
+	}
+
+	if (zov.iscomplex())
+		fill_data_z(zov.complex_array_value().abs());
+	else
+		fill_data_z(zov.array_value());
+
+	return true;
 }
+
 void plotData_Density::clean_data()
 {
+	if (xaxis.second.second!=nullptr)
+		delete xaxis.second.second;
 
+	xaxis.first="";
+	xaxis.second.second = nullptr;
+	xaxis.second.first = 0;
+
+	if (yaxis.second.second!=nullptr)
+		delete yaxis.second.second;
+
+	yaxis.first="";
+	yaxis.second.second = nullptr;
+	yaxis.second.first = 0;
 }
+
+
 bool plotData_Density::has_var_in_list(const QStringList& var_changed)
 {
 	return false;
