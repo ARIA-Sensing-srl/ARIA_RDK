@@ -61,7 +61,7 @@ public:
   * Workspace commands
   * ------------------------------------------*/
     void            clearWorkspace();
-    bool            appendVariable();
+	//bool            appendVariable();
     QString         appendVariable(QString name, const octave_value& val, bool internal, bool toOctave=false, QStringList indep=QStringList(), QStringList dep=QStringList());
 
     void            refreshWorkspace();

@@ -933,6 +933,8 @@ octaveScript*    radarProject::add_script(QString &filename, projectItem* pitem)
 
     projectItem *script_folder =  get_folder(cstr_scripts);
     if (script_folder==nullptr) return nullptr;
+
+	if (!QFile(filename).exists()) return nullptr;
     // Copy the file to the desination
     QFileInfo fdestination(QDir(script_folder->get_full_path()),QFileInfo(filename).fileName());
     QString new_file = fdestination.absoluteFilePath();

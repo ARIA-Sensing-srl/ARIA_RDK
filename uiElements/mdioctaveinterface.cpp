@@ -260,12 +260,19 @@ void mdiOctaveInterface::add_variable_row(int row, const std::string& name, cons
     ui->workspaceList->setItem(row,3,new QTableWidgetItem(strVal));
 }
 
+void mdiOctaveInterface::clear_and_init_var_table()
+{
+	ui->workspaceList->clear();
+	ui->workspaceList->setColumnCount(4);
+	ui->workspaceList->setHorizontalHeaderLabels(QStringList({"","name","size","type"}));
+	ui->workspaceList->setRowCount(0);
+}
+
 void  mdiOctaveInterface::updateVarTable()
 {
     return;
-    ui->workspaceList->clear();
-    ui->workspaceList->setColumnCount(4);
-    ui->workspaceList->setHorizontalHeaderLabels(QStringList({"","name","size","type"}));
+
+	clear_and_init_var_table();
 
     if (_workspace == nullptr)
         return;

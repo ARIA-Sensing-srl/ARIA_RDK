@@ -146,6 +146,12 @@ void octaveInterface::clearCommandList()
     sync.unlock();
 }
 //-----------------------------
+void	octaveInterface::clearWorkspace()
+{
+	_octave_engine->clear_variables();
+	_octave_engine->clear_global_variables();
+	emit workspaceUpdated();
+}
 
 QString octaveInterface::appendVariable(QString name, const octave_value& val, bool internal, bool toOctave, QStringList indep, QStringList dep )
 {

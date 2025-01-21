@@ -326,6 +326,9 @@
    <property name="text">
     <string>New Device</string>
    </property>
+   <property name="visible">
+    <bool>false</bool>
+   </property>
   </action>
   <action name="actionDelete_Scheduler">
    <property name="text">

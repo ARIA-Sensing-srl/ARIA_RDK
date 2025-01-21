@@ -910,6 +910,12 @@ void MainWindow::closeProject()
             ((QDialog*)(child))->close();
         }
     }
+	if (interfaceData != nullptr)
+		interfaceData->clearWorkspace();
+
+	if (wndOctaveInterface!=nullptr)
+		wndOctaveInterface->clear_and_init_var_table();
+
 
     delete project;
     project = nullptr;

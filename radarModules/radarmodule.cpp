@@ -1128,7 +1128,7 @@ int     radarModule::get_postacquisition_command(int command_order)
 void    radarModule::set_init_script(int script_order, octaveScript_ptr script)
 {
     if (script==nullptr) return;
-    if ((script_order<=0)||(script_order>=_init_scripts.count()))
+	if ((script_order<0)||(script_order>=_init_scripts.count()))
         return;
     script->move_to_new_basedir(get_full_path());
     _init_scripts[script_order] = script;
@@ -1138,7 +1138,7 @@ void    radarModule::set_init_script(int script_order, octaveScript_ptr script)
 void    radarModule::set_postacquisition_script(int script_order, octaveScript_ptr script)
 {
     if (script==nullptr) return;
-    if ((script_order<=0)||(script_order>=_post_acquisition_scripts.count()))
+	if ((script_order<0)||(script_order>=_post_acquisition_scripts.count()))
         return;
     script->move_to_new_basedir(get_full_path());
     _post_acquisition_scripts[script_order] = script;
