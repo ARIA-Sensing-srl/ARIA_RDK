@@ -173,6 +173,9 @@ public:
 	~QwtDensityPlot();
 	void		updateContourValues();
 	void		updateData(plotData_Density* data);
+	void        updateZBar();
+	void		forceRedraw() {m_spectrogram->invalidateCache();}
+
 Q_SIGNALS:
 	void rendered( const QString& status );
 
@@ -209,12 +212,13 @@ public:
 
 private:
 	std::shared_ptr<plotData>	_plotdata;
-	Ui::dlgQWTPlot *ui;
+	Ui::dlgQWTPlot				*ui;
 	QwtPlotGrid					*_plotgrid;
 	QwtPlotZoomer*				zoomer;
 	QwtDensityPlot*				_density_plot_ref;
 public:
 	PLOT_TYPE get_plot_type() {return _plotdata==nullptr ? PT_NONE : _plotdata->get_plot_type();}
+	void assign_vars(QStringList xvars, QStringList yvars);
 	void assign_vars(QString yname, QString xname="");
 	void assign_vars(QString zname, QString yname, QString xname);
 	bool has_var(QString vname);
@@ -225,6 +229,7 @@ public slots:
 	void update_workspace();
 	void zoomAll();
 	void cbContourChanged(Qt::CheckState state);
+	void cbColorMapChanged(int index);
 };
 
 

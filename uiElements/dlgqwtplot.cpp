@@ -45,6 +45,9 @@ dlgQWTPlot::dlgQWTPlot(QWidget *parent, octavews* ws, PLOT_TYPE pt)
 		_plotgrid->enableYMin(true);
 
 		ui->cbContour->setEnabled(false);
+		ui->cbContour->setVisible(false);
+		ui->cbColorMap->setEnabled(false);
+		ui->cbColorMap->setVisible(false);
 		break;
 	}
 
@@ -59,12 +62,20 @@ dlgQWTPlot::dlgQWTPlot(QWidget *parent, octavews* ws, PLOT_TYPE pt)
 		_density_plot_ref->replot();
 
 		ui->cbContour->setEnabled(true);
+		ui->cbContour->setVisible(true);
+		ui->cbColorMap->setEnabled(true);
+		ui->cbColorMap->setVisible(true);
 
 		connect(ui->cbContour, &QCheckBox::checkStateChanged, this, &dlgQWTPlot::cbContourChanged);
+		connect(ui->cbColorMap, &QComboBox::currentIndexChanged, this, &dlgQWTPlot::cbColorMapChanged);
 		ui->plot->setAxisAutoScale(QwtPlot::xBottom,true);
 		ui->plot->setAxisAutoScale(QwtPlot::yLeft,true);
+
 		this->setUpdatesEnabled(true);
+
 		_density_plot_ref->setAutoReplot(true);
+
+
 		break;
 	}
 	default:
@@ -137,10 +148,10 @@ void dlgQWTPlot::zoomAll()
 		double xmax = _plotdata->get_xmax();
 		double ymin = _plotdata->get_ymin();
 		double ymax = _plotdata->get_ymax();
-		double zmin = _plotdata->get_ymin();
-		double zmax = _plotdata->get_ymax();
 		ui->plot->setAxisScale(QwtPlot::xBottom, xmin, xmax);
 		ui->plot->setAxisScale(QwtPlot::yLeft, ymin, ymax);
+		_density_plot_ref->updateZBar();
+		_density_plot_ref->forceRedraw();
 		ui->plot->replot();
 		//((QwtDensityPlot*)(ui->plot))->setM
 	}
@@ -176,12 +187,11 @@ void dlgQWTPlot::update_data(const std::set<std::string>& varlist)
 			double xmax = _plotdata->get_xmax();
 			double ymin = _plotdata->get_ymin();
 			double ymax = _plotdata->get_ymax();
-			double zmin = _plotdata->get_ymin();
-			double zmax = _plotdata->get_ymax();
 			ui->plot->setAxisScale(QwtPlot::xBottom, xmin, xmax);
 			ui->plot->setAxisScale(QwtPlot::yLeft, ymin, ymax);
+			_density_plot_ref->updateZBar();
+			_density_plot_ref->forceRedraw();
 			ui->plot->replot();
-			this->update();
 		}
 	}
 }
@@ -213,13 +223,23 @@ void dlgQWTPlot::update_workspace()
 			double xmax = _plotdata->get_xmax();
 			double ymin = _plotdata->get_ymin();
 			double ymax = _plotdata->get_ymax();
-			double zmin = _plotdata->get_ymin();
-			double zmax = _plotdata->get_ymax();
 			ui->plot->setAxisScale(QwtPlot::xBottom, xmin, xmax);
 			ui->plot->setAxisScale(QwtPlot::yLeft, ymin, ymax);
+			_density_plot_ref->updateZBar();
+			_density_plot_ref->forceRedraw();
 			ui->plot->replot();
 		}
 	}
+
+}
+
+void dlgQWTPlot::assign_vars(QStringList xvars, QStringList yvars)
+{
+	if (_plotdata==nullptr) return;
+
+	if (_plotdata->get_plot_type()==PTQWT_DENSITY) return;
+
+	_plotdata->set_data_plot(yvars,xvars);
 
 }
 
@@ -284,6 +304,32 @@ void dlgQWTPlot::cbContourChanged(Qt::CheckState state)
 	_density_plot_ref->showContour(state = Qt::Checked);
 }
 
+void dlgQWTPlot::cbColorMapChanged(int index)
+{
+	if (_plotdata->get_plot_type()!=PTQWT_DENSITY) return;
+	if (_density_plot_ref==nullptr) return;
+	switch (index)
+	{
+	case 1:
+		_density_plot_ref->setColorMap(QwtDensityPlot::HueMap);
+		break;
+	case 2:
+		_density_plot_ref->setColorMap(QwtDensityPlot::SaturationMap);
+		break;
+	case 3:
+		_density_plot_ref->setColorMap(QwtDensityPlot::ValueMap);
+		break;
+	case 4:
+		_density_plot_ref->setColorMap(QwtDensityPlot::SVMap);
+		break;
+	case 5:
+		_density_plot_ref->setColorMap(QwtDensityPlot::AlphaMap);
+		break;
+	default:
+		_density_plot_ref->setColorMap(QwtDensityPlot::RGBMap);
+		break;
+	}
+}
 
 void QwtDensityPlot::updateContourValues()
 {
@@ -333,7 +379,6 @@ void QwtDensityPlot::updateData(plotData_Density* data)
 	m_spectrogram->setData(data);
 
 	updateContourValues();
-	m_spectrogram->invalidateCache();
 }
 
 QwtDensityPlot::~QwtDensityPlot()
@@ -377,6 +422,13 @@ void QwtDensityPlot::setColorTableSize( int type )
 
 	m_spectrogram->setColorTableSize( numColors );
 	replot();
+}
+
+void QwtDensityPlot::updateZBar()
+{
+	//QwtScaleWidget* axis = axisWidget( QwtAxis::YRight );
+	const QwtInterval zInterval = m_spectrogram->data()->interval( Qt::ZAxis );
+	setAxisScale( QwtAxis::YRight, zInterval.minValue(), zInterval.maxValue() );
 }
 
 void QwtDensityPlot::setColorMap( int type )

@@ -1296,63 +1296,74 @@ void mdiOctaveInterface::variableQwtPlot()
 
 void mdiOctaveInterface::variableQwtPlotAllInOne()
 {
-	wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+	dlgQWTPlot*  wnd2d = new dlgQWTPlot(this, _workspace, PTQWT_PLOT);
+
+	connect(_interfaceData, &octaveInterface::workspaceUpdated, wnd2d, &dlgQWTPlot::update_workspace);
+	connect(_interfaceData, &octaveInterface::updatedVariables, wnd2d, &dlgQWTPlot::update_data);
+
 	ui->mdiArea->addSubWindow(wnd2d);
 	wnd2d->showMaximized();
-	_plot2d_children.append(wnd2d);
+	_plot_qwt_children.append(wnd2d);
 
 	QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
-	int plot = -1;
+	QStringList	     vars;
 	foreach (QModelIndex index, indexList)
 	{
 		int row = index.row();
 		// Get var name
 		QString varname = ui->workspaceList->item(row,1)->text();
-		wnd2d->add_plot(varname,"", plot);
-		QString last_error = wnd2d->last_error();
-		if (!last_error.isEmpty())
-		{
-			QMessageBox::critical(this,"Error creating plot",last_error);
-			//return;
-		}
-		plot = 0;
+		vars.append(varname);
+		//wnd2d->add_plot(varname,"");
+		//QString last_error = wnd2d->last_error();
+		//if (!last_error.isEmpty())
+		//{
+		//	QMessageBox::critical(this,"Error creating plot",last_error);
+		//return;
+		//}
 	}
+
+	if (vars.size()==1)
+	{
+		wnd2d->assign_vars(vars[0]);
+	}
+
 	return;
+
 }
 
 void mdiOctaveInterface::variableQwtPlotXData()
 {
-	QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
-	if (indexList.count()<2)
-		return;
+	dlgQWTPlot*  wnd2d = new dlgQWTPlot(this, _workspace, PTQWT_PLOT);
 
-	wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+	connect(_interfaceData, &octaveInterface::workspaceUpdated, wnd2d, &dlgQWTPlot::update_workspace);
+	connect(_interfaceData, &octaveInterface::updatedVariables, wnd2d, &dlgQWTPlot::update_data);
+
 	ui->mdiArea->addSubWindow(wnd2d);
 	wnd2d->showMaximized();
-	_plot2d_children.append(wnd2d);
+	_plot_qwt_children.append(wnd2d);
 
-	int plot = -1;
-	QString xname="";
+	QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
+	QStringList	     vars;
 	foreach (QModelIndex index, indexList)
 	{
 		int row = index.row();
 		// Get var name
 		QString varname = ui->workspaceList->item(row,1)->text();
-
-		if (plot==-1)
-		{
-			xname = varname;
-			plot = 0;
-			continue;
-		}
-		wnd2d->add_plot(varname,xname, plot);
-		QString last_error = wnd2d->last_error();
-		if (!last_error.isEmpty())
-		{
-			QMessageBox::critical(this,"Error creating plot",last_error);
-			//return;
-		}
+		vars.append(varname);
+		//wnd2d->add_plot(varname,"");
+		//QString last_error = wnd2d->last_error();
+		//if (!last_error.isEmpty())
+		//{
+		//	QMessageBox::critical(this,"Error creating plot",last_error);
+		//return;
+		//}
 	}
+
+	if (vars.size()==1)
+	{
+		wnd2d->assign_vars(vars[0]);
+	}
+
 	return;
 }
 
