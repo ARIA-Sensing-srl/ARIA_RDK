@@ -252,7 +252,7 @@ template<typename T> class radarParameter : public radarParamBase
 {
 
 private:
-    Array<T>                   _value;
+	Array<T,std::allocator<T>>                   _value;
     T                          _min, _max;
     QByteArray                 _inquiry_value;
     Array<T>                   _availableset;

@@ -263,7 +263,7 @@ void         radarParamBase::set_value(const octave_value& )
 {}
 //------------------------------------------------------
 template<typename T> radarParameter<T>::radarParameter(QString paramName) : radarParamBase(paramName, RPT_UNDEFINED),
-    _value(dim_vector())
+	_value(dim_vector({0,0}))
 {
 }
 //------------------------------------------------------
@@ -292,7 +292,7 @@ bool    radarParamBase::operator == (const radarParamBase& param)
 
 //------------------------------------------------------
 template<typename T> radarParameter<T>::radarParameter() : radarParamBase("paramName", RPT_UNDEFINED),
-    _value(dim_vector())
+	_value(dim_vector({0,0}))
 {
 }
 template <typename T> bool radarParameter<T>::has_available_set()
@@ -2159,23 +2159,23 @@ void radarParameter<enumElem>::convert_data(const octave_value& in)
     }
 }
 
-template<> radarParameter<int8_t>::radarParameter(QString paramName) : radarParamBase(paramName, RPT_INT8), _value(dim_vector()){}
-template<> radarParameter<uint8_t>::radarParameter(QString paramName) : radarParamBase(paramName, RPT_UINT8), _value(dim_vector()) {}
-template<> radarParameter<int16_t>::radarParameter(QString paramName) : radarParamBase(paramName, RPT_INT16),  _value(dim_vector()){}
-template<> radarParameter<uint16_t>::radarParameter(QString paramName) : radarParamBase(paramName, RPT_UINT16),  _value(dim_vector()) {}
-template<> radarParameter<int32_t>::radarParameter(QString paramName) : radarParamBase(paramName, RPT_INT32),  _value(dim_vector()) {}
-template<> radarParameter<uint32_t>::radarParameter(QString paramName) : radarParamBase(paramName, RPT_UINT32),  _value(dim_vector()) {}
-template<> radarParameter<float>::radarParameter(QString paramName) : radarParamBase(paramName, RPT_FLOAT), _value(dim_vector()) {}
-template<> radarParameter<char>::radarParameter(QString paramName) : radarParamBase(paramName, RPT_UINT8), _value(dim_vector()) {}
+template<> radarParameter<int8_t>::radarParameter(QString paramName) : radarParamBase(paramName, RPT_INT8), _value(dim_vector({0,0})){}
+template<> radarParameter<uint8_t>::radarParameter(QString paramName) : radarParamBase(paramName, RPT_UINT8), _value(dim_vector({0,0})) {}
+template<> radarParameter<int16_t>::radarParameter(QString paramName) : radarParamBase(paramName, RPT_INT16),  _value(dim_vector({0,0})){}
+template<> radarParameter<uint16_t>::radarParameter(QString paramName) : radarParamBase(paramName, RPT_UINT16),  _value(dim_vector({0,0})) {}
+template<> radarParameter<int32_t>::radarParameter(QString paramName) : radarParamBase(paramName, RPT_INT32),  _value(dim_vector({0,0})) {}
+template<> radarParameter<uint32_t>::radarParameter(QString paramName) : radarParamBase(paramName, RPT_UINT32),  _value(dim_vector({0,0})) {}
+template<> radarParameter<float>::radarParameter(QString paramName) : radarParamBase(paramName, RPT_FLOAT), _value(dim_vector({0,0})) {}
+template<> radarParameter<char>::radarParameter(QString paramName) : radarParamBase(paramName, RPT_UINT8), _value(dim_vector({0,0})) {}
 
-template<> radarParameter<int8_t>::radarParameter() : radarParamBase("noname", RPT_INT8), _value(dim_vector()){}
-template<> radarParameter<uint8_t>::radarParameter() : radarParamBase("noname", RPT_UINT8), _value(dim_vector()) {}
-template<> radarParameter<int16_t>::radarParameter() : radarParamBase("noname", RPT_INT16),  _value(dim_vector()){}
-template<> radarParameter<uint16_t>::radarParameter() : radarParamBase("noname", RPT_UINT16),  _value(dim_vector()) {}
-template<> radarParameter<int32_t>::radarParameter() : radarParamBase("noname", RPT_INT32),  _value(dim_vector()) {}
-template<> radarParameter<uint32_t>::radarParameter() : radarParamBase("noname", RPT_UINT32),  _value(dim_vector()) {}
-template<> radarParameter<float>::radarParameter(): radarParamBase("noname", RPT_FLOAT), _value(dim_vector()) {}
-template<> radarParameter<char>::radarParameter() : radarParamBase("noname", RPT_UINT8), _value(dim_vector()) {}
+template<> radarParameter<int8_t>::radarParameter() : radarParamBase("noname", RPT_INT8), _value(dim_vector({0,0})){}
+template<> radarParameter<uint8_t>::radarParameter() : radarParamBase("noname", RPT_UINT8), _value(dim_vector({0,0})) {}
+template<> radarParameter<int16_t>::radarParameter() : radarParamBase("noname", RPT_INT16),  _value(dim_vector({0,0})){}
+template<> radarParameter<uint16_t>::radarParameter() : radarParamBase("noname", RPT_UINT16),  _value(dim_vector({0,0})) {}
+template<> radarParameter<int32_t>::radarParameter() : radarParamBase("noname", RPT_INT32),  _value(dim_vector({0,0})) {}
+template<> radarParameter<uint32_t>::radarParameter() : radarParamBase("noname", RPT_UINT32),  _value(dim_vector({0,0})) {}
+template<> radarParameter<float>::radarParameter(): radarParamBase("noname", RPT_FLOAT), _value(dim_vector({0,0})) {}
+template<> radarParameter<char>::radarParameter() : radarParamBase("noname", RPT_UINT8), _value(dim_vector({0,0})) {}
 //------------------------------------------------------
 template<> octave_value radarParameter<int8_t>::get_value()
 {

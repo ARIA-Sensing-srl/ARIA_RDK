@@ -72,7 +72,7 @@ private:
 	bool	fill_data_y(QString vname, const NDArray& data);
 	bool	fill_data_x(QString vname, const NDArray& data);
 public:
-	plotData_plot(octavews* ws = nullptr, QwtPlot* parent=nullptr) : plotData(ws,parent,PTQWT_PLOT), curves(), xvals() {gc =  gc = Qt::red; style = Qt::SolidLine; symbol = QwtSymbol::Ellipse; objSymbol=nullptr;}
+	plotData_plot(octavews* ws = nullptr, QwtPlot* parent=nullptr) : plotData(ws,parent,PTQWT_PLOT), curves(), xvals() {gc =  gc = Qt::green; style = Qt::SolidLine; symbol = QwtSymbol::Ellipse; objSymbol=nullptr;}
 	~plotData_plot();
 	void    update_min_max(QwtPlot_MinMaxUpdate policy = FULL) override;
 	void set_data_plot(QString var_name, QString x_name) override;

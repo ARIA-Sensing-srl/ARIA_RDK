@@ -44,7 +44,16 @@ octaveInterface::octaveInterface() :
     _b_running_command = false;
     _b_running_script = true;
 #endif
-
+	// These dummy declarations allow for proper linking of the radarparameter template.
+	// to be investigated.
+	{ Array<float> x(dim_vector({1,1})); x(0)=1;}
+	{ Array<int8_t> x(dim_vector({1,1})); x(0)=1;}
+	{ Array<int16_t> x(dim_vector({1,1})); x(0)=1;}
+	{ Array<int32_t> x(dim_vector({1,1})); x(0)=1;}
+	{ Array<uint8_t> x(dim_vector({1,1})); x(0)=1;}
+	{ Array<uint16_t> x(dim_vector({1,1})); x(0)=1;}
+	{ Array<uint32_t> x(dim_vector({1,1})); x(0)=1;}
+	{ Array<char> x(dim_vector({1,1})); x(0)=0x01;}
 }
 //-----------------------------
 octaveInterface::~octaveInterface()

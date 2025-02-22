@@ -6,7 +6,7 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets LinguistTools Sql SerialPort)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Sql SerialPort)
@@ -25,7 +25,7 @@ set(PROJECT_SOURCES
         mainwindow.ui
 #	${TS_FILES}
 )
-
+include_directories(AFTER "/home/alessioc/octave_devel/include/octave-11.0.0/octave")
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(ARIA_RDK
         MANUAL_FINALIZATION
@@ -71,9 +71,9 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         uiElements/plotdescriptor.h
         uiElements/wndradarliverun.h uiElements/wndradarliverun.cpp uiElements/wndradarliverun.ui
         uiElements/plotdescriptor.cpp
-	uiElements/q_debugstream.h
-	scheduler/opscheduler.h scheduler/opscheduler.cpp
-	uiElements/wndscheduler.h uiElements/wndscheduler.cpp uiElements/wndscheduler.ui
+        uiElements/q_debugstream.h
+        scheduler/opscheduler.h scheduler/opscheduler.cpp
+        uiElements/wndscheduler.h uiElements/wndscheduler.cpp uiElements/wndscheduler.ui
 
 	uiElements/wndabout.h uiElements/wndabout.cpp uiElements/wndabout.ui
 	uiElements/wndfwupload.h uiElements/wndfwupload.cpp uiElements/wndfwupload.ui
@@ -101,13 +101,13 @@ else()
     else()
         add_executable(ARIA_RDK
             ${PROJECT_SOURCES}
-	    uiElements/mdioctaveinterface.h uiElements/mdioctaveinterface.cpp uiElements/mdioctaveinterface.ui
-	    uiElements/wndoctavescript.h uiElements/wndoctavescript.cpp uiElements/wndoctavescript.ui
-	    uiElements/wndradarmoduleeditor.h uiElements/wndradarmoduleeditor.cpp uiElements/wndradarmoduleeditor.ui
-	    octaveInterface/octaveinterface.h octaveInterface/octaveinterface.cpp
-	    radarModules/radarmodule.h radarModules/radarmodule.cpp
+            uiElements/mdioctaveinterface.h uiElements/mdioctaveinterface.cpp uiElements/mdioctaveinterface.ui
+            uiElements/wndoctavescript.h uiElements/wndoctavescript.cpp uiElements/wndoctavescript.ui
+            uiElements/wndradarmoduleeditor.h uiElements/wndradarmoduleeditor.cpp uiElements/wndradarmoduleeditor.ui
+            octaveInterface/octaveinterface.h octaveInterface/octaveinterface.cpp
+            radarModules/radarmodule.h radarModules/radarmodule.cpp
 
-	    octaveInterface/octavews.h octaveInterface/octavews.cpp
+            octaveInterface/octavews.h octaveInterface/octavews.cpp
 
 	    radarModules/antenna.h radarModules/antenna.cpp
 	    radarModules/radarinstance.h radarModules/radarinstance.cpp
@@ -148,7 +148,7 @@ else()
 
 	    uiElements/wndabout.h uiElements/wndabout.cpp uiElements/wndabout.ui
 	    uiElements/wndfwupload.h uiElements/wndfwupload.cpp uiElements/wndfwupload.ui
-        )
+	)
     endif()
 
     qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
@@ -164,8 +164,9 @@ target_link_libraries(ARIA_RDK PRIVATE Qt${QT_VERSION_MAJOR}::SerialPort)
 #
 
 # Octave 9.2.0
-target_link_libraries(ARIA_RDK PRIVATE "/usr/lib64/octave/9.2.0/liboctave.so")
-target_link_libraries(ARIA_RDK PRIVATE "/usr/lib64/octave/9.2.0/liboctinterp.so")
+target_link_libraries(ARIA_RDK PRIVATE "/home/alessioc/octave_devel/lib/octave/11.0.0/liboctave.so")
+target_link_libraries(ARIA_RDK PRIVATE "/home/alessioc/octave_devel/lib/octave/11.0.0/liboctinterp.so")
+target_link_libraries(ARIA_RDK PRIVATE "/home/alessioc/octave_devel/lib/octave/11.0.0/liboctmex.so")
 
 
 # Armadillo
@@ -209,7 +210,7 @@ include(GNUInstallDirs)
 #
 # Octave 9.2,0
 
-include_directories(AFTER "/usr/include/octave-9.2.0/octave")
+
 
 # Armadillo
 include_directories(ARIA_RDK PRIVATE ${PROJECT_SOURCE_DIR}/../armadillo-12.6.7/package/include/)
@@ -230,7 +231,7 @@ install(TARGETS ARIA_RDK
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -pthread")
 
 
 if(QT_VERSION_MAJOR EQUAL 6)

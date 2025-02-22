@@ -270,7 +270,7 @@ void mdiOctaveInterface::clear_and_init_var_table()
 
 void  mdiOctaveInterface::updateVarTable()
 {
-    return;
+	//return;
 
 	clear_and_init_var_table();
 
@@ -292,8 +292,16 @@ void  mdiOctaveInterface::updateVarTable()
     }
 
     for (const auto& child: _plot2d_children)
+	{
         if (child!=nullptr)
             child->update_workspace(_workspace);
+	}
+
+	for (const auto& child : _plot_qwt_children)
+	{
+		if (child != nullptr)
+			child->update_workspace();
+	}
 }
 
 
@@ -1203,9 +1211,19 @@ void mdiOctaveInterface::updatedSingleVar(const std::string& varname)
             ui->workspaceList->item(n,3)->setText(strVal);
 
         for (const auto& child: _plot2d_children)
+		{
             if (child!=nullptr)
                 //if (child->isFullScreen())
                 child->update_workspace(_workspace);
+		}
+
+		for (const auto& child: _plot_qwt_children)
+		{
+			if (child!=nullptr)
+				//if (child->isFullScreen())
+				child->update_workspace();
+		}
+
         return;
     }
 
