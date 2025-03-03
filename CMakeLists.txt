@@ -185,8 +185,9 @@ include_directories("/usr/local/include/eigen3/")
 # QWT
 target_link_libraries( ARIA_RDK PRIVATE ${QWT} )
 
-#UWB Toolbox
-
+# QScintilla
+target_link_libraries(ARIA_RDK PRIVATE "/home/alessioc/projects/QScintilla_src-2.14.1/designer/libqscintillaplugin.so")
+target_link_libraries(ARIA_RDK PRIVATE "/home/alessioc/projects/QScintilla_src-2.14.1/src/libqscintilla2_qt6.so")
 
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
@@ -223,6 +224,7 @@ include_directories(AFTER ${PROJECT_SOURCE_DIR}/projects/)
 include_directories(AFTER ${PROJECT_SOURCE_DIR}/radarModules)
 include_directories(AFTER ${PROJECT_SOURCE_DIR}/serialcomm)
 include_directories(AFTER ${PROJECT_SOURCE_DIR}/utils/)
+include_directories(AFTER ${PROJECT_SOURCE_DIR}/editor/)
 
 
 include_directories(/usr/local/qwt-6.3.0/include)

@@ -12,10 +12,13 @@
 #include <QFileSystemWatcher>
 #include "octavesyntaxhighlighter.h"
 #include "octavescript.h"
+#include "Qsci/qscilexer.h"
 
 namespace Ui {
 class wndOctaveScript;
 }
+
+#undef USE_NATIVE_LEXER
 
 namespace octave
 {
@@ -39,7 +42,11 @@ private:
     QFileSystemWatcher      watcher;
     bool                    _bInternal;
     bool                    _b_need_save_as;
-    octaveSyntaxHighlighter *hl;
+#ifdef USE_NATIVE_LEXER
+	octaveSyntaxHighlighter *hl;
+#else
+	QsciLexer				*_lexer;
+#endif
     Ui::wndOctaveScript *ui;
 
     void update_wnd_title();

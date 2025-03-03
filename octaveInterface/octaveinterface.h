@@ -18,6 +18,8 @@
 
 #undef OCTAVE_THREAD
 
+
+
 class octaveInterface : public QObject
 {
     Q_OBJECT
@@ -39,7 +41,11 @@ private:
     //------------------------------------------------------------------------
     std::shared_ptr<class octaveScript> _current_script;
     std::string                         _immediate_filename;
+	QString								_last_error;
+	QString								_last_warning;
 public:
+	static octaveInterface*	_octave_interface_instance;
+
     octaveInterface();
     ~octaveInterface();
     // Commands from in-line command editor
@@ -57,6 +63,8 @@ public:
     void                    run(std::shared_ptr<class octaveScript> script);
     bool                    run(const QString &program, bool remove_immediate_error_msg = false);
     void                    set_pwd(const QString& path);
+/*----------------------------------------*/
+	void					set_last_error_message(QString error = "");
  /*--------------------------------------------
   * Workspace commands
   * ------------------------------------------*/

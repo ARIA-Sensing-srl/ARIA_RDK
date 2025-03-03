@@ -14,39 +14,8 @@
    <string>Octave Script: </string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="1" column="0">
-    <widget class="QTableWidget" name="tableWidget">
-     <property name="maximumSize">
-      <size>
-       <width>20</width>
-       <height>16777215</height>
-      </size>
-     </property>
-     <property name="frameShape">
-      <enum>QFrame::NoFrame</enum>
-     </property>
-     <property name="verticalScrollBarPolicy">
-      <enum>Qt::ScrollBarAlwaysOff</enum>
-     </property>
-     <property name="horizontalScrollBarPolicy">
-      <enum>Qt::ScrollBarAlwaysOff</enum>
-     </property>
-     <property name="editTriggers">
-      <set>QAbstractItemView::NoEditTriggers</set>
-     </property>
-     <property name="gridStyle">
-      <enum>Qt::NoPen</enum>
-     </property>
-     <attribute name="horizontalHeaderVisible">
-      <bool>false</bool>
-     </attribute>
-     <attribute name="verticalHeaderVisible">
-      <bool>false</bool>
-     </attribute>
-    </widget>
-   </item>
    <item row="1" column="1">
-    <widget class="QTextEdit" name="textScript"/>
+    <widget class="QsciScintilla" name="textScript"/>
    </item>
    <item row="0" column="0" colspan="2">
     <widget class="QGroupBox" name="groupBox">
@@ -69,8 +38,7 @@
          <string>Run</string>
         </property>
         <property name="icon">
-         <iconset theme="go-last">
-          <normaloff>.</normaloff>.</iconset>
+         <iconset theme="go-last"/>
         </property>
        </widget>
       </item>
@@ -86,8 +54,7 @@
          <string>Save</string>
         </property>
         <property name="icon">
-         <iconset theme="go-next">
-          <normaloff>.</normaloff>.</iconset>
+         <iconset theme="go-next"/>
         </property>
        </widget>
       </item>
@@ -103,15 +70,14 @@
          <string>Save as...</string>
         </property>
         <property name="icon">
-         <iconset theme="list-remove">
-          <normaloff>.</normaloff>.</iconset>
+         <iconset theme="list-remove"/>
         </property>
        </widget>
       </item>
       <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
-         <enum>Qt::Horizontal</enum>
+         <enum>Qt::Orientation::Horizontal</enum>
         </property>
         <property name="sizeHint" stdset="0">
          <size>
@@ -126,6 +92,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QsciScintilla</class>
+   <extends>QTextEdit</extends>
+   <header location="global">Qsci/qsciscintilla.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

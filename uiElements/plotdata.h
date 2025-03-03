@@ -30,7 +30,7 @@ private:
 	QwtPlot*		_owner;
 public:
 	plotData(octavews* ws=nullptr, QwtPlot* parent=nullptr, PLOT_TYPE pt = PT_NONE) {_ws = ws; _ptype = pt; _owner = parent;}
-	~plotData() {};
+	virtual ~plotData() {};
 	// Simple plots
 	virtual void set_data_plot(QString var_name, QString x_name) {};
 	virtual void set_data_plot(QStringList var_name, QStringList x_name) {};

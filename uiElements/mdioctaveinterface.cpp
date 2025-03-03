@@ -18,6 +18,7 @@
 #include <octave.h>
 #include <interpreter.h>
 
+
 extern QDir             ariasdk_modules_path;
 extern QDir             ariasdk_projects_path;
 extern QDir             ariasdk_scripts_path;
@@ -118,6 +119,7 @@ void mdiOctaveInterface::newScript()
     wndScript->showMaximized();
 }
 
+
 void mdiOctaveInterface::openProjectScript(octaveScript* script)
 {
     for (auto &child: ui->mdiArea->subWindowList())
@@ -188,7 +190,11 @@ void mdiOctaveInterface::saveSctiptAs()
 
 void mdiOctaveInterface::error(QString errorString)
 {
-    QMessageBox::critical(this,"Error",errorString);
+	//    QMessageBox::critical(this,"Error",errorString);
+	QColor backup_color = ui->outputCommands->textColor();
+	ui->outputCommands->setTextColor(Qt::red);
+	ui->outputCommands->append(errorString);
+	ui->outputCommands->setTextColor(backup_color);
 }
 
 

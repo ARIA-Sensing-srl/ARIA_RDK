@@ -13,10 +13,12 @@
 //#include "iostream"
 
 
-
+octaveInterface*	octaveInterface::_octave_interface_instance = nullptr;
 /*-----------------------------
  * QSharedData implementation
  *----------------------------*/
+
+
 octaveInterface::octaveInterface() :
       commandList()
     , commandCurrent("")
@@ -29,6 +31,7 @@ octaveInterface::octaveInterface() :
     _octave_engine->interactive(true);
     _octave_engine->initialize();
     _octave_engine->initialize_history(true);
+	_octave_engine->get_error_system().debug_on_caught(true);
     _octave_engine->execute();
 
     octave::output_system& os = _octave_engine->get_output_system();
@@ -54,6 +57,11 @@ octaveInterface::octaveInterface() :
 	{ Array<uint16_t> x(dim_vector({1,1})); x(0)=1;}
 	{ Array<uint32_t> x(dim_vector({1,1})); x(0)=1;}
 	{ Array<char> x(dim_vector({1,1})); x(0)=0x01;}
+
+	// Error handlers
+	_octave_engine->get_error_system().backtrace_on_warning(true);
+	_octave_engine->get_error_system().initialize_default_warning_state();
+
 }
 //-----------------------------
 octaveInterface::~octaveInterface()
@@ -94,24 +102,30 @@ bool octaveInterface::appendCommand(const QString &newCommand)
 
     _b_running_command = true;
     bool b_ok = true;
-
     try
     {
         octave::flush_stdout();
         update_interpreter_internal_vars();
-        _octave_engine->eval_string(newCommand.toStdString(),false,parse_status);
+
+		_octave_engine->eval_string(newCommand.toStdString(),false,parse_status);
+
 
     }
     catch (const octave::exit_exception& ex)
     {
-        emit workerError(QString("Error while executing:\n")+newCommand);
+		QString str_error = "";
+		emit workerError(QString("Error while executing:\n")+newCommand+"\n"+str_error);
+
         parse_status = -2;
         b_ok = false;
 
     }
-    catch (const octave::execution_exception&)
+	catch (const octave::execution_exception& ex)
     {
-        emit workerError(QString("Error while executing:\n")+newCommand);
+		_octave_engine->get_error_system().save_exception(ex);
+		QString str_error = QString::fromStdString(_octave_engine->get_error_system().last_error_message());
+		emit workerError(QString("Error while executing:\n")+newCommand+"\n"+str_error);
+
         parse_status = -1;
         b_ok = false;
     }

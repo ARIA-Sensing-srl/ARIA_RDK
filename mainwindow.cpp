@@ -298,7 +298,8 @@ void MainWindow::octaveCompletedTask(QString task)
 
 void MainWindow::octaveError(QString error)
 {
-    QMessageBox::critical(this,"Error",error);
+	wndOctaveInterface->error(error);
+ //   QMessageBox::critical(this,"Error",error);
 }
 
 

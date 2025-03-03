@@ -12,6 +12,8 @@
 #include <QMessageBox>
 #include <QTextStream>
 
+#include "Qsci/qscilexeroctave.h"
+#include "Qsci/qscilexercpp.h"
 int wndOctaveScript::nNoname = 0;
 
 extern QDir             ariasdk_modules_path;
@@ -25,14 +27,28 @@ wndOctaveScript::wndOctaveScript(QString filename, octaveInterface* dataEngine,Q
     _data_interface(dataEngine),
     _bInternal(true),
     _b_need_save_as(false),
+#ifdef USE_NATIVE_LEXER
     hl(nullptr),
+#else
+	_lexer(nullptr),
+#endif
     ui(new Ui::wndOctaveScript)
 {
     ui->setupUi(this);
 
-    emit ui->textScript->undoAvailable(true);
 
+#ifdef USE_NATIVE_LEXER
+	emit ui->textScript->undoAvailable(true);
     hl = new octaveSyntaxHighlighter(_data_interface,ui->textScript->document());
+#else
+	if ((filename.endsWith(".cpp"))||(filename.endsWith(".cc"))||(filename.endsWith(".c")))
+		_lexer = new QsciLexerCPP(ui->textScript);
+	else
+		_lexer = new QsciLexerOctave(ui->textScript);
+
+	_lexer->setColor(Qt::lightGray, QsciLexerOctave::Operator);
+	ui->textScript->setLexer(_lexer);
+#endif
 
     _script = new octaveScript(filename);
     _bInternal = true;
@@ -61,9 +77,11 @@ wndOctaveScript::wndOctaveScript(QString filename, octaveInterface* dataEngine,Q
     connect(ui->btnOctaveScriptRun, &QPushButton::clicked, this, &wndOctaveScript::run_file);
     connect(ui->btnScriptSave,      &QPushButton::clicked, this, &wndOctaveScript::save_file);
     connect(ui->btnScriptSaveAs,    &QPushButton::clicked, this, &wndOctaveScript::save_file_as);
-
+#ifdef USE_NATIVE_LEXER
     int fontWidth = QFontMetrics(ui->textScript->currentCharFormat().font()).averageCharWidth();
     ui->textScript->setTabStopDistance( 4 * fontWidth );
+#endif
+
 }
 
 wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* dataEngine,QWidget *parent, QString basedir) : QDialog(parent),
@@ -71,11 +89,23 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
     _script(script),
     _bInternal(true),
     _b_need_save_as(false),
-    hl(nullptr),    
+#ifdef USE_NATIVE_LEXER
+	hl(nullptr),
+#else
+	_lexer(nullptr),
+#endif
     ui(new Ui::wndOctaveScript)
 {
     ui->setupUi(this);
-    hl = new octaveSyntaxHighlighter(_data_interface,ui->textScript->document());
+
+#ifdef USE_NATIVE_LEXER
+	hl = new octaveSyntaxHighlighter(_data_interface,ui->textScript->document());
+#else
+
+	_lexer = new QsciLexerOctave(ui->textScript);
+	_lexer->setColor(Qt::lightGray, QsciLexerOctave::Operator);
+	ui->textScript->setLexer(_lexer);
+#endif
 
     if (script == nullptr)
     {
@@ -117,7 +147,11 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
 
 wndOctaveScript::~wndOctaveScript()
 {
+#ifdef USE_NATIVE_LEXER
     if (hl!=nullptr) delete hl;
+#else
+	if (_lexer!=nullptr) delete _lexer;
+#endif
     if (_bInternal)
         delete(_script);
     _script = nullptr;
@@ -154,8 +188,13 @@ void wndOctaveScript::run_file()
     //if (_script==nullptr) return;
     //_script->set_text(ui->textScript->toPlainText());
     if (_data_interface==nullptr) return;
+#ifdef USE_NATIVE_LEXER
+	_data_interface->run(ui->textScript->toPlainText());
+#else
+	_data_interface->run(ui->textScript->text());
+#endif
 
-    _data_interface->run(ui->textScript->toPlainText());
+
 }
 
 
@@ -170,7 +209,12 @@ void wndOctaveScript::  save_file()
 {
     if (_b_need_save_as) { save_file_as(); return;}
 
-    _script->set_text(ui->textScript->toPlainText());
+#ifdef USE_NATIVE_LEXER
+	_script->set_text(ui->textScript->toPlainText());
+#else
+	_script->set_text(ui->textScript->text());
+#endif
+
     _script->save();
 }
 
@@ -198,8 +242,11 @@ void wndOctaveScript::save_file_as()
     // Create a new script
     if (!_bInternal)
     _script = new octaveScript(*_script);
-
+#ifdef USE_NATIVE_LEXER
     _script->set_text(ui->textScript->toPlainText());
+#else
+	_script->set_text(ui->textScript->text());
+#endif
     _script->set_filename(projectFile);
     _script->save();
 
