@@ -2711,7 +2711,8 @@ template<> void radarParameter<float>::update_variable()
     if (_workspace == nullptr) return;
     if (_var.isEmpty()) return;
 
-    _workspace->add_variable(_var.toStdString(), false, octave_value(_value));
+
+	_workspace->add_variable(_var.toStdString(), false, octave_value(FloatNDArray(Array<float>(_value))));
 }
 
 //------------------------------------------------------
