@@ -78,11 +78,13 @@ bool     is_equal(const uint32NDArray& x, const uint32NDArray& y);
 bool     is_equal(const FloatNDArray& x, const FloatNDArray& y);
 bool     is_equal(const charNDArray& x, const charNDArray& y);
 
+template<typename T> bool	 equal_t(const Array<T> &x, const Array<T>& y);
+
 const double EPS_MIN_DOUBLE= 128 * DBL_EPSILON;
 const float  EPS_MIN_FLOAT = 128 * FLT_EPSILON;
 
 bool nearly_equal(double a, double b, double  epsilon = EPS_MIN_DOUBLE, double abs_th = DBL_MIN);
-bool nearly_equal(float  a, float  b, float   epsilon = EPS_MIN_FLOAT, double abs_th = FLT_MIN);
+bool nearly_equal(float  a, float  b, float   epsilon = EPS_MIN_FLOAT, float abs_th = FLT_MIN);
 bool            find_azimuth_zenith(NDArray& azimuth, NDArray& zenith, double az, double zen,
                                     int& a0, int& a1,
                                     int& z0, int& z1,

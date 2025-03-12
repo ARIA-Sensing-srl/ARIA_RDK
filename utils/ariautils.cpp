@@ -4,7 +4,6 @@
 #include <QFile>
 #include <QDataStream>
 #include <QTextStream>
-#include <iostream>
 #include <ov.h>
 #include <ariautils.h>
 #include <float.h>
@@ -734,4 +733,133 @@ bool is_equal(const ComplexNDArray& x, const ComplexNDArray& y)
             return false;
     }
     return true;
+}
+
+//-------------------------------------------------------------------------
+template<typename T> bool	 equal_t(const Array<T> &x, const Array<T>& y)
+{
+	if (x.dims()!=y.dims()) return false;
+	for (int j=0; j < x.numel(); j++)
+	{
+		T xv = x(j);
+		T yv = y(j);
+		if (xv!=yv) return false;
+	}
+	return true;
+}
+
+
+//-------------------------------------------------------------------------
+template<> bool	 equal_t<int8_t>(const Array<int8_t> &x, const Array<int8_t>& y)
+{
+	if (x.dims()!=y.dims()) return false;
+	for (int j=0; j < x.numel(); j++)
+	{
+		int8_t xv = x(j);
+		int8_t yv = y(j);
+		if (xv!=yv) return false;
+	}
+	return true;
+}
+
+//-------------------------------------------------------------------------
+template<> bool	 equal_t<uint8_t>(const Array<uint8_t> &x, const Array<uint8_t>& y)
+{
+	if (x.dims()!=y.dims()) return false;
+	for (int j=0; j < x.numel(); j++)
+	{
+		uint8_t xv = x(j);
+		uint8_t yv = y(j);
+		if (xv!=yv) return false;
+	}
+	return true;
+}
+
+//-------------------------------------------------------------------------
+template<> bool	 equal_t<int16_t>(const Array<int16_t> &x, const Array<int16_t>& y)
+{
+	if (x.dims()!=y.dims()) return false;
+	for (int j=0; j < x.numel(); j++)
+	{
+		int16_t xv = x(j);
+		int16_t yv = y(j);
+		if (xv!=yv) return false;
+	}
+	return true;
+}
+
+//-------------------------------------------------------------------------
+template<> bool	 equal_t<uint16_t>(const Array<uint16_t> &x, const Array<uint16_t>& y)
+{
+	if (x.dims()!=y.dims()) return false;
+	for (int j=0; j < x.numel(); j++)
+	{
+		uint16_t xv = x(j);
+		uint16_t yv = y(j);
+		if (xv!=yv) return false;
+	}
+	return true;
+}
+//-------------------------------------------------------------------------
+template<> bool	 equal_t<int32_t>(const Array<int32_t> &x, const Array<int32_t>& y)
+{
+	if (x.dims()!=y.dims()) return false;
+	for (int j=0; j < x.numel(); j++)
+	{
+		int32_t xv = x(j);
+		int32_t yv = y(j);
+		if (xv!=yv) return false;
+	}
+	return true;
+}
+
+//-------------------------------------------------------------------------
+template<> bool	 equal_t<uint32_t>(const Array<uint32_t> &x, const Array<uint32_t>& y)
+{
+	if (x.dims()!=y.dims()) return false;
+	for (int j=0; j < x.numel(); j++)
+	{
+		uint32_t xv = x(j);
+		uint32_t yv = y(j);
+		if (xv!=yv) return false;
+	}
+	return true;
+}
+
+//-------------------------------------------------------------------------
+template<> bool	 equal_t<float>(const Array<float> &x, const Array<float>& y)
+{
+	if (x.dims()!=y.dims()) return false;
+	for (int j=0; j < x.numel(); j++)
+	{
+		float xv = x(j);
+		float yv = y(j);
+		if (!nearly_equal(xv,yv)) return false;
+	}
+	return true;
+}
+//-------------------------------------------------------------------------
+template<> bool	 equal_t<Complex>(const Array<Complex> &x, const Array<Complex>& y)
+{
+	if (x.dims()!=y.dims()) return false;
+	for (int j=0; j < x.numel(); j++)
+	{
+		Complex xv = x(j);
+		Complex yv = y(j);
+		if (!nearly_equal(xv.real(),yv.real())) return false;
+		if (!nearly_equal(xv.imag(),yv.imag())) return false;
+	}
+	return true;
+}
+//-------------------------------------------------------------------------
+template<> bool	 equal_t<char>(const Array<char> &x, const Array<char>& y)
+{
+	if (x.dims()!=y.dims()) return false;
+	for (int j=0; j < x.numel(); j++)
+	{
+		char xv = x(j);
+		char yv = y(j);
+		if (xv!=yv) return false;
+	}
+	return true;
 }

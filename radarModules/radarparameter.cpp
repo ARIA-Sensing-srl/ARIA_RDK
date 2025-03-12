@@ -2455,77 +2455,77 @@ template<> bool radarParameter<uint32_t>::split_values(const QByteArray& data)
 template<> bool radarParameter<char>::operator == (const radarParameter<char>& param)
 {
     if (!radarParamBase::operator==(param)) return false;
-    if (!is_equal(charNDArray(_value), charNDArray(param._value))) return false;
+	if (!equal_t<char>(_value,param._value)) return false;
     if (_min != param._min) return false;
     if (_max != param._max) return false;
     if (_inquiry_value != param._inquiry_value) return false;
-    if (!is_equal((charNDArray)_availableset, (charNDArray)param._availableset)) return false;
+	if (!equal_t<char>(_availableset, param._availableset)) return false;
     return true;
 }
 //------------------------------------------------------
 template<> bool radarParameter<int8_t>::operator == (const radarParameter<int8_t>& param)
 {
     if (!radarParamBase::operator==(param)) return false;
-    if (!is_equal((int8NDArray)_value, (int8NDArray)param._value)) return false;
+	if (!equal_t<int8_t>(_value,param._value)) return false;
     if (_min != param._min) return false;
     if (_max != param._max) return false;
     if (_inquiry_value != param._inquiry_value) return false;
-    if (!is_equal((int8NDArray)_availableset, (int8NDArray)param._availableset)) return false;
+	if (!equal_t<int8_t>(_availableset, param._availableset)) return false;
     return true;
 }
 //------------------------------------------------------
 template<> bool radarParameter<uint8_t>::operator == (const radarParameter<uint8_t>& param)
 {
     if (!radarParamBase::operator==(param)) return false;
-    if (!is_equal((uint8NDArray)_value, (uint8NDArray)param._value)) return false;
+	if (!equal_t<uint8_t>(_value,param._value)) return false;
     if (_min != param._min) return false;
     if (_max != param._max) return false;
     if (_inquiry_value != param._inquiry_value) return false;
-    if (!is_equal((uint8NDArray)_availableset, (uint8NDArray)param._availableset)) return false;
+	if (!equal_t<uint8_t>(_availableset, param._availableset)) return false;
     return true;
 }
 //------------------------------------------------------
 template<> bool radarParameter<int16_t>::operator == (const radarParameter<int16_t>& param)
 {
     if (!radarParamBase::operator==(param)) return false;
-    if (!is_equal((int16NDArray)_value, (int16NDArray)param._value)) return false;
+	if (!equal_t<int16_t>(_value,param._value)) return false;
     if (_min != param._min) return false;
     if (_max != param._max) return false;
     if (_inquiry_value != param._inquiry_value) return false;
-    if (!is_equal((int16NDArray)_availableset, (int16NDArray)param._availableset)) return false;
+	if (!equal_t<int16_t>(_availableset, param._availableset)) return false;
     return true;
 }
 //------------------------------------------------------
 template<> bool radarParameter<uint16_t>::operator == (const radarParameter<uint16_t>& param)
 {
     if (!radarParamBase::operator==(param)) return false;
-    if (!is_equal((uint16NDArray)_value, (uint16NDArray)param._value)) return false;
+	if (!equal_t<uint16_t>(_value,param._value)) return false;
     if (_min != param._min) return false;
     if (_max != param._max) return false;
     if (_inquiry_value != param._inquiry_value) return false;
-    if (!is_equal((uint16NDArray)_availableset, (uint16NDArray)param._availableset)) return false;
+	if (!equal_t<uint16_t>(_availableset, param._availableset)) return false;
     return true;
 }
 //------------------------------------------------------
 template<> bool radarParameter<int32_t>::operator == (const radarParameter<int32_t>& param)
 {
     if (!radarParamBase::operator==(param)) return false;
-    if (!is_equal((int32NDArray)_value, (int32NDArray)param._value)) return false;
+	if (!equal_t<int32_t>(_value, param._value)) return false;
     if (_min != param._min) return false;
     if (_max != param._max) return false;
     if (_inquiry_value != param._inquiry_value) return false;
-    if (!is_equal((int32NDArray)_availableset, (int32NDArray)param._availableset)) return false;
+	if (!equal_t<int32_t>(_availableset, param._availableset)) return false;
     return true;
 }
 //------------------------------------------------------
 template<> bool radarParameter<uint32_t>::operator == (const radarParameter<uint32_t>& param)
 {
     if (!radarParamBase::operator==(param)) return false;
-    if (!is_equal((uint32NDArray)_value, (uint32NDArray)param._value)) return false;
+	if (!equal_t<uint32_t>(_value, param._value)) return false;
     if (_min != param._min) return false;
     if (_max != param._max) return false;
     if (_inquiry_value != param._inquiry_value) return false;
-    if (!is_equal((uint32NDArray)_availableset, (uint32NDArray)param._availableset)) return false;
+	if (!equal_t<uint32_t>(_availableset, param._availableset)) return false;
     return true;
 }
 
@@ -2533,11 +2533,11 @@ template<> bool radarParameter<uint32_t>::operator == (const radarParameter<uint
 template<> bool radarParameter<float>::operator == (const radarParameter<float>& param)
 {
     if (!radarParamBase::operator==(param)) return false;
-    if (!is_equal((FloatNDArray)_value, (FloatNDArray)param._value)) return false;
+	if (!equal_t<float>(_value, param._value)) return false;
     if (_min != param._min) return false;
     if (_max != param._max) return false;
     if (_inquiry_value != param._inquiry_value) return false;
-    if (!is_equal((FloatNDArray)_availableset, (FloatNDArray)param._availableset)) return false;
+	if (!equal_t<float>(_availableset, param._availableset)) return false;
     return true;
 }
 //------------------------------------------------------
