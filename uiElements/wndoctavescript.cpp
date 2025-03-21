@@ -50,6 +50,10 @@ wndOctaveScript::wndOctaveScript(QString filename, octaveInterface* dataEngine,Q
 		_lexer = new QsciLexerOctave(ui->textScript);
 
 	_lexer->setColor(Qt::lightGray, QsciLexerOctave::Operator);
+	_lexer->setColor(Qt::darkYellow, QsciLexerOctave::Keyword);
+	_lexer->setColor(Qt::green, QsciLexerOctave::Identifier);
+	_lexer->setColor(Qt::darkGreen, QsciLexerOctave::Command);
+	_lexer->setColor(Qt::darkCyan, QsciLexerOctave::Number);
 
 	ui->textScript->setLexer(_lexer);
 	_api = new QsciAPIs(_lexer);
@@ -110,7 +114,11 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
 #else
 	_lexer = new QsciLexerOctave(ui->textScript);
 	_lexer->setColor(Qt::lightGray, QsciLexerOctave::Operator);
-	ui->textScript->setLexer(_lexer);
+	_lexer->setColor(Qt::darkYellow, QsciLexerOctave::Keyword);
+	_lexer->setColor(Qt::green, QsciLexerOctave::Identifier);
+	_lexer->setColor(Qt::darkGreen, QsciLexerOctave::Command);
+	_lexer->setColor(Qt::darkCyan, QsciLexerOctave::Number);
+
 	_api = new QsciAPIs(_lexer);
 	_lexer->setAPIs(_api);
 #endif
