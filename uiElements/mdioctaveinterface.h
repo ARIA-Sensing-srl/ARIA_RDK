@@ -33,6 +33,7 @@ public:
 
     void        delete_children(class wndOctaveScript* child);
     void        delete_children(class wndPlot2d* child);
+	void        delete_children(class dlgQWTPlot* child);
     QTextEdit*  get_textoutput();
     void        update_octave_interface();
     void        add_variable_row(int row, const std::string& name, const octave_value& val, bool internal);

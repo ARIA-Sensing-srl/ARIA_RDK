@@ -207,7 +207,7 @@ class dlgQWTPlot : public QDialog
 	Q_OBJECT
 
 public:
-	explicit dlgQWTPlot(QWidget *parent = nullptr, octavews* ws = nullptr, PLOT_TYPE pt = PT_NONE);
+	explicit dlgQWTPlot(QWidget *parent = nullptr, class mdiOctaveInterface* owner = nullptr, octavews* ws = nullptr, PLOT_TYPE pt = PT_NONE);
 	~dlgQWTPlot();
 
 private:
@@ -216,6 +216,7 @@ private:
 	QwtPlotGrid					*_plotgrid;
 	QwtPlotZoomer*				zoomer;
 	QwtDensityPlot*				_density_plot_ref;
+	class mdiOctaveInterface*	_owner;
 public:
 	PLOT_TYPE get_plot_type() {return _plotdata==nullptr ? PT_NONE : _plotdata->get_plot_type();}
 	void assign_vars(QStringList xvars, QStringList yvars);

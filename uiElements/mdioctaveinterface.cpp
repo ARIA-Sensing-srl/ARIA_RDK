@@ -1323,6 +1323,13 @@ void    mdiOctaveInterface::delete_children(wndPlot2d* child)
 
 }
 // ---------------------------------------------------------------------------------
+void    mdiOctaveInterface::delete_children(dlgQWTPlot* child)
+{
+	if (_b_deleting) return;
+	_plot_qwt_children.removeAll(child);
+
+}
+// ---------------------------------------------------------------------------------
 void mdiOctaveInterface::saveWorkspaceData()
 {
     QDateTime date = QDateTime::currentDateTime();
@@ -1342,7 +1349,7 @@ void mdiOctaveInterface::saveWorkspaceData()
 // ---------------------------------------------------------------------------------
 void mdiOctaveInterface::variableQwtPlot()
 {
-	dlgQWTPlot*  wnd2d = new dlgQWTPlot(this, _workspace, PTQWT_PLOT);
+	dlgQWTPlot*  wnd2d = new dlgQWTPlot(this,this, _workspace, PTQWT_PLOT);
 
 	connect(_interfaceData, &octaveInterface::workspaceUpdated, wnd2d, &dlgQWTPlot::update_workspace);
 	connect(_interfaceData, &octaveInterface::updatedVariables, wnd2d, &dlgQWTPlot::update_data);
@@ -1378,7 +1385,7 @@ void mdiOctaveInterface::variableQwtPlot()
 
 void mdiOctaveInterface::variableQwtPlotAllInOne()
 {
-	dlgQWTPlot*  wnd2d = new dlgQWTPlot(this, _workspace, PTQWT_PLOT);
+	dlgQWTPlot*  wnd2d = new dlgQWTPlot(this,this, _workspace, PTQWT_PLOT);
 
 	connect(_interfaceData, &octaveInterface::workspaceUpdated, wnd2d, &dlgQWTPlot::update_workspace);
 	connect(_interfaceData, &octaveInterface::updatedVariables, wnd2d, &dlgQWTPlot::update_data);
@@ -1415,7 +1422,7 @@ void mdiOctaveInterface::variableQwtPlotAllInOne()
 
 void mdiOctaveInterface::variableQwtPlotXData()
 {
-	dlgQWTPlot*  wnd2d = new dlgQWTPlot(this, _workspace, PTQWT_PLOT);
+	dlgQWTPlot*  wnd2d = new dlgQWTPlot(this, this,_workspace, PTQWT_PLOT);
 
 	connect(_interfaceData, &octaveInterface::workspaceUpdated, wnd2d, &dlgQWTPlot::update_workspace);
 	connect(_interfaceData, &octaveInterface::updatedVariables, wnd2d, &dlgQWTPlot::update_data);
@@ -1543,7 +1550,7 @@ void mdiOctaveInterface::variableQwtScatterPlotXData()
 // 7. Qwt Density
 void mdiOctaveInterface::variableQwtDensityPlot()
 {
-	dlgQWTPlot*  wnd2d = new dlgQWTPlot(this, _workspace, PTQWT_DENSITY);
+	dlgQWTPlot*  wnd2d = new dlgQWTPlot(this, this,_workspace, PTQWT_DENSITY);
 
 	connect(_interfaceData, &octaveInterface::workspaceUpdated, wnd2d, &dlgQWTPlot::update_workspace);
 	connect(_interfaceData, &octaveInterface::updatedVariables, wnd2d, &dlgQWTPlot::update_data);

@@ -8,12 +8,14 @@
 #include <qwt_scale_engine.h>
 #include <QPrinter>
 #include <QPrintDialog>
+#include "mdioctaveinterface.h"
 
 
 
-dlgQWTPlot::dlgQWTPlot(QWidget *parent, octavews* ws, PLOT_TYPE pt)
+dlgQWTPlot::dlgQWTPlot(QWidget *parent, mdiOctaveInterface* owner, octavews* ws, PLOT_TYPE pt)
 	: QDialog(parent)
 	, ui(new Ui::dlgQWTPlot)
+	, _owner(owner)
 {
 	ui->setupUi(this);
 	zoomer = nullptr;
@@ -111,6 +113,8 @@ dlgQWTPlot::dlgQWTPlot(QWidget *parent, octavews* ws, PLOT_TYPE pt)
 
 dlgQWTPlot::~dlgQWTPlot()
 {
+	if (_owner!=nullptr)
+		_owner->delete_children(this);
 
 	if (_plotdata!=nullptr)
 	{

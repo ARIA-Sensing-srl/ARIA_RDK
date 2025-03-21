@@ -418,6 +418,7 @@ void octavews::remove_graph(class wndPlot2d* graph)
 
 }
 
+
 void octavews::update_graphs()
 {
     for (const auto& graph: _graphs2d)
