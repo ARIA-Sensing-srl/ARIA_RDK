@@ -363,7 +363,15 @@ void        octavews::set_variable(const std::string& varname, const octave_valu
 
     update_graphs();
 }
-
+QStringList		  octavews::get_all_vars()
+{
+	QStringList vout;
+	for (const auto& var: _internal_variables)
+		vout.append(QString::fromStdString(var.first));
+	for (const auto& var: _octave_variables)
+		vout.append(QString::fromStdString(var.first));
+	return vout;
+}
 
 string_vector     octavews::get_var_names(bool internal)
 {

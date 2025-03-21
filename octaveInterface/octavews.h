@@ -55,6 +55,7 @@ public:
     octave_value_list get_var_values(string_vector names);
     void              set_var_values(string_vector names, octave_value_list values);
     string_vector     get_var_names(bool internal);
+	QStringList		  get_all_vars();
     int               get_variable_count(bool internal);
     variable          get_variable(int id, bool binternal);
 

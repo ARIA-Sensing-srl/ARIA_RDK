@@ -282,10 +282,44 @@ void  mdiOctaveInterface::updateVarTable()
 {
 	//return;
 	// Get the list of selected rows
+	/*
 	QModelIndexList selected = ui->workspaceList->selectionModel()->selectedRows();
 	QStringList		selectedVars;
 	for (const auto& sel : selected)
 		selectedVars.append(ui->workspaceList->item(sel.row(),1)->text());
+*/
+	QStringList vars = _interfaceData->get_workspace()->get_all_vars();
+
+	// Remove unnecessary rows
+	int n=0;
+	while (n < ui->workspaceList->rowCount())
+	{
+		QString var_table = ui->workspaceList->item(n,1)->text();
+		if (vars.contains(var_table))
+			n++;
+		else
+			ui->workspaceList->removeRow(n);
+	}
+
+	int rmax = ui->workspaceList->rowCount();
+	for (auto& v: vars)
+	{
+		bool bfound = false;
+		for (int row = 0; (row < rmax)&&(!bfound); row++)
+		{
+			if (ui->workspaceList->item(row,1)->text()==v)
+				bfound = true;
+		}
+
+		if (bfound) continue;
+		std::string vstring = v.toStdString();
+		bool internal = _workspace->is_internal(vstring);
+		octave_value val = _workspace->var_value(vstring);
+		add_variable_row(ui->workspaceList->rowCount(), vstring, val, internal);
+	}
+
+
+	/*
 
 	clear_and_init_var_table();
 
@@ -324,6 +358,7 @@ void  mdiOctaveInterface::updateVarTable()
 		if (child != nullptr)
 			child->update_workspace();
 	}
+	*/
 
 }
 
