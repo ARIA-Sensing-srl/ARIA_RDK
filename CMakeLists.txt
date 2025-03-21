@@ -101,6 +101,7 @@ else()
     else()
         add_executable(ARIA_RDK
             ${PROJECT_SOURCES}
+
             uiElements/mdioctaveinterface.h uiElements/mdioctaveinterface.cpp uiElements/mdioctaveinterface.ui
             uiElements/wndoctavescript.h uiElements/wndoctavescript.cpp uiElements/wndoctavescript.ui
             uiElements/wndradarmoduleeditor.h uiElements/wndradarmoduleeditor.cpp uiElements/wndradarmoduleeditor.ui

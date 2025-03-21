@@ -282,10 +282,13 @@ bool    octaveInterface::run(const QString &program, bool remove_immediate_error
         _b_running_command = false;
         return false;
     }
-    catch (const octave::execution_exception&)
+	catch (const octave::execution_exception& ex)
     {
+		_octave_engine->get_error_system().save_exception(ex);
+		QString str_error = QString::fromStdString(_octave_engine->get_error_system().last_error_message());
+
         if (!remove_immediate_error_msg)
-            emit workerError(QString("Octave execution exception while executing current script"));
+			emit workerError(QString("Octave execution exception while executing current script\n")+str_error);
         //fi.remove();
         _b_running_command = false;
         return false;

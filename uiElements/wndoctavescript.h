@@ -13,6 +13,8 @@
 #include "octavesyntaxhighlighter.h"
 #include "octavescript.h"
 #include "Qsci/qscilexer.h"
+#include "Qsci/qsciscintilla.h"
+#include "Qsci/qsciapis.h"
 
 namespace Ui {
 class wndOctaveScript;
@@ -44,8 +46,10 @@ private:
     bool                    _b_need_save_as;
 #ifdef USE_NATIVE_LEXER
 	octaveSyntaxHighlighter *hl;
+
 #else
 	QsciLexer				*_lexer;
+	QsciAPIs				*_api;
 #endif
     Ui::wndOctaveScript *ui;
 
@@ -59,11 +63,15 @@ public:
     void closeFile();
     void fileChanged();
     octaveScript* get_script() {return _script;}
+
+	void showEvent(QShowEvent *event);
 public slots:
     void fileChangedOnDisk(QString str);
     void run_file();
     void save_file();
     void save_file_as();
+	void update_tips();
+
 };
 
 #endif // WNDOCTAVESCRIPT_H

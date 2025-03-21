@@ -7,6 +7,7 @@
 #include "wndoctavescript.h"
 #include "ui_wndoctavescript.h"
 
+#include "interpreter.h"
 #include "octaveinterface.h"
 #include <QFileDialog>
 #include <QMessageBox>
@@ -14,6 +15,7 @@
 
 #include "Qsci/qscilexeroctave.h"
 #include "Qsci/qscilexercpp.h"
+#include "Qsci/qsciscintilla.h"
 int wndOctaveScript::nNoname = 0;
 
 extern QDir             ariasdk_modules_path;
@@ -31,6 +33,7 @@ wndOctaveScript::wndOctaveScript(QString filename, octaveInterface* dataEngine,Q
     hl(nullptr),
 #else
 	_lexer(nullptr),
+	_api(nullptr),
 #endif
     ui(new Ui::wndOctaveScript)
 {
@@ -47,7 +50,10 @@ wndOctaveScript::wndOctaveScript(QString filename, octaveInterface* dataEngine,Q
 		_lexer = new QsciLexerOctave(ui->textScript);
 
 	_lexer->setColor(Qt::lightGray, QsciLexerOctave::Operator);
+
 	ui->textScript->setLexer(_lexer);
+	_api = new QsciAPIs(_lexer);
+
 #endif
 
     _script = new octaveScript(filename);
@@ -93,6 +99,7 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
 	hl(nullptr),
 #else
 	_lexer(nullptr),
+	_api(nullptr),
 #endif
     ui(new Ui::wndOctaveScript)
 {
@@ -101,10 +108,11 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
 #ifdef USE_NATIVE_LEXER
 	hl = new octaveSyntaxHighlighter(_data_interface,ui->textScript->document());
 #else
-
 	_lexer = new QsciLexerOctave(ui->textScript);
 	_lexer->setColor(Qt::lightGray, QsciLexerOctave::Operator);
 	ui->textScript->setLexer(_lexer);
+	_api = new QsciAPIs(_lexer);
+	_lexer->setAPIs(_api);
 #endif
 
     if (script == nullptr)
@@ -151,6 +159,7 @@ wndOctaveScript::~wndOctaveScript()
     if (hl!=nullptr) delete hl;
 #else
 	if (_lexer!=nullptr) delete _lexer;
+
 #endif
     if (_bInternal)
         delete(_script);
@@ -198,6 +207,70 @@ void wndOctaveScript::run_file()
 }
 
 
+void wndOctaveScript::update_tips()
+{
+
+#ifndef USE_NATIVE_LEXER
+	_api->clear();
+	if ((_data_interface!=nullptr)&&(_data_interface->get_octave_engine()!=nullptr))
+	{
+		// Add variables
+		std::list<std::string> varnames = _data_interface->get_octave_engine()->variable_names();
+
+		for (std::list<std::string>::iterator iter = varnames.begin(); iter!=varnames.end(); iter++)
+			_api->add(QString::fromStdString(*iter));
+
+		varnames = _data_interface->get_octave_engine()->global_variable_names();
+
+		for (std::list<std::string>::iterator iter = varnames.begin(); iter!=varnames.end(); iter++)
+			_api->add(QString::fromStdString(*iter));
+
+		varnames = _data_interface->get_octave_engine()->top_level_variable_names();
+
+		for (std::list<std::string>::iterator iter = varnames.begin(); iter!=varnames.end(); iter++)
+			_api->add(QString::fromStdString(*iter));
+		// Add functions
+
+
+		std::list<std::string> funcnames= _data_interface->get_octave_engine()->user_function_names();
+
+		for (std::list<std::string>::iterator iter = funcnames.begin(); iter!=funcnames.end(); iter++)
+		{
+			_api->add(QString::fromStdString(*iter)+"( args )");
+
+		}
+	}
+	_api->prepare();
+	_lexer->setAPIs(_api);
+#endif
+}
+
+void wndOctaveScript::showEvent(QShowEvent *event)
+{
+	QDialog::showEvent(event);
+#ifndef  USE_NATIVE_LEXER
+	ui->textScript->setCaretForegroundColor(Qt::lightGray);
+	ui->textScript->setCaretWidth(5);
+//# Set the text wrapping mode to word wrap
+	ui->textScript->setWrapMode(QsciScintilla::WrapWord);
+//# Set the text wrapping mode visual indication
+	ui->textScript->setWrapVisualFlags(QsciScintilla::WrapFlagByText);
+//# Set the text wrapping to indent the wrapped lines
+	ui->textScript->setWrapIndentMode(QsciScintilla::WrapIndentSame);
+	ui->textScript->setAutoIndent(true);
+	ui->textScript->setAutoCompletionFillupsEnabled(true);
+	ui->textScript->setAutoCompletionCaseSensitivity(true);
+	ui->textScript->setAutoCompletionSource(QsciScintilla::AcsAll);
+	ui->textScript->setAutoCompletionThreshold(2);
+	ui->textScript->setAutoCompletionReplaceWord(true);
+	ui->textScript->setCallTipsVisible(0);
+	ui->textScript->setCallTipsPosition(QsciScintilla::CallTipsBelowText);
+
+	update_tips();
+
+#endif
+
+}
 
 void wndOctaveScript::fileChangedOnDisk(QString str)
 {

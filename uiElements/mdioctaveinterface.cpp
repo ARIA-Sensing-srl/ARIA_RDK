@@ -9,7 +9,7 @@
 #include <QPainter>
 #include <QMenu>
 #include <QFileDialog>
-
+#include <QMdiSubWindow>
 #include "mdioctaveinterface.h"
 #include "wndoctavescript.h"
 #include "ui_mdioctaveinterface.h"
@@ -117,6 +117,8 @@ void mdiOctaveInterface::newScript()
     wndOctaveScript* wndScript = new wndOctaveScript("",_interfaceData,this);
     ui->mdiArea->addSubWindow(wndScript);
     wndScript->showMaximized();
+
+	connect(_interfaceData, &octaveInterface::workspaceUpdated, wndScript, &wndOctaveScript::update_tips);
 }
 
 
@@ -138,6 +140,7 @@ void mdiOctaveInterface::openProjectScript(octaveScript* script)
     ui->mdiArea->addSubWindow(wndScript);
     wndScript->showMaximized();
 
+	connect(_interfaceData, &octaveInterface::workspaceUpdated, wndScript, &wndOctaveScript::update_tips);
 }
 
 
@@ -156,6 +159,7 @@ void mdiOctaveInterface::openScript()
         wndOctaveScript* wndScript = new wndOctaveScript(fname,_interfaceData,this);
         ui->mdiArea->addSubWindow(wndScript);
         wndScript->showMaximized();
+		connect(_interfaceData, &octaveInterface::workspaceUpdated, wndScript, &wndOctaveScript::update_tips);
     }
 
     if (filesToRead.count()>0)
@@ -277,6 +281,11 @@ void mdiOctaveInterface::clear_and_init_var_table()
 void  mdiOctaveInterface::updateVarTable()
 {
 	//return;
+	// Get the list of selected rows
+	QModelIndexList selected = ui->workspaceList->selectionModel()->selectedRows();
+	QStringList		selectedVars;
+	for (const auto& sel : selected)
+		selectedVars.append(ui->workspaceList->item(sel.row(),1)->text());
 
 	clear_and_init_var_table();
 
@@ -297,6 +306,13 @@ void  mdiOctaveInterface::updateVarTable()
         }
     }
 
+	for (int r=0; r < ui->workspaceList->rowCount(); r++)
+	{
+		QString row_var = ui->workspaceList->item(r,1)->text();
+		if (selectedVars.contains(row_var))
+			ui->workspaceList->selectRow(r);
+	}
+
     for (const auto& child: _plot2d_children)
 	{
         if (child!=nullptr)
@@ -308,6 +324,7 @@ void  mdiOctaveInterface::updateVarTable()
 		if (child != nullptr)
 			child->update_workspace();
 	}
+
 }
 
 
@@ -1257,7 +1274,6 @@ void mdiOctaveInterface::updatedVars(const std::set<std::string>& varlist)
 	}
 
 }
-
 // ---------------------------------------------------------------------------------
 // Mesh callback
 void    mdiOctaveInterface::delete_children(wndOctaveScript* child)
