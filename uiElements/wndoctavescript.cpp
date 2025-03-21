@@ -49,9 +49,9 @@ wndOctaveScript::wndOctaveScript(QString filename, octaveInterface* dataEngine,Q
 	else
 		_lexer = new QsciLexerOctave(ui->textScript);
 
-	_lexer->setColor(Qt::lightGray, QsciLexerOctave::Operator);
+	_lexer->setColor(Qt::green, QsciLexerOctave::Operator);
 	_lexer->setColor(Qt::darkYellow, QsciLexerOctave::Keyword);
-	_lexer->setColor(Qt::green, QsciLexerOctave::Identifier);
+	_lexer->setColor(Qt::gray, QsciLexerOctave::Identifier);
 	_lexer->setColor(Qt::darkGreen, QsciLexerOctave::Command);
 	_lexer->setColor(Qt::darkCyan, QsciLexerOctave::Number);
 
@@ -91,7 +91,7 @@ wndOctaveScript::wndOctaveScript(QString filename, octaveInterface* dataEngine,Q
     int fontWidth = QFontMetrics(ui->textScript->currentCharFormat().font()).averageCharWidth();
     ui->textScript->setTabStopDistance( 4 * fontWidth );
 #endif
-
+	ui->textScript->update();
 }
 
 wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* dataEngine,QWidget *parent, QString basedir) : QDialog(parent),
@@ -113,12 +113,12 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
 	hl = new octaveSyntaxHighlighter(_data_interface,ui->textScript->document());
 #else
 	_lexer = new QsciLexerOctave(ui->textScript);
-	_lexer->setColor(Qt::lightGray, QsciLexerOctave::Operator);
+	_lexer->setColor(Qt::green, QsciLexerOctave::Operator);
 	_lexer->setColor(Qt::darkYellow, QsciLexerOctave::Keyword);
-	_lexer->setColor(Qt::green, QsciLexerOctave::Identifier);
+	_lexer->setColor(Qt::gray, QsciLexerOctave::Identifier);
 	_lexer->setColor(Qt::darkGreen, QsciLexerOctave::Command);
 	_lexer->setColor(Qt::darkCyan, QsciLexerOctave::Number);
-
+	ui->textScript->setLexer(_lexer);
 	_api = new QsciAPIs(_lexer);
 	_lexer->setAPIs(_api);
 #endif
@@ -154,7 +154,10 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
         _script->load();
         ui->textScript->setText(_script->get_text());
 
+
     }
+
+	ui->textScript->update();
     connect(ui->btnOctaveScriptRun, &QPushButton::clicked, this, &wndOctaveScript::run_file);
     connect(ui->btnScriptSave,      &QPushButton::clicked, this, &wndOctaveScript::save_file);
     connect(ui->btnScriptSaveAs,    &QPushButton::clicked, this, &wndOctaveScript::save_file_as);
