@@ -428,6 +428,17 @@ void    plotData_plot::update_min_max(QwtPlot_MinMaxUpdate policy)
 		else
 			_ymin = 0.999 * _ymin + 0.001 * ymin;
 	}
+
+
+	if (policy == MAXHOLD_NODECAY)
+	{
+		if (ymax > _ymax)
+			_ymax = ymax;
+
+
+		if (ymin < _ymin)
+			_ymin = ymin;
+	}
 	if (policy==FULL)
 	{
 		_ymax = ymax;
@@ -521,7 +532,19 @@ void    plotData_Density::update_min_max(QwtPlot_MinMaxUpdate policy)
 	}
 	else
 	{
-		_zmin = zmin; _zmax = zmax;
+		if (policy == MAXHOLD_NODECAY)
+		{
+			if (zmax > _zmax)
+				_zmax = zmax;
+
+			if (zmin < _zmin)
+				_zmin = zmin;
+		}
+		else
+		{
+			_zmin = zmin; _zmax = zmax;
+		}
+
 	}
 
 

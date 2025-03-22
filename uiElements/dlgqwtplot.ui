@@ -37,7 +37,7 @@
    <item row="0" column="3">
     <widget class="QComboBox" name="cbZoom">
      <property name="currentIndex">
-      <number>1</number>
+      <number>0</number>
      </property>
      <item>
       <property name="text">
@@ -52,6 +52,11 @@
      <item>
       <property name="text">
        <string>MAXHOLD</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>MAXHOLD NO DECAY</string>
       </property>
      </item>
     </widget>

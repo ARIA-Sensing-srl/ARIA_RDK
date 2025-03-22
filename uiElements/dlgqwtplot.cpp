@@ -70,6 +70,7 @@ dlgQWTPlot::dlgQWTPlot(QWidget *parent, mdiOctaveInterface* owner, octavews* ws,
 
 		connect(ui->cbContour, &QCheckBox::checkStateChanged, this, &dlgQWTPlot::cbContourChanged);
 		connect(ui->cbColorMap, &QComboBox::currentIndexChanged, this, &dlgQWTPlot::cbColorMapChanged);
+
 		ui->plot->setAxisAutoScale(QwtPlot::xBottom,true);
 		ui->plot->setAxisAutoScale(QwtPlot::yLeft,true);
 
@@ -108,6 +109,7 @@ dlgQWTPlot::dlgQWTPlot(QWidget *parent, mdiOctaveInterface* owner, octavews* ws,
 	zoomer->setTrackerPen( c );
 
 	connect(ui->btnZoomAll, &QPushButton::clicked, this, &dlgQWTPlot::zoomAll);
+	connect(zoomer, &MyZoomer::zoomed, this, &dlgQWTPlot::userZoom );
 
 }
 
@@ -130,6 +132,11 @@ dlgQWTPlot::~dlgQWTPlot()
 		_plotdata.reset();
 
 	_plotdata = nullptr;*/
+}
+
+void dlgQWTPlot::userZoom(const QRectF&)
+{
+	ui->cbZoom->setCurrentIndex(0);
 }
 
 void dlgQWTPlot::zoomAll()
@@ -208,13 +215,17 @@ void dlgQWTPlot::update_workspace()
 		if ((_plotdata->get_plot_type()==PTQWT_PLOT)||(_plotdata->get_plot_type()==PTQWT_SCATTER))
 		{
 			QwtPlot_MinMaxUpdate zoomPolicy = QwtPlot_MinMaxUpdate (ui->cbZoom->currentIndex());
-			_plotdata->update_min_max(zoomPolicy);
-			double xmin = _plotdata->get_xmin();
-			double xmax = _plotdata->get_xmax();
-			double ymin = _plotdata->get_ymin();
-			double ymax = _plotdata->get_ymax();
-			ui->plot->setAxisScale(QwtPlot::xBottom, xmin, xmax);
-			ui->plot->setAxisScale(QwtPlot::yLeft, ymin, ymax);
+
+			if (zoomPolicy != CUSTOM)
+			{
+				_plotdata->update_min_max(zoomPolicy);
+				double xmin = _plotdata->get_xmin();
+				double xmax = _plotdata->get_xmax();
+				double ymin = _plotdata->get_ymin();
+				double ymax = _plotdata->get_ymax();
+				ui->plot->setAxisScale(QwtPlot::xBottom, xmin, xmax);
+				ui->plot->setAxisScale(QwtPlot::yLeft, ymin, ymax);
+			}
 			ui->plot->replot();
 		}
 		if (_plotdata->get_plot_type()==PTQWT_DENSITY)
@@ -222,15 +233,21 @@ void dlgQWTPlot::update_workspace()
 			((QwtDensityPlot*)(ui->plot))->updateData((plotData_Density*)(_plotdata.get()));
 
 			QwtPlot_MinMaxUpdate zoomPolicy = QwtPlot_MinMaxUpdate (ui->cbZoom->currentIndex());
-			_plotdata->update_min_max(zoomPolicy);
-			double xmin = _plotdata->get_xmin();
-			double xmax = _plotdata->get_xmax();
-			double ymin = _plotdata->get_ymin();
-			double ymax = _plotdata->get_ymax();
-			ui->plot->setAxisScale(QwtPlot::xBottom, xmin, xmax);
-			ui->plot->setAxisScale(QwtPlot::yLeft, ymin, ymax);
-			_density_plot_ref->updateZBar();
-			_density_plot_ref->forceRedraw();
+
+			if (zoomPolicy != CUSTOM)
+			{
+
+				_plotdata->update_min_max(zoomPolicy);
+				double xmin = _plotdata->get_xmin();
+				double xmax = _plotdata->get_xmax();
+				double ymin = _plotdata->get_ymin();
+				double ymax = _plotdata->get_ymax();
+				ui->plot->setAxisScale(QwtPlot::xBottom, xmin, xmax);
+				ui->plot->setAxisScale(QwtPlot::yLeft, ymin, ymax);
+				_density_plot_ref->updateZBar();
+				_density_plot_ref->forceRedraw();
+			}
+
 			ui->plot->replot();
 		}
 	}

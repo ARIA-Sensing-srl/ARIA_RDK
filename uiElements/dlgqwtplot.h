@@ -231,6 +231,7 @@ public slots:
 	void zoomAll();
 	void cbContourChanged(Qt::CheckState state);
 	void cbColorMapChanged(int index);
+	void userZoom(const QRectF&);
 };
 
 

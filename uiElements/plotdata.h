@@ -20,7 +20,7 @@ typedef QPair<QwtPlotCurve*,ArraySize>						  Curve;
 typedef QVector<Curve>										  PlotCurves;
 class QwtPlot;
 
-enum QwtPlot_MinMaxUpdate {CUSTOM=0, FULL=1, MAXHOLD=2};
+enum QwtPlot_MinMaxUpdate {CUSTOM=0, FULL=1, MAXHOLD=2, MAXHOLD_NODECAY=3};
 
 class plotData
 {
