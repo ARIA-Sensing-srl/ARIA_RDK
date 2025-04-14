@@ -55,6 +55,27 @@ int main(int argc, char *argv[])
     // Install this palette
     qApp->setPalette(darkPalette);
 
+
+	QString strPath(getenv("PATH"));
+	QString currentPath = QDir::currentPath();
+	QString	octavePath  = QFileInfo(currentPath, QString("../share/octave/9.4.0/m")).absolutePath();
+#ifdef WIN32
+	QStringList all_dirs;
+	all_dirs << octavePath;
+	QDirIterator directories(octavePath, QDir::Dirs | QDir::NoSymLinks | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+	strPath.append(QString(";")+octavePath);
+	while(directories.hasNext()){
+		directories.next();
+		all_dirs << directories.filePath();
+		strPath.append(QString(";")+directories.filePath());
+	}
+	setenv("PATH",strPath.toStdString().c_str(),1);
+
+#endif
+
+
+
+
     MainWindow w;
 
     w.showMaximized();
@@ -65,6 +86,8 @@ int main(int argc, char *argv[])
     QIcon icon(":/icons/ARIA_Logo.ico");
 
     a.setWindowIcon(icon);
+
+
 
     return a.exec();
 }
