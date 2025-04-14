@@ -62,7 +62,7 @@ public:
         m_stream.rdbuf(m_old_buf);
 		cleanUpFile();
     }
-    void setInterface(octaveInterface* interface) {octInt = interface;}
+	void setInterface(octaveInterface* ptr_interface) {octInt = ptr_interface;}
 	void cleanUpFile() {if (m_interface_file.empty()) return;
 						QFileInfo fi(QString::fromStdString(m_interface_file));
 						if (fi.fileName()!=".rdk_tmp.atp") return;

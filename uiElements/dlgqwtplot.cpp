@@ -6,8 +6,10 @@
 #include <QwtSymbol>
 #include <QwtLegend>
 #include <qwt_scale_engine.h>
+#ifndef WIN32
 #include <QPrinter>
 #include <QPrintDialog>
+#endif
 #include "mdioctaveinterface.h"
 
 
@@ -539,7 +541,7 @@ void QwtDensityPlot::drawItems( QPainter* painter, const QRectF& canvasRect,
 	}*/
 }
 
-#ifndef QT_NO_PRINTER
+#ifndef WIN32
 
 void QwtDensityPlot::printPlot()
 {

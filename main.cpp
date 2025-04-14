@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
 		all_dirs << directories.filePath();
 		strPath.append(QString(";")+directories.filePath());
 	}
-	setenv("PATH",strPath.toStdString().c_str(),1);
+	_putenv_s("PATH",strPath.toStdString().c_str());
 
 #endif
 
