@@ -33,7 +33,7 @@ octaveInterface::octaveInterface() :
     _octave_engine->initialize_history(true);
 	_octave_engine->get_error_system().debug_on_caught(true);
     _octave_engine->execute();
-
+	_octave_engine->initialize_load_path();
     octave::output_system& os = _octave_engine->get_output_system();
 
     os.flushing_output_to_pager(false);
@@ -61,6 +61,17 @@ octaveInterface::octaveInterface() :
 	// Error handlers
 	_octave_engine->get_error_system().backtrace_on_warning(true);
 	_octave_engine->get_error_system().initialize_default_warning_state();
+
+#ifdef WIN32
+
+	QString currentPath = QDir::currentPath();
+	QString octavePath  = QFileInfo(currentPath, QString("../share/octave/9.4.0/m/")).absolutePath();
+
+
+	octavePath+="/";
+	_octave_engine->feval("path", _octave_engine->feval("genpath",octave_value(charNDArray(octavePath.toLatin1())),1));
+
+#endif
 
 }
 //-----------------------------
@@ -185,6 +196,7 @@ void    octaveInterface::set_pwd(const QString& path)
 {
     if (_octave_engine==nullptr) return;
     _octave_engine->chdir(path.toStdString());
+
 }
 //-----------------------------
 void octaveInterface::completeCommand()

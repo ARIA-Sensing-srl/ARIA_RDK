@@ -187,7 +187,7 @@ public Q_SLOTS:
 	void setColorTableSize( int );
 	void setAlpha( int );
 
-#ifndef QT_NO_PRINTER
+#ifndef WIN32
 	void printPlot();
 #endif
 
