@@ -79,8 +79,8 @@ void radarInstance::initSerialPortTimer()
     if (_serial_timer==nullptr) _serial_timer   = new QTimer(this);
     connect(_serialport,    &QSerialPort::errorOccurred,    this, &radarInstance::serial_error);
     connect(_serial_timer,  &QTimer::timeout,               this, &radarInstance::serial_timeout);
-    connect(_serialport,    &QSerialPort::readyRead,        this, &radarInstance::read_data);
-    connect(_serialport,    &QSerialPort::bytesWritten,     this, &radarInstance::bytes_written);
+	//connect(_serialport,    &QSerialPort::readyRead,        this, &radarInstance::read_data);
+	//connect(_serialport,    &QSerialPort::bytesWritten,     this, &radarInstance::bytes_written);
     _serial_status = SS_IDLE;
     _serial_timer->setSingleShot(true);
     _serial_timer->blockSignals(false);
@@ -580,7 +580,7 @@ void    radarInstance::set_param_value(radarParamPointer param, const QVector<QV
     }
 
     if ((transmit)&&(is_connected())&&(param->get_status()==RPS_MODIFIED))
-        transmit_param(param);
+		transmit_param(param);
  }
 //---------------------------------------------
 // This is a patch to avoid script execution termination
@@ -780,7 +780,7 @@ bool radarInstance::transmit_param(radarParamPointer param)
     if (params.count()==0)
         return false;
 
-    return transmit_param_non_blocking(params);
+	return transmit_param_blocking(params);
 }
 
 
@@ -808,7 +808,7 @@ bool    radarInstance::read_param_value(QString name, bool use_alias)
     if (params.count()==0)
         return false;
 
-    return transmit_param_non_blocking(params, _serialport);
+	return transmit_param_blocking(params, _serialport);
 }
 
 //-----------------------------------------------
@@ -825,7 +825,7 @@ bool    radarInstance::read_param_value(int param_index)
     if (params.count()==0)
         return false;
 
-    return transmit_param_non_blocking(params, _serialport);
+	return transmit_param_blocking(params, _serialport);
 }
 //-------------------------------------------------
 bool    radarInstance::save_xml(QDomDocument& document)
@@ -1280,7 +1280,7 @@ bool radarInstance::init_scripts()
     if (!_params_to_modify.empty())
     {
 
-        transmit_param_non_blocking(get_param_group(_params_to_modify[0]), false);
+		transmit_param_blocking(get_param_group(_params_to_modify[0]), false);
     }
     return true;
 }
@@ -1406,7 +1406,7 @@ bool radarInstance::postacquisition_scripts()
 
     if (!_params_to_modify.empty())
     {
-        transmit_param_non_blocking(get_param_group(_params_to_modify[0]), false);
+		transmit_param_blocking(get_param_group(_params_to_modify[0]), false);
     }
     return true;
 }
@@ -1680,7 +1680,7 @@ bool    radarInstance::transmit_command(radarParamPointer param)
     if (params.count()==0)
         return false;
 
-   return transmit_param_non_blocking(params, _serialport);
+   return transmit_param_blocking(params, _serialport);
 }
 
 //--------------------------------------------------
@@ -1711,7 +1711,7 @@ bool    radarInstance::inquiry_parameter(radarParamPointer param)
     }
 
 
-    bool bOk =  transmit_param_non_blocking(params, true);
+	bool bOk =  transmit_param_blocking(params, true);
     _params_to_inquiry.removeAll(params[0]);
     return bOk;
 }
@@ -2114,7 +2114,7 @@ void    radarInstance::param_is_updated(radarParamPointer param)
             }
             if (!_params_to_modify.isEmpty())
             {
-                transmit_param_non_blocking(get_param_group(_params_to_modify[0]), false); return;
+				transmit_param_blocking(get_param_group(_params_to_modify[0]), false); return;
             }
 
             return;
@@ -2151,7 +2151,7 @@ void    radarInstance::param_is_updated(radarParamPointer param)
             {
                 // Move to the next element in the queue
                 if (!_params_to_modify.isEmpty())
-                    transmit_param_non_blocking(get_param_group(_params_to_modify[0]), false);
+					transmit_param_blocking(get_param_group(_params_to_modify[0]), false);
             }
         }
     }
