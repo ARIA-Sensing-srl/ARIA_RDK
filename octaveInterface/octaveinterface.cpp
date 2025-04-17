@@ -31,7 +31,7 @@ octaveInterface::octaveInterface() :
     _octave_engine->interactive(true);
     _octave_engine->initialize();
     _octave_engine->initialize_history(true);
-	_octave_engine->get_error_system().debug_on_caught(true);
+	_octave_engine->get_error_system().debug_on_caught(false);
     _octave_engine->execute();
 	_octave_engine->initialize_load_path();
     octave::output_system& os = _octave_engine->get_output_system();
@@ -65,11 +65,86 @@ octaveInterface::octaveInterface() :
 #ifdef WIN32
 
 	QString currentPath = QDir::currentPath();
-	QString octavePath  = QFileInfo(currentPath, QString("../share/octave/9.4.0/m/")).absolutePath();
+
+	// Add General
+
+	{
+
+		QString octavePath  = QFileInfo(currentPath, QString("../share/octave/9.4.0/m/general/")).absolutePath();
+
+		//octavePath+="/";
 
 
-	octavePath+="/";
-	_octave_engine->feval("path", _octave_engine->feval("genpath",octave_value(charNDArray(octavePath.toLatin1())),1));
+
+		_octave_engine->feval("path", octave_value(charNDArray(octavePath.toLatin1())),1);
+
+	}
+
+
+
+	QStringList required_paths={
+
+	"help","io","linear-algebra","miscellaneous","path","set","specfun","strings","time","statistics"
+
+};
+
+
+
+QString strChar=".";
+
+for (auto& path: required_paths)
+
+{
+
+	QString octavePath  = QFileInfo(currentPath, QString("../share/octave/9.4.0/m/")+path+"/").absolutePath()+"/";
+
+
+
+	_octave_engine->feval("addpath", _octave_engine->feval("genpath",octave_value_list(std::list<octave_value>({
+
+												octave_value(charNDArray(octavePath.toLatin1())),
+
+												octave_value(charNDArray(strChar.toLatin1()))})
+
+																						),1));
+
+}
+
+
+
+
+
+QString pkgPath  = QFileInfo(currentPath, QString("../toolboxes/")).absolutePath();
+
+QStringList required_toolboxes={
+
+"struct-1.0.18","statistics-1.7.4","control-4.1.1","communications-1.2.7","general-2.1.3","optim-1.6.2","signal-1.4.6","tftb"
+
+};
+
+
+
+for (auto& tb: required_toolboxes)
+
+{
+
+	QString octavePath  = QFileInfo(pkgPath, QString("./")+tb+"/").absolutePath()+"/";
+
+
+
+	_octave_engine->feval("addpath", _octave_engine->feval("genpath",octave_value_list(std::list<octave_value>({
+
+												octave_value(charNDArray(octavePath.toLatin1())),
+
+												octave_value(charNDArray(strChar.toLatin1()))})
+
+																						),1));
+
+}
+
+
+
+
 
 #endif
 
