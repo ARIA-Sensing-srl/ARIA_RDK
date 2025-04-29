@@ -11,10 +11,33 @@
 #include <QStyleFactory>
 #include <QIcon>
 #include <QMessageBox>
-
+#include <QtGlobal>
+#include <QFile>
+#include <QTextStream>
 
 int main(int argc, char *argv[])
 {
+	QString currentPath = QDir::currentPath();
+
+	QString tmpPath = QFileInfo(currentPath, QString("../tmp/")).absolutePath();
+	if (!QDir(tmpPath).exists())
+		QDir().mkdir(tmpPath);
+
+
+	QString xtmp = (QDir().toNativeSeparators(tmpPath)+QDir().separator());
+	//xtmp = xtmp.last(xtmp.length()-2);
+	qputenv("TMPDIR", xtmp.toUtf8());
+
+#ifdef WIN32
+	QString homePath = QFileInfo(currentPath, QString("../")).absolutePath();
+	qputenv("OCT_HOME",(QDir().toNativeSeparators(homePath)+QDir().separator()).toUtf8());
+	qputenv("OCTAVE_HOME",(QDir().toNativeSeparators(homePath)+QDir().separator()).toUtf8());
+	qputenv("OCTAVE_EXEC_HOME",(QDir().toNativeSeparators(homePath)+QDir().separator()).toUtf8());
+	qputenv("OCTAVE_BINDIR",(QDir().toNativeSeparators(homePath)+QDir().separator()).toUtf8());
+
+	qputenv("ROOT_PATH",currentPath.toUtf8());
+#endif
+
 	QApplication a(argc, argv);
 	QTranslator translator;
 	const QStringList uiLanguages = QLocale::system().uiLanguages();
@@ -56,27 +79,6 @@ int main(int argc, char *argv[])
 	darkPalette.setColor(QPalette::Disabled,QPalette::HighlightedText,QColor(127,127,127));
 
 	qApp->setPalette(darkPalette);
-
-#ifdef WIN32
-	QString strPath(getenv("PATH"));
-	QString currentPath = QDir::currentPath();
-	QString	octavePath  = QFileInfo(currentPath, QString("../share/octave/9.4.0/m")).absolutePath();
-
-	QStringList all_dirs;
-	all_dirs << octavePath;
-	QDirIterator directories(octavePath, QDir::Dirs | QDir::NoSymLinks | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
-	strPath.append(QString(";")+octavePath);
-	while(directories.hasNext()){
-		directories.next();
-		all_dirs << directories.filePath();
-		strPath.append(QString(";")+directories.filePath());
-	}
-	_putenv_s("PATH",strPath.toStdString().c_str());
-
-#endif
-
-
-
 
 	MainWindow w;
 
