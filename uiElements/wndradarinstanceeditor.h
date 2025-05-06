@@ -62,6 +62,7 @@ public slots:
     void                        scan();
     void                        send_custom_string();
     void                        paramSliderReleased();
+	void						spinBoxValueChanged(int);
     void                        cbEnumIndexChange(int);
     void                        linkToOctaveChanged(Qt::CheckState);
     void                        compoundNameChanged(Qt::CheckState);

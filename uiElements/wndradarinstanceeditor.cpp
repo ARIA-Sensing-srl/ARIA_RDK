@@ -13,6 +13,7 @@
 #include <QEvent>
 #include <QWidget>
 #include <QDialog>
+#include <QSpinBox>
 
 #define EXPORT_VOID
 
@@ -613,9 +614,9 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
 
     if (current_value->is_scalar())
     {
-        int imin = 0;
-        int imax=255;
-        switch (datatype)
+		int imin = 0;
+		int imax=255;
+		switch (datatype)
         {
             case RPT_VOID:
             {
@@ -627,8 +628,7 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
             connect(btnSendCommand, &QPushButton::clicked, this, &wndRadarInstanceEditor::send_command);
 
             }
-            break;
-				/*
+			break;
             case RPT_UINT8:
             {
                 imin = 0;
@@ -639,194 +639,182 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
                     ui->tblParams->item(row,COL_SETVALUE)->setFlags(ui->tblParams->item(row,COL_SETVALUE)->flags() ^ Qt::ItemIsEditable);
                 }
 
-                QSlider * slider = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QSlider(Qt::Horizontal) :
-                                      (QSlider*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
+				QSpinBox * spin_box = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QSpinBox(): (QSpinBox*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
 
                 if (current_value->has_min_max())
                 {
                     imin = current_value->get_min().toInt();
                     imax = current_value->get_max().toInt();
                 }
-                slider->setMinimum(imin);
-                slider->setMaximum(imax);
-                QVector<QVariant> var_array = current_value->value_to_variant();
+				spin_box->setMinimum(imin);
+				spin_box->setMaximum(imax);
+				QVector<QVariant> var_array = current_value->value_to_variant();
                 if (var_array.size()>0)
-                    slider->setValue(var_array[0].toInt());
+					spin_box->setValue(var_array[0].toInt());
                 else
-                    slider->setValue(imin);
-                ui->tblParams->setCellWidget(row,COL_SETVALUE,slider);
+					spin_box->setValue(imin);
+				ui->tblParams->setCellWidget(row,COL_SETVALUE,spin_box);
                 RADARPARAMIOTYPE  io_type = current_value->get_io_type();
-                slider->setEnabled(io_type != RPT_IO_OUTPUT);
+				spin_box->setEnabled(io_type != RPT_IO_OUTPUT);
 
-                connect(slider,&QSlider::sliderReleased,this,&wndRadarInstanceEditor::paramSliderReleased);
+				if (io_type != RPT_IO_OUTPUT)
+					connect(spin_box,&QSpinBox::valueChanged,this,&wndRadarInstanceEditor::spinBoxValueChanged);
             }
                 break;
             case RPT_INT8:
             {
-                imin = SCHAR_MIN;
+				imin = SCHAR_MIN;
                 imax = SCHAR_MAX;
-                if (ui->tblParams->item(row,COL_SETVALUE)!=nullptr)
-                {
-                    ui->tblParams->item(row,COL_SETVALUE)->setText("");
-                    ui->tblParams->item(row,COL_SETVALUE)->setFlags(ui->tblParams->item(row,COL_SETVALUE)->flags() ^ Qt::ItemIsEditable);
-                }
+				if (ui->tblParams->item(row,COL_SETVALUE)!=nullptr)
+				{
+					ui->tblParams->item(row,COL_SETVALUE)->setText("");
+					ui->tblParams->item(row,COL_SETVALUE)->setFlags(ui->tblParams->item(row,COL_SETVALUE)->flags() ^ Qt::ItemIsEditable);
+				}
 
-                QSlider * slider = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QSlider(Qt::Horizontal):
-                                      (QSlider*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
+				QSpinBox * spin_box = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QSpinBox(): (QSpinBox*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
 
-                if (current_value->has_min_max())
-                {
-                    imin = current_value->get_min().toInt();
-                    imax = current_value->get_max().toInt();
-                }
-                slider->setMinimum(imin);
-                slider->setMaximum(imax);
-                QVector<QVariant> var_array = current_value->value_to_variant();
-                if (var_array.size()>0)
-                    slider->setValue(var_array[0].toInt());
-                else
-                    slider->setValue(imin);
-                RADARPARAMIOTYPE  io_type = current_value->get_io_type();
-                slider->setEnabled(io_type != RPT_IO_OUTPUT);
-                ui->tblParams->setCellWidget(row,COL_SETVALUE,slider);
+				if (current_value->has_min_max())
+				{
+					imin = current_value->get_min().toInt();
+					imax = current_value->get_max().toInt();
+				}
+				spin_box->setMinimum(imin);
+				spin_box->setMaximum(imax);
+				QVector<QVariant> var_array = current_value->value_to_variant();
+				if (var_array.size()>0)
+					spin_box->setValue(var_array[0].toInt());
+				else
+					spin_box->setValue(imin);
+				ui->tblParams->setCellWidget(row,COL_SETVALUE,spin_box);
+				RADARPARAMIOTYPE  io_type = current_value->get_io_type();
+				spin_box->setEnabled(io_type != RPT_IO_OUTPUT);
 
-                connect(slider,&QSlider::sliderReleased,this,&wndRadarInstanceEditor::paramSliderReleased);
-            }
+				if (io_type != RPT_IO_OUTPUT)
+					connect(spin_box,&QSpinBox::valueChanged,this,&wndRadarInstanceEditor::spinBoxValueChanged);
+			}
                 break;
             case RPT_UINT16:
             {
                 imin = 0;
                 imax = USHRT_MAX;
-                if (ui->tblParams->item(row,COL_SETVALUE)!=nullptr)
-                {
-                    ui->tblParams->item(row,COL_SETVALUE)->setText("");
-                    ui->tblParams->item(row,COL_SETVALUE)->setFlags(ui->tblParams->item(row,COL_SETVALUE)->flags() ^ Qt::ItemIsEditable);
-                }
+				if (ui->tblParams->item(row,COL_SETVALUE)!=nullptr)
+				{
+					ui->tblParams->item(row,COL_SETVALUE)->setText("");
+					ui->tblParams->item(row,COL_SETVALUE)->setFlags(ui->tblParams->item(row,COL_SETVALUE)->flags() ^ Qt::ItemIsEditable);
+				}
 
-                QSlider * slider = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QSlider(Qt::Horizontal):
-                                      (QSlider*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
+				QSpinBox * spin_box = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QSpinBox(): (QSpinBox*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
 
+				if (current_value->has_min_max())
+				{
+					imin = current_value->get_min().toInt();
+					imax = current_value->get_max().toInt();
+				}
+				spin_box->setMinimum(imin);
+				spin_box->setMaximum(imax);
+				QVector<QVariant> var_array = current_value->value_to_variant();
+				if (var_array.size()>0)
+					spin_box->setValue(var_array[0].toInt());
+				else
+					spin_box->setValue(imin);
+				ui->tblParams->setCellWidget(row,COL_SETVALUE,spin_box);
+				RADARPARAMIOTYPE  io_type = current_value->get_io_type();
+				spin_box->setEnabled(io_type != RPT_IO_OUTPUT);
 
-                if (current_value->has_min_max())
-                {
-                    imin = current_value->get_min().toInt();
-                    imax = current_value->get_max().toInt();
-                }
-                slider->setMinimum(imin);
-                slider->setMaximum(imax);
-                QVector<QVariant> var_array = current_value->value_to_variant();
-                if (var_array.size()>0)
-                    slider->setValue(var_array[0].toInt());
-                else
-                    slider->setValue(imin);
-
-                RADARPARAMIOTYPE  io_type = current_value->get_io_type();
-                slider->setEnabled(io_type != RPT_IO_OUTPUT);
-                ui->tblParams->setCellWidget(row,COL_SETVALUE,slider);
-                connect(slider,&QSlider::sliderReleased,this,&wndRadarInstanceEditor::paramSliderReleased);
-            }
+				if (io_type != RPT_IO_OUTPUT)
+					connect(spin_box,&QSpinBox::valueChanged,this,&wndRadarInstanceEditor::spinBoxValueChanged);
+			}
                 break;
             case RPT_INT16:
             {
                 imin = SHRT_MIN;
                 imax = SHRT_MAX;
-                if (ui->tblParams->item(row,COL_SETVALUE)!=nullptr)
-                {
-                    ui->tblParams->item(row,COL_SETVALUE)->setText("");
-                    ui->tblParams->item(row,COL_SETVALUE)->setFlags(ui->tblParams->item(row,COL_SETVALUE)->flags() ^ Qt::ItemIsEditable);
-                }
+				if (ui->tblParams->item(row,COL_SETVALUE)!=nullptr)
+				{
+					ui->tblParams->item(row,COL_SETVALUE)->setText("");
+					ui->tblParams->item(row,COL_SETVALUE)->setFlags(ui->tblParams->item(row,COL_SETVALUE)->flags() ^ Qt::ItemIsEditable);
+				}
 
-                QSlider * slider = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QSlider(Qt::Horizontal):
-                                      (QSlider*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
+				QSpinBox * spin_box = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QSpinBox(): (QSpinBox*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
 
-                if (current_value->has_min_max())
-                {
-                    imin = current_value->get_min().toInt();
-                    imax = current_value->get_max().toInt();
-                }
-                slider->setMinimum(imin);
-                slider->setMaximum(imax);
-                QVector<QVariant> var_array = current_value->value_to_variant();
-                if (var_array.size()>0)
-                    slider->setValue(var_array[0].toInt());
-                else
-                    slider->setValue(imin);
-                RADARPARAMIOTYPE  io_type = current_value->get_io_type();
-                slider->setEnabled(io_type != RPT_IO_OUTPUT);
-                ui->tblParams->setCellWidget(row,COL_SETVALUE,slider);
-                connect(slider,&QSlider::sliderReleased,this,&wndRadarInstanceEditor::paramSliderReleased);
-            }
+				if (current_value->has_min_max())
+				{
+					imin = current_value->get_min().toInt();
+					imax = current_value->get_max().toInt();
+				}
+				spin_box->setMinimum(imin);
+				spin_box->setMaximum(imax);
+				QVector<QVariant> var_array = current_value->value_to_variant();
+				if (var_array.size()>0)
+					spin_box->setValue(var_array[0].toInt());
+				else
+					spin_box->setValue(imin);
+				ui->tblParams->setCellWidget(row,COL_SETVALUE,spin_box);
+				RADARPARAMIOTYPE  io_type = current_value->get_io_type();
+				spin_box->setEnabled(io_type != RPT_IO_OUTPUT);
+
+				if (io_type != RPT_IO_OUTPUT)
+					connect(spin_box,&QSpinBox::valueChanged,this,&wndRadarInstanceEditor::spinBoxValueChanged);
+			}
                 break;
             case RPT_INT32:
             {
-                imin = SHRT_MIN;
-                imax = SHRT_MAX;
-                if (ui->tblParams->item(row,COL_SETVALUE)!=nullptr)
-                {
-                    ui->tblParams->item(row,COL_SETVALUE)->setText("");
-                    ui->tblParams->item(row,COL_SETVALUE)->setFlags(ui->tblParams->item(row,COL_SETVALUE)->flags() ^ Qt::ItemIsEditable);
-                }
+				imin = INT_MIN;
+				imax = INT_MAX;
+				if (ui->tblParams->item(row,COL_SETVALUE)!=nullptr)
+				{
+					ui->tblParams->item(row,COL_SETVALUE)->setText("");
+					ui->tblParams->item(row,COL_SETVALUE)->setFlags(ui->tblParams->item(row,COL_SETVALUE)->flags() ^ Qt::ItemIsEditable);
+				}
 
-                QSlider * slider = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QSlider(Qt::Horizontal):
-                                      (QSlider*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
+				QSpinBox * spin_box = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QSpinBox(): (QSpinBox*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
 
-                if (current_value->has_min_max())
-                {
-                    imin = current_value->get_min().toInt();
-                    imax = current_value->get_max().toInt();
-                }
-                slider->setMinimum(imin);
-                slider->setMaximum(imax);
-                QVector<QVariant> var_array = current_value->value_to_variant();
-                if (var_array.size()>0)
-                    slider->setValue(var_array[0].toInt());
-                else
-                    slider->setValue(imin);
-                RADARPARAMIOTYPE  io_type = current_value->get_io_type();
-                slider->setEnabled(io_type != RPT_IO_OUTPUT);
-                ui->tblParams->setCellWidget(row,COL_SETVALUE,slider);
-                connect(slider,&QSlider::sliderReleased,this,&wndRadarInstanceEditor::paramSliderReleased);
-            }
+				if (current_value->has_min_max())
+				{
+					imin = current_value->get_min().toInt();
+					imax = current_value->get_max().toInt();
+				}
+				spin_box->setMinimum(imin);
+				spin_box->setMaximum(imax);
+				QVector<QVariant> var_array = current_value->value_to_variant();
+				if (var_array.size()>0)
+					spin_box->setValue(var_array[0].toInt());
+				else
+					spin_box->setValue(imin);
+				ui->tblParams->setCellWidget(row,COL_SETVALUE,spin_box);
+				RADARPARAMIOTYPE  io_type = current_value->get_io_type();
+				spin_box->setEnabled(io_type != RPT_IO_OUTPUT);
+
+				if (io_type != RPT_IO_OUTPUT)
+					connect(spin_box,&QSpinBox::valueChanged,this,&wndRadarInstanceEditor::spinBoxValueChanged);
+			}
                 break;
             case RPT_UINT32:
             {
-                imin = SHRT_MIN;
-                imax = SHRT_MAX;
-                if (ui->tblParams->item(row,COL_SETVALUE)!=nullptr)
-                {
-                    ui->tblParams->item(row,COL_SETVALUE)->setText("");
-                    ui->tblParams->item(row,COL_SETVALUE)->setFlags(ui->tblParams->item(row,COL_SETVALUE)->flags() ^ Qt::ItemIsEditable);
-                }
+				imin = 0;
+				imax = UINT_MAX;
+				QSpinBox * spin_box = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QSpinBox(): (QSpinBox*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
 
-                QSlider * slider = ui->tblParams->cellWidget(row, COL_SETVALUE)==nullptr? new QSlider(Qt::Horizontal):
-                                      (QSlider*)(ui->tblParams->cellWidget(row, COL_SETVALUE));
+				if (current_value->has_min_max())
+				{
+					imin = current_value->get_min().toInt();
+					imax = current_value->get_max().toInt();
+				}
+				spin_box->setMinimum(imin);
+				spin_box->setMaximum(imax);
+				QVector<QVariant> var_array = current_value->value_to_variant();
+				if (var_array.size()>0)
+					spin_box->setValue(var_array[0].toInt());
+				else
+					spin_box->setValue(imin);
+				ui->tblParams->setCellWidget(row,COL_SETVALUE,spin_box);
+				RADARPARAMIOTYPE  io_type = current_value->get_io_type();
+				spin_box->setEnabled(io_type != RPT_IO_OUTPUT);
 
-
-                if (current_value->has_min_max())
-                {
-                    imin = current_value->get_min().toInt();
-                    imax = current_value->get_max().toInt();
-                }
-                slider->setMinimum(imin);
-                slider->setMaximum(imax);
-                QVector<QVariant> var_array = current_value->value_to_variant();
-                if (var_array.size()>0)
-                    slider->setValue(var_array[0].toInt());
-                else
-                    slider->setValue(imin);
-                RADARPARAMIOTYPE  io_type = current_value->get_io_type();
-                slider->setEnabled(io_type != RPT_IO_OUTPUT);
-                ui->tblParams->setCellWidget(row,COL_SETVALUE,slider);
-                connect(slider,&QSlider::sliderReleased,this,&wndRadarInstanceEditor::paramSliderReleased);
+				if (io_type != RPT_IO_OUTPUT)
+					connect(spin_box,&QSpinBox::valueChanged,this,&wndRadarInstanceEditor::spinBoxValueChanged);
             }
-                break;
-				*/
-			case RPT_UINT8:
-			case RPT_INT8:
-			case RPT_UINT16:
-			case RPT_INT16:
-			case RPT_UINT32:
-			case RPT_INT32:
+				break;
 			case RPT_FLOAT:
             case RPT_STRING:
             {
@@ -974,7 +962,35 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
     } // if ! scalar
     //update_read_value(row);
 }
+//-----------------------------------------------------------
+void wndRadarInstanceEditor::spinBoxValueChanged(int value)
+{
+	if (_b_transmitting) return;
+	int row = -1;
+	QWidget *w = qobject_cast<QWidget *>(sender());
+	if(w)
+		row = ui->tblParams->indexAt(w->pos()).row();
 
+	if (row<0) return;
+
+	QSpinBox* spin_box = (QSpinBox*)ui->tblParams->cellWidget(row, COL_SETVALUE);
+
+	if (spin_box == nullptr) return;
+
+	radarParamPointer param = _radar_instance->get_param(row);
+
+	if (param->get_status()==RPS_IDLE)
+		param->set_status(RPS_MODIFIED);
+
+	octave_value val(value);
+	_b_transmitting = true;
+	if (param->is_valid(QVariant::fromValue<int>(value)))
+		_radar_instance->set_param_value(param,val,true, true);
+
+	//update_serial_output();
+	_b_transmitting = false;
+
+}
 //-----------------------------------------------------------
 void wndRadarInstanceEditor::paramSliderReleased()
 {
