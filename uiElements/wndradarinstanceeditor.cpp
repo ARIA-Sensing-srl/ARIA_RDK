@@ -628,6 +628,7 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
 
             }
             break;
+				/*
             case RPT_UINT8:
             {
                 imin = 0;
@@ -819,7 +820,14 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
                 connect(slider,&QSlider::sliderReleased,this,&wndRadarInstanceEditor::paramSliderReleased);
             }
                 break;
-            case RPT_FLOAT:
+				*/
+			case RPT_UINT8:
+			case RPT_INT8:
+			case RPT_UINT16:
+			case RPT_INT16:
+			case RPT_UINT32:
+			case RPT_INT32:
+			case RPT_FLOAT:
             case RPT_STRING:
             {
                 if (ui->tblParams->cellWidget(row,COL_SETVALUE )!=nullptr)
