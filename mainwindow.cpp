@@ -750,6 +750,10 @@ void MainWindow::closeEvent(QCloseEvent *event)
 {
     if (QMessageBox::question(this,"Confirm","Confirm exit?")==QMessageBox::Yes)
     {
+		//
+		if (!wndOctaveInterface->close_scripts())
+		{event->ignore(); return;}
+
         update_option_file();
         event->accept();
     }
@@ -903,14 +907,9 @@ void MainWindow::closeProject()
     if (QMessageBox::question(this,"Confirm","Do you want to close current project?")==QMessageBox::No)
         return;
 
-    // close all window
-    for (auto &child: ui->mdiArea->subWindowList())
-    {
-        if (typeid(child).name()!=typeid(wndOctaveScript).name())
-        {
-            ((QDialog*)(child))->close();
-        }
-    }
+	if (!wndOctaveInterface->close_scripts())
+		return;
+
 	if (interfaceData != nullptr)
 		interfaceData->clearWorkspace();
 
@@ -995,14 +994,18 @@ void MainWindow::deleteDevice()
     if (QMessageBox::question(this, "Confirm", tr("Do you want to delete ")+radar->get_device_name()+tr(" ?"))==QMessageBox::No)
         return;
     // Close any window related to the module itself
+
+	// FIXME!
     for (auto &child: ui->mdiArea->subWindowList())
     {
-        if (typeid(child).name()==typeid(wndRadarInstanceEditor).name())
+		wndRadarInstanceEditor* wnd = qobject_cast<wndRadarInstanceEditor*>(child->widget());
+
+		if (wnd!=nullptr)
         {
-            if (((wndRadarInstanceEditor*)(child))->getRadarInstance()==radar)
+			if (wnd->getRadarInstance()==radar)
             {
-                ((wndRadarInstanceEditor*)(child))->close();
-                delete (wndRadarInstanceEditor*)(child);
+				wnd->close();
+				delete wnd;
                 return;
             }
         }
@@ -1033,11 +1036,14 @@ void MainWindow::configureDevice()
 
     for (auto &child: ui->mdiArea->subWindowList())
     {
-        if (typeid(child).name()==typeid(wndRadarInstanceEditor).name())
+
+		wndRadarInstanceEditor* wnd = qobject_cast<wndRadarInstanceEditor*>(child->widget());
+
+		if (wnd!=nullptr)
         {
-            if (((wndRadarInstanceEditor*)(child))->getRadarInstance()==(radarInstance*)currentItem)
+			if (wnd->getRadarInstance()==(radarInstance*)currentItem)
             {
-                ((wndRadarInstanceEditor*)(child))->showMaximized();
+				wnd->showMaximized();
                 return;
             }
         }
@@ -1088,12 +1094,13 @@ void MainWindow::deleteScheduler()
     // Close any window related to the module itself
     for (auto &child: ui->mdiArea->subWindowList())
     {
-        if (typeid(child).name()==typeid(wndScheduler).name())
+		wndScheduler* wnd = qobject_cast<wndScheduler*>(child->widget());
+		if (wnd!=nullptr)
         {
-            if (((wndScheduler*)(child))->getScheduler()==scheduler)
+			if (wnd->getScheduler()==scheduler)
             {
-                ((wndScheduler*)(child))->close();
-                delete (wndScheduler*)(child);
+				wnd->close();
+				delete wnd;
                 return;
             }
         }
@@ -1126,11 +1133,12 @@ void MainWindow::configureScheduler()
 
     for (auto &child: ui->mdiArea->subWindowList())
     {
-        if (typeid(child).name()==typeid(wndScheduler).name())
+		wndScheduler* wnd = qobject_cast<wndScheduler*>(child->widget());
+		if (wnd!=nullptr)
         {
-            if (((wndScheduler*)(child))->getScheduler()==(opScheduler*)currentItem)
+			if (wnd->getScheduler()==(opScheduler*)currentItem)
             {
-                ((wndScheduler*)(child))->showMaximized();
+				wnd->showMaximized();
                 return;
             }
         }
@@ -1157,12 +1165,14 @@ void MainWindow::deleteModule()
     // Close any window related to the module itself
     for (auto &child: ui->mdiArea->subWindowList())
     {
-        if (typeid(child).name()==typeid(wndRadarModuleEditor).name())
-        {
-            if (((wndRadarModuleEditor*)(child))->get_radar_module()==(radarModule*)radar_mod)
+		wndRadarModuleEditor* wnd = qobject_cast<wndRadarModuleEditor*>(child->widget());
+
+		if (wnd!=nullptr)
+		{
+			if (wnd->get_radar_module()==(radarModule*)radar_mod)
             {
-                ((wndRadarModuleEditor*)(child))->close();
-                delete (wndRadarModuleEditor*)(child);
+				wnd->close();
+				delete wnd;
                 return;
             }
         }

@@ -38,6 +38,8 @@ public:
     void        update_octave_interface();
     void        add_variable_row(int row, const std::string& name, const octave_value& val, bool internal);
 	void		clear_and_init_var_table();
+
+	bool		close_scripts();
 signals:
     void plotVariable(QString varname);
 public slots:

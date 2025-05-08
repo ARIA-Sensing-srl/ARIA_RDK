@@ -44,6 +44,8 @@ private:
     QFileSystemWatcher      watcher;
     bool                    _bInternal;
     bool                    _b_need_save_as;
+	bool					_b_modified;
+	bool					_b_closed;
 #ifdef USE_NATIVE_LEXER
 	octaveSyntaxHighlighter *hl;
 
@@ -65,12 +67,16 @@ public:
     octaveScript* get_script() {return _script;}
 
 	void showEvent(QShowEvent *event);
+
+	bool isClosed() {return _b_closed;}
 public slots:
     void fileChangedOnDisk(QString str);
     void run_file();
     void save_file();
     void save_file_as();
 	void update_tips();
+	void modified();
+	void closeEvent( QCloseEvent* event );
 
 };
 

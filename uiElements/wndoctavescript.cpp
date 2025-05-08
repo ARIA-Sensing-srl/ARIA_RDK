@@ -29,9 +29,13 @@ wndOctaveScript::wndOctaveScript(QString filename, octaveInterface* dataEngine,Q
     _data_interface(dataEngine),
     _bInternal(true),
     _b_need_save_as(false),
+	_b_modified(false),
+	_b_closed(false),
+
 #ifdef USE_NATIVE_LEXER
     hl(nullptr),
 #else
+
 	_lexer(nullptr),
 	_api(nullptr),
 #endif
@@ -92,6 +96,8 @@ wndOctaveScript::wndOctaveScript(QString filename, octaveInterface* dataEngine,Q
     ui->textScript->setTabStopDistance( 4 * fontWidth );
 #endif
 	ui->textScript->update();
+
+	connect(ui->textScript, &QsciScintilla::textChanged, this, &wndOctaveScript::modified);
 }
 
 wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* dataEngine,QWidget *parent, QString basedir) : QDialog(parent),
@@ -99,6 +105,9 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
     _script(script),
     _bInternal(true),
     _b_need_save_as(false),
+	_b_modified(false),
+	_b_closed(false),
+
 #ifdef USE_NATIVE_LEXER
 	hl(nullptr),
 #else
@@ -160,7 +169,11 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
 	ui->textScript->update();
     connect(ui->btnOctaveScriptRun, &QPushButton::clicked, this, &wndOctaveScript::run_file);
     connect(ui->btnScriptSave,      &QPushButton::clicked, this, &wndOctaveScript::save_file);
-    connect(ui->btnScriptSaveAs,    &QPushButton::clicked, this, &wndOctaveScript::save_file_as);
+	connect(ui->btnScriptSaveAs,    &QPushButton::clicked, this, &wndOctaveScript::save_file_as);
+#ifndef USE_NATIVE_LEXER
+	connect(ui->textScript, &QsciScintilla::textChanged, this, &wndOctaveScript::modified);
+
+#endif
     this->setWindowTitle(QString("Octave Script:")+QFileInfo(_script->get_full_filepath()).fileName());
 }
 
@@ -300,6 +313,11 @@ void wndOctaveScript::  save_file()
 #endif
 
     _script->save();
+
+	_b_modified = false;
+	if (windowTitle().endsWith("*"))
+		setWindowTitle(windowTitle().removeLast());
+
 }
 
 void wndOctaveScript::save_file_as()
@@ -340,4 +358,51 @@ void wndOctaveScript::save_file_as()
 
     _b_need_save_as = false;
     this->setWindowTitle(QString("Octave Script:")+QFileInfo(_script->get_full_filepath()).fileName());
+	_b_modified = false;
+	if (windowTitle().endsWith("*"))
+		setWindowTitle(windowTitle().removeLast());
+
+}
+
+
+
+//---------------------------------------------
+void wndOctaveScript::modified()
+{
+	if (!_b_modified)
+	{
+		setWindowTitle(this->windowTitle()+"*");
+		_b_modified = true;
+	}
+}
+
+
+void wndOctaveScript::closeEvent( QCloseEvent* event )
+{
+	if (_b_modified)
+	{
+		QMessageBox::StandardButton result = QMessageBox::question(this, "Confirm","The current content has changed. Do you want to save?",QMessageBox::Yes|QMessageBox::No|QMessageBox::Cancel);
+		if (result == QMessageBox::No)
+		{event->accept(); _b_closed = true; return;}
+		if (result == QMessageBox::Cancel)
+		{event->ignore(); return;}
+		if (result == QMessageBox::Yes)
+		{
+			if (_b_need_save_as)
+				save_file_as();
+			else
+				save_file();
+
+			if (_b_modified)
+			{event->ignore(); return;}
+
+			event->accept(); _b_closed = true; return;
+		}
+
+		event->ignore();
+		return;
+	}
+	_b_closed = true;
+	event->accept();
+	return;
 }

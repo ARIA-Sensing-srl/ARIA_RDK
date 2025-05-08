@@ -124,16 +124,20 @@ void mdiOctaveInterface::newScript()
 
 void mdiOctaveInterface::openProjectScript(octaveScript* script)
 {
-    for (auto &child: ui->mdiArea->subWindowList())
+	QList<QMdiSubWindow*> subwnds = ui->mdiArea->subWindowList();
+	for (auto &child: subwnds)
     {
-        if (typeid(child).name()==typeid(wndOctaveScript).name())
-        {
-            if (((wndOctaveScript*)(child))->get_script()==script)
-            {
-                ((wndOctaveScript*)(child))->showMaximized();
-                return;
-            }
-        }
+		wndOctaveScript* wnd = qobject_cast<wndOctaveScript*>(child->widget());
+
+		if (wnd==nullptr) continue;
+		octaveScript* wnd_script = wnd->get_script();
+
+		if ((wnd_script!=nullptr)&&(script!=nullptr))
+			if (wnd_script->get_full_filepath() == script->get_full_filepath())
+			{
+				((wndOctaveScript*)(child))->showMaximized();
+				return;
+			}
     }
 
     wndOctaveScript* wndScript = new wndOctaveScript(script,_interfaceData,this);
@@ -180,11 +184,10 @@ void mdiOctaveInterface::closeScript()
     wndOctaveScript* wnd = (wndOctaveScript*)(ui->mdiArea->activeSubWindow());
     if (wnd==nullptr) return;
 
-    if (_scripts_children.contains(wnd))
-    {
-        wnd->close();
-        delete wnd;
-    }
+	wnd->close();
+	if (wnd->isClosed())
+		delete wnd;
+
 }
 
 void mdiOctaveInterface::saveSctiptAs()
@@ -1618,4 +1621,24 @@ void mdiOctaveInterface::variableQwtDensityPlotXData()
 		}
 	}
 	return;
+}
+
+// Attempt to close all scripts
+bool		mdiOctaveInterface::close_scripts()
+{
+	for (auto &child: ui->mdiArea->subWindowList())
+	{
+		wndOctaveScript* wnd = qobject_cast<wndOctaveScript*>(child->widget());
+		if (wnd==nullptr) continue;
+
+		wnd->close();
+		if (wnd->isClosed())
+		{
+			delete wnd->parent();
+		}
+		else
+			return false;
+
+	}
+	return true;
 }
