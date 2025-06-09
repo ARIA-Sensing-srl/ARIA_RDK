@@ -1,4 +1,4 @@
-﻿/*
+/*
  *  ARIA Sensing 2024
  *  Author: Cacciatori Alessio
  *  This program is licensed under LGPLv3.0
@@ -617,6 +617,19 @@ void wndAntennaDesigner::exportFF()
 
     de->get_workspace()->add_variable(name.toStdString(),false, antenna_struct);
     emit de->updatedVariable(name.toStdString());
+
+	NDArray position(dim_vector({3,1}),0);
+	antenna_struct.assign("position",octave_value(position));
+	NDArray fix_delay(dim_vector({1,1}),0.0);
+	antenna_struct.assign("fixed_delay",octave_value(fix_delay));
+
+	NDArray loss(dim_vector({1,1}),0.0);
+	antenna_struct.assign("loss",octave_value(loss));
+
+	NDArray impedance(dim_vector({1,1}),50.0);
+	antenna_struct.assign("impedance",octave_value(impedance));
+
+
 /*
 
     QString name = currentAntenna.get_name();
