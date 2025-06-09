@@ -614,20 +614,20 @@ void wndAntennaDesigner::exportFF()
     antenna_struct.assign("ep", ep);
     octave_value et = currentAntenna.getEt();
     antenna_struct.assign("et", et);
-
-    de->get_workspace()->add_variable(name.toStdString(),false, antenna_struct);
-    emit de->updatedVariable(name.toStdString());
-
 	NDArray position(dim_vector({3,1}),0);
 	antenna_struct.assign("position",octave_value(position));
 	NDArray fix_delay(dim_vector({1,1}),0.0);
 	antenna_struct.assign("fixed_delay",octave_value(fix_delay));
-
+	
 	NDArray loss(dim_vector({1,1}),0.0);
 	antenna_struct.assign("loss",octave_value(loss));
-
+	
 	NDArray impedance(dim_vector({1,1}),50.0);
 	antenna_struct.assign("impedance",octave_value(impedance));
+    de->get_workspace()->add_variable(name.toStdString(),false, antenna_struct);
+    emit de->updatedVariable(name.toStdString());
+
+
 
 
 /*
