@@ -178,6 +178,28 @@ QString     radarInstance::get_mapped_name(radarParamPointer param)
     return mapped_name;
 }
 //-----------------------------------------------
+//check if parameter is part of aggregate variable command and return a list of variables
+QVector<radarParamPointer>  radarInstance::get_cmdgrp_varlist(radarParamPointer param){
+    QVector<radarParamPointer> lst;
+    if (!param->is_command_group())
+        return lst;
+    QString cmd = param->get_command_string();
+    int cmdOnlySize = cmd.indexOf('[');
+    QString refcmd = cmd.mid(1, cmdOnlySize);
+    for (auto& curparam : _params){
+        if (curparam != nullptr){
+            QString curcmd = (curparam->get_command_string()).mid(1, cmdOnlySize);
+            if (curcmd == refcmd){
+                if (curparam->get_command_string() != param->get_command_string()){
+                    //do not insert cur command
+                    lst.append(curparam);
+                }
+            }
+        }
+    }
+    return lst;
+}
+//-----------------------------------------------
 void        radarInstance::create_variable(QString parameterName)
 {
     if (_workspace == nullptr) return;
@@ -1494,6 +1516,18 @@ void    radarInstance::immediate_update_variable(const std::string& varname)
         {
             if (get_mapped_name(param).toStdString() == varname)
             {
+                //check if parameter is grouped
+                if (param->is_command_group()){
+                    QVector<radarParamPointer> lst = get_cmdgrp_varlist(param);
+                    //span list, cur param is not listed
+                    for (auto& updateOnlyParam : lst){
+                        if (updateOnlyParam!=nullptr) {
+                            octave_value var_value_updateOnly = _workspace->data_interface()->get_octave_engine()->varval(get_mapped_name(updateOnlyParam).toStdString());
+                            immediate_set_param_value(updateOnlyParam, var_value_updateOnly, true);
+                        }
+                    }
+
+                }
                 immediate_set_param_value(param, var_value);
                 return;
             }
@@ -1516,7 +1550,7 @@ void    radarInstance::immediate_inquiry_variable(const std::string& varname)
 
 }
 //--------------------------------------------------
-void    radarInstance::immediate_set_param_value(radarParamPointer param, const octave_value& val)
+void    radarInstance::immediate_set_param_value(radarParamPointer param, const octave_value& val, bool updateLocalOnly)
 {
     if (param->get_io_type()==RPT_IO_OUTPUT)
         return;
@@ -1530,9 +1564,12 @@ void    radarInstance::immediate_set_param_value(radarParamPointer param, const 
         return;
 
     param->set_value(val);
-    if (!is_connected()) return;
-    if (transmit_param_blocking(params))
-        param_is_updated(param);
+    if (!updateLocalOnly){
+
+        if (!is_connected()) return;
+        if (transmit_param_blocking(params))
+            param_is_updated(param);
+    }
 }
 //--------------------------------------------------
 void    radarInstance::immediate_inquiry_value(radarParamPointer param)

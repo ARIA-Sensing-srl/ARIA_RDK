@@ -18,13 +18,11 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+
+set(CMAKE_MODULE_PATH "/home/andream/Qt/6.9.3/gcc_64/lib/cmake/Qt6")
+
+find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools SerialPort Xml Sql)
 find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets LinguistTools SerialPort Xml Sql)
-
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools SerialPort Xml Sql)
-
-
-
-
 
 set(TS_FILES ARIA_RDK_en_US.ts)
 
@@ -84,7 +82,7 @@ if (WIN32)
 
 # QScintilla
 
-set(QSCINTILLA_INSTALL_PATH "C:/msys64/home/Alessio/ARIA_RDK/QScintilla")
+set(QSCINTILLA_INSTALL_PATH "/home/andream/Qt/6.9.3/gcc_64/")
 
 include_directories(AFTER "${QSCINTILLA_INSTALL_PATH}/include")
 
@@ -92,9 +90,9 @@ include_directories(AFTER "${QSCINTILLA_INSTALL_PATH}/include")
 
 #Octave
 
-set(OCTAVE_VERSION "9.4.0")
+#set(OCTAVE_VERSION "9.4.0")
 
-set(OCTAVE_INSTALL_PATH "C:/msys64/ucrt64/")
+#set(OCTAVE_INSTALL_PATH "C:/msys64/ucrt64/")
 
 include_directories(AFTER "${OCTAVE_INSTALL_PATH}/include/octave-${OCTAVE_VERSION}/octave")
 
@@ -147,9 +145,9 @@ else()
 
 # Octave
 
-  set(OCTAVE_INSTALL_PATH "/home/alessioc/octave_devel/")
+  set(OCTAVE_INSTALL_PATH "/home/andream/myoctave")
 
-  set(OCTAVE_VERSION "11.0.0")
+  set(OCTAVE_VERSION "10.2.0")
 
   include_directories(AFTER "${OCTAVE_INSTALL_PATH}/include/octave-${OCTAVE_VERSION}/octave")
 
@@ -163,7 +161,7 @@ else()
 
 # QScintilla
 
-set(QSCINTILLA_INSTALL_PATH "/home/alessioc/projects/QScintilla_src-2.14.1/")
+set(QSCINTILLA_INSTALL_PATH "/home/andream/Qt/6.9.3/gcc_64/")
 
 
 
@@ -519,7 +517,7 @@ else()
 
   target_link_libraries(ARIA_RDK PRIVATE "${OCTAVE_INSTALL_PATH}/lib/octave/${OCTAVE_VERSION}/liboctinterp.so")
 
-  target_link_libraries(ARIA_RDK PRIVATE "${QSCINTILLA_INSTALL_PATH}/src/libqscintilla2_qt6.so")
+  target_link_libraries(ARIA_RDK PRIVATE "${QSCINTILLA_INSTALL_PATH}/lib/libqscintilla2_qt6.a")
 
 endif()
 

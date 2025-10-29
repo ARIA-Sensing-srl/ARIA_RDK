@@ -37,7 +37,7 @@
    <item row="0" column="3">
     <widget class="QComboBox" name="cbZoom">
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <item>
       <property name="text">

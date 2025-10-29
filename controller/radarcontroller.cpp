@@ -27,7 +27,7 @@ void    radarController::data_from_serial_ready()
 //-----------------------------------------------------------------------
 void    radarController::data_to_serial_complete()
 {
-    if (!_data_tx_fifo.isEmpty())
+     if (!_data_tx_fifo.isEmpty())
     {
 
     }

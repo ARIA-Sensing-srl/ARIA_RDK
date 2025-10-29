@@ -1,4 +1,4 @@
 # Exclude temp doc files
 /docs/.~lock.ARIA_RDK_Documentation_0v1.odt#
 /docs/ARIA_RDK_Documentation_0v1.odt
-
+/build/

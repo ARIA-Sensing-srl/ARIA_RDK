@@ -77,13 +77,14 @@ public:
     void            attach_to_workspace(octavews *dws);
     octavews*       get_workspace(void);
     QString         get_mapped_name(radarParamPointer param);
+    QVector<radarParamPointer> get_cmdgrp_varlist(radarParamPointer param);
 
     void            create_variable(QString parameterName);
     void            create_all_variables();
     void            remove_variable(QString parameterName);
     void            remove_variable(radarParamPointer param);
 //---------------------------------------------------------------
-    void            immediate_set_param_value(radarParamPointer param, const octave_value& val);
+    void            immediate_set_param_value(radarParamPointer param, const octave_value& val, bool updateLocalOnly = false);
     void            immediate_inquiry_value(radarParamPointer param);
     void            immediate_set_command(radarParamPointer param);
 //---------------------------------------------------------------
