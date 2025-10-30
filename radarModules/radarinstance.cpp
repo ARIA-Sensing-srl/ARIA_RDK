@@ -2015,6 +2015,9 @@ bool    radarInstance::transmit_param_blocking(const QVector<radarParamPointer>&
 //--------------------------------------------------
 bool    radarInstance::transmit_command_blocking(radarParamPointer param)
 {
+    // fix. 2025.10.29
+    return transmit_param_blocking(QVector<radarParamPointer>({param}), false);
+
     _last_sent_command = nullptr;
     if (!is_connected()) return false;
 
