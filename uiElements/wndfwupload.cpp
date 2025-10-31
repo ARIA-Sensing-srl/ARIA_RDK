@@ -85,6 +85,7 @@ void    wndFWUpload::updload_fw()
     QString verify_flag      = ui->leFlagVerify->text();
     QString run_flag         = ui->leFlagStart->text();
     QString run_address      = ui->leStartAddress->text();
+    _last_serial_name        = ui->cbSerialPort->currentText();
 
     if (!QFileInfo::exists(uploader_command))
     {
@@ -98,12 +99,12 @@ void    wndFWUpload::updload_fw()
         return;
     }
 
-    QByteArray temp = QByteArray::fromHex(run_address.toLatin1());
+    /*QByteArray temp = QByteArray::fromHex(run_address.toLatin1());
     if (temp.size()!=8)
     {
         QMessageBox::critical(this,"Error", tr("Please provide a 32bit address"));
         return;
-    }
+    }*/
 
     QString serial_system_name("");
 
@@ -177,7 +178,7 @@ void    wndFWUpload::proc_done(int exitCode, QProcess::ExitStatus exitStatus)
 
     if ((exitStatus == QProcess::NormalExit)&&(exitCode==0))
     {
-        if (_status == FW_STARTED_FWUPLOAD)
+        /*if (_status == FW_STARTED_FWUPLOAD)
         {
             _upload_process.start(_last_fw_program,options_run);
             _status = FW_STARTED_RUN;
@@ -187,6 +188,19 @@ void    wndFWUpload::proc_done(int exitCode, QProcess::ExitStatus exitStatus)
 
         if (_status == FW_STARTED_RUN)
         {
+            _status = FW_IDLE;
+            QMessageBox::information(this, tr("Successful"), tr("FW Upload & Started Succesfully"));
+            ariasdk_fw_uploader = _last_fw_program;
+            ariasdk_uploader_path = QFileInfo(_last_fw_program).absolutePath();
+            ariasdk_fw_bin = _last_bin_file;
+            ariasdk_bin_path = QFileInfo(_last_bin_file).absolutePath();
+            ariasdk_flag_start = _last_run_flag;
+            ariasdk_flag_verify= _last_verify_flag;
+            ariasdk_flag_write = _last_write_flag;
+            ariasdk_serial_name= _last_serial_name;
+            ariasdk_bin_start_address  = _last_run_address;
+        }*/
+        if (_status == FW_STARTED_FWUPLOAD){
             _status = FW_IDLE;
             QMessageBox::information(this, tr("Successful"), tr("FW Upload & Started Succesfully"));
             ariasdk_fw_uploader = _last_fw_program;
