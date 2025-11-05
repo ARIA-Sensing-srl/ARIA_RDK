@@ -19,7 +19,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
-set(CMAKE_MODULE_PATH "/home/andream/Qt/6.9.3/gcc_64/lib/cmake/Qt6")
+#set(CMAKE_MODULE_PATH "/home/andream/Qt/6.9.3/gcc_64/lib/cmake/Qt6")
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools SerialPort Xml Sql)
 find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets LinguistTools SerialPort Xml Sql)
@@ -138,30 +138,44 @@ else()
 
 #Qwt
 
-  set(QWT_ROOT "/usr/local/qwt-6.3.0/")
-  include_directories(/usr/local/qwt-6.3.0/include)
+  find_path( QWT_INCLUDE NAME qwt.h PATHS /usr/local/include REQUIRED )
+#  set(QWT_ROOT "${QWT_INCLUDE}/..")
+cmake_path(GET QWT_INCLUDE PARENT_PATH QWT_ROOT)
+  include_directories("${QWT_INCLUDE}")
 
 #---------------------------------
 
 # Octave
 
-  set(OCTAVE_INSTALL_PATH "/home/andream/myoctave")
+#  set(OCTAVE_INSTALL_PATH "/home/andream/myoctave")
+#  set(OCTAVE_INSTALL_PATH "/usr/local")
+#  set(OCTAVE_VERSION "10.2.0")
 
-  set(OCTAVE_VERSION "10.2.0")
-
-  include_directories(AFTER "${OCTAVE_INSTALL_PATH}/include/octave-${OCTAVE_VERSION}/octave")
+#  include_directories(AFTER "${OCTAVE_INSTALL_PATH}/include/octave-${OCTAVE_VERSION}/octave")
+   find_library( OCTAVE_LIBRARY_PATH NAME octave octgui octinterp PATHS /usr/lib REQUIRED )
+   find_path ( OCTAVE_INCLUDE_PATH NAME octave.h PATHS /usr/include REQUIRED )
+   include_directories( AFTER ${OCTAVE_INCLUDE_PATH} )
 
 #---------------------------------
 
 # Eigen
 
-  set(EIGEN_ROOT "/usr/local/include/eigen3/")
+  #set(EIGEN_ROOT "/usr/local/include/eigen3/")
+  find_path ( EIGEN_INCLUDE_PATH NAME Eigen PATHS /usr/include REQUIRED )
+  #set(EIGEN_ROOT "${EIGEN_INCLUDE_PATH}/..")
+  cmake_path(GET EIGEN_INCLUDE_PATH PARENT_PATH EIGEN_ROOT)
+  
+  
 
 #---------------------------------
 
 # QScintilla
 
-set(QSCINTILLA_INSTALL_PATH "/home/andream/Qt/6.9.3/gcc_64/")
+#set(QSCINTILLA_INSTALL_PATH "/home/andream/Qt/6.9.3/gcc_64/")
+	find_library( QSCI_LIBRARY_PATH NAME qscintilla2_qt6 PATHS "/usr/lib"  REQUIRED )
+	#set(QSCINTILLA_INSTALL_PATH "${QSCI_LIBRARY_PATH}/..")
+	cmake_path(GET QSCI_LIBRARY_PATH PARENT_PATH QSCINTILLA_INSTALL_PATH)
+			
 
 
 
@@ -513,9 +527,11 @@ if (WIN32)
 
 else()
 
-  target_link_libraries(ARIA_RDK PRIVATE "${OCTAVE_INSTALL_PATH}/lib/octave/${OCTAVE_VERSION}/liboctave.so")
+  #target_link_libraries(ARIA_RDK PRIVATE "${OCTAVE_INSTALL_PATH}/lib/octave/${OCTAVE_VERSION}/liboctave.so")
+  target_link_libraries(ARIA_RDK PRIVATE "${OCTAVE_LIBRARY_PATH}/liboctave.so")
 
-  target_link_libraries(ARIA_RDK PRIVATE "${OCTAVE_INSTALL_PATH}/lib/octave/${OCTAVE_VERSION}/liboctinterp.so")
+  #target_link_libraries(ARIA_RDK PRIVATE "${OCTAVE_INSTALL_PATH}/lib/octave/${OCTAVE_VERSION}/liboctinterp.so")
+  target_link_libraries(ARIA_RDK PRIVATE "${OCTAVE_LIBRARY_PATH}/liboctinterp.so")
 
   target_link_libraries(ARIA_RDK PRIVATE "${QSCINTILLA_INSTALL_PATH}/lib/libqscintilla2_qt6.a")
 
