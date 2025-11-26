@@ -9,6 +9,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+
 list(APPEND CMAKE_MODULE_PATH "~/Qt/6.9.3/gcc_64/lib/cmake/Qt6")
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools SerialPort Xml Sql)
@@ -88,10 +89,12 @@ else()
   set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/${CMAKE_BUILD_TYPE}")
 
 #Qwt
+
   set(QWT_ROOT "/usr/local/qwt-6.3.0/")
   find_path( QWT_INCLUDE NAME qwt.h PATHS ${QWT_ROOT}/include REQUIRED )
   cmake_path(GET QWT_INCLUDE PARENT_PATH ${QWT_ROOT})
   include_directories(${QWT_INCLUDE})
+
 
 #---------------------------------
 # Octave
@@ -104,6 +107,7 @@ else()
 
 #---------------------------------
 # Eigen
+
 
   set(EIGEN_ROOT "/usr/local/include/eigen3/Eigen")
   find_path ( EIGEN_INCLUDE_PATH NAME Eigen PATHS ${EIGEN_ROOT} REQUIRED )
@@ -293,6 +297,7 @@ if (WIN32)
   target_link_libraries(ARIA_RDK PRIVATE "${QWT_ROOT}/lib/libqwt.dll.a")
 
 else()
+
   message("Octave path ${OCTAVE_LIBRARY_PATH}")
   target_link_libraries(ARIA_RDK PRIVATE "${OCTAVE_LIBRARY_PATH}/liboctave.so")
   target_link_libraries(ARIA_RDK PRIVATE "${OCTAVE_LIBRARY_PATH}/liboctinterp.so")
