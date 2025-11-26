@@ -16,6 +16,7 @@
 #include <radarparameter.h>
 #include <octavescript.h>
 #include <dlgqwtplot.h>
+#include <QTextLine>
 namespace Ui {
 class mdiOctaveInterface;
 }
@@ -40,6 +41,7 @@ public:
 	void		clear_and_init_var_table();
 
 	bool		close_scripts();
+    QTextLine currentTextLine(const QTextCursor &cursor);
 signals:
     void plotVariable(QString varname);
 public slots:
@@ -49,7 +51,7 @@ public slots:
     void saveSctiptAs();
     void closeScript();
     void openProjectScript(octaveScript* script);
-
+    bool eventFilter(QObject *obj, QEvent *event);
     void error(QString errorString);
     // Bottom editor
     void newCommandLine();

@@ -25,7 +25,7 @@ class MessageHandler : public QObject
     Q_OBJECT
 public :
     MessageHandler(QTextEdit *textEdit, QObject * parent = Q_NULLPTR) : QObject(parent), m_textEdit(textEdit){}
-
+    void clearTextEdit() {m_textEdit = nullptr;}
 
 public slots:
     void catchMessage(QString msg)

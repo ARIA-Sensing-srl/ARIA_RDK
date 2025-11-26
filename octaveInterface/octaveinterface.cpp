@@ -22,140 +22,139 @@ octaveInterface*	octaveInterface::_octave_interface_instance = nullptr;
 
 
 octaveInterface::octaveInterface() :
-	commandList()
-	, commandCurrent("")
-	, bStopThread(false)
-	, _workspace(nullptr)
-	, _immediate_filename("")
+    commandList()
+    , commandCurrent("")
+    , bStopThread(false)
+    , _workspace(nullptr)
+    , _immediate_filename("")
 {
-	// Initialize Octave Interpreter
-	_octave_engine = new octave::interpreter();
-	_octave_engine->interactive(true);
-	_octave_engine->initialize();
-	_octave_engine->initialize_history(true);
-	_octave_engine->initialize_load_path();
+    // Initialize Octave Interpreter
+    _octave_engine = new octave::interpreter();
+    _octave_engine->interactive(true);
+    _octave_engine->initialize();
+    _octave_engine->initialize_history(true);
+    _octave_engine->initialize_load_path();
 
-	_octave_engine->get_error_system().debug_on_caught(false);
-	_octave_engine->execute();
+    _octave_engine->get_error_system().debug_on_caught(false);
+    _octave_engine->execute();
 
-	octave::output_system& os = _octave_engine->get_output_system();
+    octave::output_system& os = _octave_engine->get_output_system();
 
-	os.flushing_output_to_pager(false);
-	os.page_screen_output(false);
+    os.flushing_output_to_pager(false);
+    os.page_screen_output(false);
 
-	_workspace = new octavews(_octave_engine);
-	_workspace->data_interface(this);
-	_current_script = nullptr;
+    _workspace = new octavews(_octave_engine);
+    _workspace->data_interface(this);
+    _current_script = nullptr;
 
 #ifndef OCTAVE_THREAD
-	_b_running_command = false;
-	_b_running_script = true;
+    _b_running_command = false;
+    _b_running_script = true;
 #endif
-	// These dummy declarations allow for proper linking of the radarparameter template.
-	// to be investigated.
-	{ Array<float> x(dim_vector({1,1})); x(0)=1;}
-	{ Array<int8_t> x(dim_vector({1,1})); x(0)=1;}
-	{ Array<int16_t> x(dim_vector({1,1})); x(0)=1;}
-	{ Array<int32_t> x(dim_vector({1,1})); x(0)=1;}
-	{ Array<uint8_t> x(dim_vector({1,1})); x(0)=1;}
-	{ Array<uint16_t> x(dim_vector({1,1})); x(0)=1;}
-	{ Array<uint32_t> x(dim_vector({1,1})); x(0)=1;}
-	{ Array<char> x(dim_vector({1,1})); x(0)=0x01;}
+    // These dummy declarations allow for proper linking of the radarparameter template.
+    // to be investigated.
+    { Array<float> x(dim_vector({1,1})); x(0)=1;}
+    { Array<int8_t> x(dim_vector({1,1})); x(0)=1;}
+    { Array<int16_t> x(dim_vector({1,1})); x(0)=1;}
+    { Array<int32_t> x(dim_vector({1,1})); x(0)=1;}
+    { Array<uint8_t> x(dim_vector({1,1})); x(0)=1;}
+    { Array<uint16_t> x(dim_vector({1,1})); x(0)=1;}
+    { Array<uint32_t> x(dim_vector({1,1})); x(0)=1;}
+    { Array<char> x(dim_vector({1,1})); x(0)=0x01;}
 
-	// Error handlers
-	_octave_engine->get_error_system().backtrace_on_warning(true);
-	_octave_engine->get_error_system().initialize_default_warning_state();
-
-
-	QString currentPath = QCoreApplication::applicationDirPath();
-	// Add General
-	try
-	{
-		_octave_engine->feval("addpath", std::list<octave_value>({charNDArray(currentPath.toUtf8())}));
-	}
-	catch(...)
-	{
-
-	}
+    // Error handlers
+    _octave_engine->get_error_system().backtrace_on_warning(true);
+    _octave_engine->get_error_system().initialize_default_warning_state();
 
 
-	QStringList required_paths={
-		"help","io","linear-algebra","miscellaneous","path","set","specfun","strings","time","statistics","polynomial","pkg","pkg/private","plot/util","general","elfun","geometry","image","ode"
-	};
+    QString currentPath = QCoreApplication::applicationDirPath();
+    // Add General
+    try
+    {
+        _octave_engine->feval("addpath", std::list<octave_value>({charNDArray(currentPath.toUtf8())}));
+    }
+    catch(...)
+    {
 
-	for (auto& path: required_paths)
-	{
+    }
+
+
+    QStringList required_paths={
+        "help","io","linear-algebra","miscellaneous","path","set","specfun","strings","time","statistics","polynomial","pkg","pkg/private","plot/util","general","elfun","geometry","image","ode"
+    };
+
+    for (auto& path: required_paths)
+    {
+        //#ifdef WIN32
+        QString	octavePath  = QFileInfo(currentPath, QString("./octave/m/")+path+"/").absolutePath()+"/";
+        //#else
+        //		QString	octavePath  = QFileInfo(currentPath, QString("/usr/share/octave/9.4.0/m/")+path+"/").absolutePath()+"/";
+        //#endif
+        try
+        {
+            _octave_engine->feval("addpath", std::list<octave_value>({charNDArray(octavePath.toUtf8())}));
+        }
+        catch(...)
+        {
+
+        }
+    }
 #ifdef WIN32
-		QString	octavePath  = QFileInfo(currentPath, QString("../share/octave/9.4.0/m/")+path+"/").absolutePath()+"/";
+    try
+    {
+
+        QString octavePath  = QFileInfo(currentPath, QString("./octave/m/")).absolutePath();
+        _octave_engine->feval("addpath", std::list<octave_value>({charNDArray(octavePath.toUtf8())}));
+        //		octavePath  = QFileInfo(currentPath, QString("../lib/octave/site/oct/api-v59/x86_64-w64-mingw32/")).absolutePath();
+        //		_octave_engine->feval("addpath", std::list<octave_value>({charNDArray(octavePath.toUtf8())}));
+        //		octavePath  = QFileInfo(currentPath, QString("../lib/octave/site/oct/x86_64-w64-mingw32/")).absolutePath();
+        //		_octave_engine->feval("addpath", std::list<octave_value>({charNDArray(octavePath.toUtf8())}));
+
+        octavePath  = QFileInfo(currentPath, QString("./octave/oct/")).absolutePath();
+        _octave_engine->feval("addpath", std::list<octave_value>({charNDArray(octavePath.toUtf8())}));
+    }
+    catch(...)
+    {
+    }
+#endif
+    // Toolboxes
+    QString pkgPrefix = QFileInfo(currentPath, QString("./toolboxes/")).absolutePath();
+    if (!QDir(pkgPrefix).exists())
+        QDir().mkdir(pkgPrefix);
+
+    try
+    {
+#ifdef WIN32
+        QString xtmp= (QDir().toNativeSeparators(pkgPrefix)+QDir().separator());
+        //xtmp = xtmp.last(xtmp.length()-2);
+        std::list<octave_value> prefix({
+                                        charNDArray(QString("prefix").toUtf8()),
+                                        charNDArray(xtmp.toUtf8())});
 #else
-		QString	octavePath  = QFileInfo(currentPath, QString("/usr/share/octave/9.4.0/m/")+path+"/").absolutePath()+"/";
-#endif
-		try
-		{
-			_octave_engine->feval("addpath", std::list<octave_value>({charNDArray(octavePath.toUtf8())}));
-		}
-		catch(...)
-		{
-
-		}
-	}
-#ifdef WIN32
-	try
-	{
-
-		QString octavePath  = QFileInfo(currentPath, QString("../lib/octave/9.4.0/site/oct/x86_64-w64-mingw32/")).absolutePath();
-		_octave_engine->feval("addpath", std::list<octave_value>({charNDArray(octavePath.toUtf8())}));
-		octavePath  = QFileInfo(currentPath, QString("../lib/octave/site/oct/api-v59/x86_64-w64-mingw32/")).absolutePath();
-		_octave_engine->feval("addpath", std::list<octave_value>({charNDArray(octavePath.toUtf8())}));
-		octavePath  = QFileInfo(currentPath, QString("../lib/octave/site/oct/x86_64-w64-mingw32/")).absolutePath();
-		_octave_engine->feval("addpath", std::list<octave_value>({charNDArray(octavePath.toUtf8())}));
-
-		octavePath  = QFileInfo(currentPath, QString("../lib/octave/9.4.0/oct/x86_64-w64-mingw32/")).absolutePath();
-		_octave_engine->feval("addpath", std::list<octave_value>({charNDArray(octavePath.toUtf8())}));
-	}
-	catch(...)
-	{
-	}
-#endif
-	// Toolboxes
-	QString pkgPrefix = QFileInfo(currentPath, QString("../toolboxes/")).absolutePath();
-	if (!QDir(pkgPrefix).exists())
-		QDir().mkdir(pkgPrefix);
-
-	try
-	{
-#ifdef WIN32
-		QString xtmp= (QDir().toNativeSeparators(pkgPrefix)+QDir().separator());
-		//xtmp = xtmp.last(xtmp.length()-2);
-		std::list<octave_value> prefix({
-										charNDArray(QString("prefix").toUtf8()),
-										charNDArray(xtmp.toUtf8())});
-#else
-		std::list<octave_value> prefix({
-										charNDArray(QString("prefix").toUtf8()),
-										charNDArray((QDir().toNativeSeparators(pkgPrefix)+QDir().separator()).toUtf8())});
+        std::list<octave_value> prefix({
+                                        charNDArray(QString("prefix").toUtf8()),
+                                        charNDArray((QDir().toNativeSeparators(pkgPrefix)+QDir().separator()).toUtf8())});
 #endif
 
+        _octave_engine->feval("pkg",octave_value_list(prefix));
+    }
+    catch(...)
+    {
+    }
 
-		_octave_engine->feval("pkg",octave_value_list(prefix));
-	}
-	catch(...)
-	{
-	}
+    // Pre-load directories in "toolboxes"
+    QDirIterator directories(pkgPrefix, QDir::Dirs | QDir::NoSymLinks | QDir::NoDotAndDotDot);
 
-	// Pre-load directories in "toolboxes"
-	QDirIterator directories(pkgPrefix, QDir::Dirs | QDir::NoSymLinks | QDir::NoDotAndDotDot);
-
-	while(directories.hasNext()){
-		directories.next();
-		try
-		{
-			_octave_engine->feval("addpath", std::list<octave_value>({charNDArray(directories.filePath().toUtf8())}));
-		}
-		catch(...)
-		{
-		}
-	}
+    while(directories.hasNext()){
+        directories.next();
+        try
+        {
+            _octave_engine->feval("addpath", std::list<octave_value>({charNDArray(directories.filePath().toUtf8())}));
+        }
+        catch(...)
+        {
+        }
+    }
 
 }
 //-----------------------------

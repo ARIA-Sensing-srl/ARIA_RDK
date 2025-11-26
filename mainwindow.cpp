@@ -139,6 +139,8 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    msgHandler->clearTextEdit();
+
     if (wndOctaveInterface!=nullptr)
         delete wndOctaveInterface;
     wndOctaveInterface = nullptr;

@@ -194,6 +194,13 @@
        <item>
         <widget class="QLineEdit" name="lineEdit"/>
        </item>
+       <item>
+        <widget class="QPushButton" name="pbExecute">
+         <property name="text">
+          <string>exec</string>
+         </property>
+        </widget>
+       </item>
       </layout>
      </widget>
     </widget>

@@ -46,7 +46,9 @@ mdiOctaveInterface::mdiOctaveInterface(qDataThread* worker,  QWidget *parent) :
     ui->setupUi(this);
 
     // Connectin signals
-    connect(ui->lineEdit, &QLineEdit::editingFinished,this, &mdiOctaveInterface::newCommandLine);
+    connect(ui->lineEdit,  &QLineEdit::returnPressed,this, &mdiOctaveInterface::newCommandLine);
+    connect(ui->pbExecute, &QPushButton::clicked, this, &mdiOctaveInterface::newCommandLine);
+    ui->historyCommands->viewport()->installEventFilter(this);
 
     // Workspace table
     ui->workspaceList->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -125,7 +127,7 @@ void mdiOctaveInterface::newScript()
 void mdiOctaveInterface::openProjectScript(octaveScript* script)
 {
 	QList<QMdiSubWindow*> subwnds = ui->mdiArea->subWindowList();
-	for (auto &child: subwnds)
+    for (auto &child: subwnds)
     {
 		wndOctaveScript* wnd = qobject_cast<wndOctaveScript*>(child->widget());
 
@@ -146,6 +148,41 @@ void mdiOctaveInterface::openProjectScript(octaveScript* script)
 
 	connect(_interfaceData, &octaveInterface::workspaceUpdated, wndScript, &wndOctaveScript::update_tips);
 }
+
+
+
+QTextLine mdiOctaveInterface::currentTextLine(const QTextCursor &cursor)
+{
+    const QTextBlock block = cursor.block();
+    if (!block.isValid())
+        return QTextLine();
+
+    const QTextLayout *layout = block.layout();
+    if (!layout)
+        return QTextLine();
+
+    const int relativePos = cursor.position() - block.position();
+    return layout->lineForTextPosition(relativePos);
+}
+
+
+bool mdiOctaveInterface::eventFilter(QObject *obj, QEvent *event) {
+
+    if (event->type() == QMouseEvent::MouseButtonDblClick)
+        if (obj == ui->historyCommands->viewport())
+        {
+            //QTextLine tl = currentTextLine(ui->historyCommands->textCursor());
+            int pos = ui->historyCommands->textCursor().position();
+            QString strCopy = ui->historyCommands->toPlainText();
+            qsizetype send = strCopy.indexOf("\n",pos);
+            qsizetype start= strCopy.lastIndexOf("\n",pos);
+            strCopy = strCopy.mid(start,send-start);
+            ui->lineEdit->setText(strCopy);
+
+        }
+    return QWidget::eventFilter(obj, event);
+}
+
 
 
 void mdiOctaveInterface::openScript()
