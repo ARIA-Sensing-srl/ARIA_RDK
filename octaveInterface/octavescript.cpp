@@ -222,8 +222,10 @@ QString         octaveScript::get_line(int n)
 void octaveScript::setValid(bool bValid)
 {
     _file_existing = bValid;
-    if (get_root()!=nullptr)
-        emit get_root()->item_updated((projectItem*)(this));
+    projectItem* p = get_root();
+    if (p!=nullptr)
+        if (p->get_type()==DT_ROOT)
+            emit ((radarProject*)p)->item_updated((projectItem*)(this));
 
 }
 

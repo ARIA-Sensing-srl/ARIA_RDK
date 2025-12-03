@@ -59,7 +59,8 @@ wndOctaveScript::wndOctaveScript(QString filename, octaveInterface* dataEngine,Q
 	_lexer->setColor(Qt::gray, QsciLexerOctave::Identifier);
 	_lexer->setColor(Qt::darkGreen, QsciLexerOctave::Command);
 	_lexer->setColor(Qt::darkCyan, QsciLexerOctave::Number);
-
+    _lexer->setColor(Qt::yellow, QsciLexerOctave::DoubleQuotedString);
+    _lexer->setColor(Qt::darkYellow, QsciLexerOctave::SingleQuotedString);
 	ui->textScript->setLexer(_lexer);
 	_api = new QsciAPIs(_lexer);
 
