@@ -109,6 +109,9 @@ public slots:
     void updatedSingleVar(const std::string& varname);
     void updatedVars(const std::set<std::string>& varlist);
 
+    void cleanOutput();
+    void cleanHistory();
+
 private:
     Ui::mdiOctaveInterface *ui;
     class qDataThread           *_elabThread;

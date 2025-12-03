@@ -14,6 +14,7 @@
 #include <QWidget>
 #include <QDialog>
 #include <QSpinBox>
+#include <QPainter>
 
 #define EXPORT_VOID
 
@@ -114,12 +115,25 @@ wndRadarInstanceEditor::wndRadarInstanceEditor(radarInstance* radar, QVector<rad
     connect(ui->btnClear,   &QPushButton::clicked, this, &wndRadarInstanceEditor::clearSerialOutput);
 
     connect(ui->btnRun, &QPushButton::clicked, this, &wndRadarInstanceEditor::run);
+
+    // Create an icon for the missing scripts
+    QString iconSource = ":/icons/broken-link-icon.png";
+    QPixmap px(iconSource);
+    QPainter painter(&px);
+    QColor iconColor("red");
+    painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+    painter.setBrush(iconColor);
+    painter.setPen(iconColor);
+    painter.drawRect(px.rect());
+    _icon = QIcon(px);
+
     init_script_tables();
     init_parameter_table();
 
     ui->teSerialOutput->setReadOnly(true);
+    ui->tabWidget->setCurrentIndex(2);
 }
-//---------------------------------------------------------------
+//------------------------------------------------------------  ---
 wndRadarInstanceEditor::~wndRadarInstanceEditor()
 {
     // The disconnect on delete must be done by each radarInstance
@@ -153,8 +167,8 @@ void wndRadarInstanceEditor::init_script_tables()
 void wndRadarInstanceEditor::init_script_table(QTableWidget* table, QVector<octaveScript_ptr> list)
 {
     table->clear();
-    table->setColumnCount(2);
-    table->setHorizontalHeaderLabels(QStringList({"#","Script"}));
+    table->setColumnCount(3);
+    table->setHorizontalHeaderLabels(QStringList({"#","Script",""}));
 
     table->setRowCount(0);
     int row = 0;
@@ -171,6 +185,17 @@ void wndRadarInstanceEditor::init_script_table(QTableWidget* table, QVector<octa
         table->setItem(row,0,item);
         table->setCellWidget(row,1,cb);
         cb->setCurrentText(script->get_name());
+
+        if (script->isValid())
+        {
+            table->setItem(row,2,new QTableWidgetItem());
+        }
+        else
+        {
+            QTableWidgetItem* newItem = new QTableWidgetItem();
+            newItem->setIcon(_icon);
+            table->setItem(row,2,newItem);
+        }
 
         if (table == ui->tblScriptsInit)
             connect(cb,&QComboBox::currentIndexChanged, this, &wndRadarInstanceEditor::cbInitScriptChanged);
@@ -299,6 +324,17 @@ void    wndRadarInstanceEditor::cbInitScriptChanged(int index)
     {
         _radar_instance->set_init_script(row, script);
     }
+
+    if (script->isValid())
+    {
+        ui->tblScriptsInit->setItem(row,2,new QTableWidgetItem());
+    }
+    else
+    {
+        QTableWidgetItem* newItem = new QTableWidgetItem();
+        newItem->setIcon(_icon);
+        ui->tblScriptsInit->setItem(row,2,newItem);
+    }
 }
 
 //---------------------------------------------------------------
@@ -359,6 +395,17 @@ void    wndRadarInstanceEditor::cbPostacqScriptChanged(int index)
     else
     {
         _radar_instance->set_postacquisition_script(row, script);
+    }
+
+    if (script->isValid())
+    {
+        ui->tblScriptsPostAcq->setItem(row,2,new QTableWidgetItem());
+    }
+    else
+    {
+        QTableWidgetItem* newItem = new QTableWidgetItem();
+        newItem->setIcon(_icon);
+        ui->tblScriptsPostAcq->setItem(row,2,newItem);
     }
 }
 

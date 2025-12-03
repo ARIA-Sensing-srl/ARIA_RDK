@@ -54,6 +54,7 @@ private:
     octaveScript*               load_new_script();
 
     opScheduler*                _scheduler;
+    QIcon                       _icon;
 public slots:
     void                        confirm();
     void                        cancel();

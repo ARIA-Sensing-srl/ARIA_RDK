@@ -83,7 +83,21 @@ mdiOctaveInterface::mdiOctaveInterface(qDataThread* worker,  QWidget *parent) :
         }
     }
 
+    connect(ui->btnCleanOutput, &QPushButton::clicked, this, &mdiOctaveInterface::cleanOutput);
+    connect(ui->pbCleanHistory, &QPushButton::clicked, this, &mdiOctaveInterface::cleanHistory);
+
 }
+
+void mdiOctaveInterface::cleanOutput()
+{
+    ui->outputCommands->clear();
+}
+
+void mdiOctaveInterface::cleanHistory()
+{
+    ui->historyCommands->clear();
+}
+
 
 void mdiOctaveInterface::update_octave_interface()
 {
@@ -175,7 +189,7 @@ bool mdiOctaveInterface::eventFilter(QObject *obj, QEvent *event) {
             int pos = ui->historyCommands->textCursor().position();
             QString strCopy = ui->historyCommands->toPlainText();
             qsizetype send = strCopy.indexOf("\n",pos);
-            if (send==-1) send = strCopy.length()-1;
+            if (send==-1) send = strCopy.length();
             qsizetype start= strCopy.lastIndexOf("\n",pos);
             strCopy = strCopy.mid(start,send-start);
             ui->lineEdit->setText(strCopy);

@@ -413,6 +413,31 @@ if(WIN32)
                         )
         install(
                         DIRECTORY "${MSYS_MINGW_HOME}/../usr/bin/"
+                        DESTINATION "${CMAKE_INSTALL_PREFIX}/../usr/bin/"
+                        FILES_MATCHING PATTERN "cp.exe"
+                        )
+        install(
+                        DIRECTORY "${MSYS_MINGW_HOME}/../usr/bin/"
+                        DESTINATION "${CMAKE_INSTALL_PREFIX}/../usr/bin/"
+                        FILES_MATCHING PATTERN "mv.exe"
+                        )
+        install(
+                        DIRECTORY "${MSYS_MINGW_HOME}/../usr/bin/"
+                        DESTINATION "${CMAKE_INSTALL_PREFIX}/../usr/bin/"
+                        FILES_MATCHING PATTERN "tar.exe"
+                        )
+        install(
+                        DIRECTORY "${MSYS_MINGW_HOME}/../usr/bin/"
+                        DESTINATION "${CMAKE_INSTALL_PREFIX}/../usr/bin/"
+                        FILES_MATCHING PATTERN "unzip.exe"
+                        )
+        install(
+                        DIRECTORY "${MSYS_MINGW_HOME}/../usr/bin/"
+                        DESTINATION "${CMAKE_INSTALL_PREFIX}/../usr/bin/"
+                        FILES_MATCHING PATTERN "gzip.exe"
+                        )
+        install(
+                        DIRECTORY "${MSYS_MINGW_HOME}/../usr/bin/"
                         DESTINATION "${CMAKE_INSTALL_BINDIR}"
                         FILES_MATCHING PATTERN "*.exe"
                         )

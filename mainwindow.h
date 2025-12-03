@@ -69,6 +69,8 @@ private:
     void removeModule(radarModule* module);
     void removeController(opScheduler* controller);
 
+    void updateModuleDevices(octaveScript* script);
+
 public slots:
 
 // Menù slots

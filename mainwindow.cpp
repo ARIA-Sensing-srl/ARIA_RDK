@@ -466,6 +466,8 @@ void MainWindow::setTreeItem(QTreeWidgetItem* treeItem, projectItem* projItem)
     }
     else
         treeItem->setForeground(0, QBrush(Qt::white));
+
+
     treeItem->setText(0,projItem->get_item_descriptor());
     treeItem->setIcon(0, icon);
 
@@ -991,6 +993,11 @@ void    MainWindow::delete_children(class wndMathGL* child)
 {
     _plot3d_children.removeAll(child);
 }
+
+void MainWindow::updateModuleDevices(octaveScript* script)
+{
+
+}
 //---------------------------------------------------------------
 // Update a project item
 void MainWindow::update_project_item(projectItem* updated)
@@ -998,6 +1005,14 @@ void MainWindow::update_project_item(projectItem* updated)
     QTreeWidgetItem* treeItem= getWidgetItem(updated);
     if (treeItem==nullptr) return;
     setTreeItem(treeItem,updated);
+
+    if (updated->get_type()==DT_SCRIPT)
+    {
+        octaveScript* script = (octaveScript*)(updated);
+        updateModuleDevices(script);
+    }
+
+
 }
 
 //---------------------------------------------------------------
@@ -1043,6 +1058,24 @@ void MainWindow::deleteDevice()
     if (currentItem->get_type() != DT_RADARDEVICE)
         return;
     radarInstance *radar = (radarInstance*)(currentItem);
+
+    // Check if we don't have radar devices
+    QVector<opScheduler*> ops= project->get_available_scheduler();
+
+    for (auto& op : ops)
+    {
+        if (op==nullptr) continue;
+        QList<radarInstance*> devices = op->get_devices();
+        for (auto & dev : devices)
+        {
+            if ((dev!=nullptr)&&(dev==radar))
+            {
+                QMessageBox::warning(this,"Error",QString("The scheduler :") + op->get_name() + QString(" depend on this file\n Operation canceled"));
+                return;
+            }
+        }
+    }
+
     if (QMessageBox::question(this, "Confirm", tr("Do you want to delete ")+radar->get_device_name()+tr(" ?"))==QMessageBox::No)
         return;
     // Close any window related to the module itself
@@ -1212,6 +1245,20 @@ void MainWindow::deleteModule()
     if (currentItem->get_type() != DT_RADARMODULE)
         return;
     radarModule *radar_mod= (radarModule*)(currentItem);
+
+    // Check if we don't have radar devices
+    QVector<radarInstance*> devices = project->get_available_radars();
+    for (auto & dev : devices)
+    {
+        if (dev!=nullptr)
+            if (dev->get_module()==radar_mod)
+            {
+                QMessageBox::warning(this,"Error",QString("Radar device :") + dev->get_name() + QString(" depend on this file\n Operation canceled"));
+                return;
+            }
+    }
+
+
     if (QMessageBox::question(this, "Confirm", tr("Do you want to delete ")+radar_mod->get_name()+tr(" ?"))==QMessageBox::No)
         return;
     // Close any window related to the module itself
@@ -1382,11 +1429,6 @@ void MainWindow::removeScript(octaveScript* script)
     if (script==nullptr) return;
     if (project==nullptr) return;
 
-    if (QMessageBox::question(this, "Confirm",
-                              QString("Do you want to remove the script: ")+script->get_name()+QString("\n This will remove the file from the script folder."))==QMessageBox::No)
-        return;
-
-
 
     // Check that no open window with the same module is open
     for (auto &child: ui->mdiArea->subWindowList())
@@ -1419,6 +1461,11 @@ void MainWindow::removeScript(octaveScript* script)
                 }
         }
     }
+
+    if (QMessageBox::question(this, "Confirm",
+                              QString("Do you want to remove the script: ")+script->get_name()+QString("\n This will remove the file from the script folder."))==QMessageBox::No)
+        return;
+
     for (auto module : project->get_available_modules())
     {
         if (module!=nullptr)

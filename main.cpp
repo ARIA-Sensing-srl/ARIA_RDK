@@ -27,9 +27,11 @@ int main(int argc, char *argv[])
 	QString xtmp = (QDir().toNativeSeparators(tmpPath)+QDir().separator());
 	//xtmp = xtmp.last(xtmp.length()-2);
 	qputenv("TMPDIR", xtmp.toUtf8());
+#ifdef WIN32
     //reset path to avoid conflicts with other mingw installations
     qputenv("PATH",currentPath.toUtf8());
     qputenv("PATH",qgetenv("PATH"));
+#endif
 
 #ifdef WIN32
 	QString homePath = QFileInfo(currentPath, QString("../")).absolutePath();
