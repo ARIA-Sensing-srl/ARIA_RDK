@@ -183,8 +183,6 @@ public:
 
     bool            init_pre();
     bool            init_scripts();
-    bool            acquisition_pre();
-    bool            acquisition_scripts();
     bool            postacquisition_pre();
     bool            postacquisition_scripts();
 
@@ -192,6 +190,9 @@ public:
     int             get_serial_timeout()            {return kWriteTimeoutRx;}
 
     QByteArray      set_port_no_module_check(char module_id_inquiry_command, const QSerialPortInfo& port, const SerialSettings& settings);
+
+    bool            contain_script(octaveScript* script);
+    void            remove_script(octaveScript* script);
 
 public slots:
     //void            data_received();

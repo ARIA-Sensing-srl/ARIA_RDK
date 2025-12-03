@@ -175,6 +175,7 @@ bool mdiOctaveInterface::eventFilter(QObject *obj, QEvent *event) {
             int pos = ui->historyCommands->textCursor().position();
             QString strCopy = ui->historyCommands->toPlainText();
             qsizetype send = strCopy.indexOf("\n",pos);
+            if (send==-1) send = strCopy.length()-1;
             qsizetype start= strCopy.lastIndexOf("\n",pos);
             strCopy = strCopy.mid(start,send-start);
             ui->lineEdit->setText(strCopy);
@@ -357,49 +358,6 @@ void  mdiOctaveInterface::updateVarTable()
 		octave_value val = _workspace->var_value(vstring);
 		add_variable_row(ui->workspaceList->rowCount(), vstring, val, internal);
 	}
-
-
-	/*
-
-	clear_and_init_var_table();
-
-    if (_workspace == nullptr)
-        return;
-
-
-    ui->workspaceList->setRowCount(_workspace->get_variable_count(true)+_workspace->get_variable_count(false));
-    int nrow = 0;
-    for (auto internal : {false, true})
-    {
-        int nmax = _workspace->get_variable_count(internal);
-        for (int n=0; n < nmax ; n++)
-        {
-            std::pair<std::string, octave_value> var = _workspace->get_variable(n,internal);
-            add_variable_row(nrow, var.first, var.second, internal);
-            nrow++;
-        }
-    }
-
-	for (int r=0; r < ui->workspaceList->rowCount(); r++)
-	{
-		QString row_var = ui->workspaceList->item(r,1)->text();
-		if (selectedVars.contains(row_var))
-			ui->workspaceList->selectRow(r);
-	}
-
-    for (const auto& child: _plot2d_children)
-	{
-        if (child!=nullptr)
-            child->update_workspace(_workspace);
-	}
-
-	for (const auto& child : _plot_qwt_children)
-	{
-		if (child != nullptr)
-			child->update_workspace();
-	}
-	*/
-
 }
 
 

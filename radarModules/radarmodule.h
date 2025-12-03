@@ -253,6 +253,9 @@ public:
     QByteArray      encode_param_for_transmission(const QVector<radarParamPointer>& params, bool inquiry=false);
     bool            decode_data_from_radar(const QByteArray& data);
     bool            operator == (const radarModule& module2);
+
+    bool            contain_script(octaveScript* script);
+    void            remove_script(octaveScript* script);
 };
 
 

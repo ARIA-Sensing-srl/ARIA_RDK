@@ -45,7 +45,7 @@
      <x>0</x>
      <y>0</y>
      <width>1176</width>
-     <height>23</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuRadar_Module">
@@ -77,7 +77,7 @@
     </property>
     <widget class="QMenu" name="menuOctaveScripts">
      <property name="enabled">
-      <bool>false</bool>
+      <bool>true</bool>
      </property>
      <property name="tearOffEnabled">
       <bool>true</bool>
@@ -117,12 +117,21 @@
     <property name="title">
      <string>Project</string>
     </property>
+    <widget class="QMenu" name="menuAdd">
+     <property name="title">
+      <string>Add..</string>
+     </property>
+     <addaction name="actionExisting_Script"/>
+     <addaction name="actionExisting_Radar_Device_Descriptor"/>
+     <addaction name="actionExisting_Radar_Module_File"/>
+    </widget>
     <addaction name="actionNew"/>
     <addaction name="actionOpem"/>
     <addaction name="actionSave"/>
     <addaction name="actionClose"/>
     <addaction name="actionClone"/>
     <addaction name="separator"/>
+    <addaction name="menuAdd"/>
    </widget>
    <widget class="QMenu" name="menuScheduler">
     <property name="title">
@@ -348,6 +357,34 @@
   <action name="actionConfigure_Scheduler">
    <property name="text">
     <string>Configure</string>
+   </property>
+  </action>
+  <action name="actionAdd_existing">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Add existing...</string>
+   </property>
+  </action>
+  <action name="actionRemove">
+   <property name="text">
+    <string>Remove</string>
+   </property>
+  </action>
+  <action name="actionExisting_Script">
+   <property name="text">
+    <string>Existing Script</string>
+   </property>
+  </action>
+  <action name="actionExisting_Radar_Device_Descriptor">
+   <property name="text">
+    <string>Existing Radar Device File</string>
+   </property>
+  </action>
+  <action name="actionExisting_Radar_Module_File">
+   <property name="text">
+    <string>Existing Radar Module File</string>
    </property>
   </action>
  </widget>

@@ -20,6 +20,13 @@
  * Radar Module
  * */
 
+extern QString cstr_radar_devices;
+extern QString cstr_scripts;
+extern QString cstr_handler;
+extern QString cstr_radar_modules;
+extern QString cstr_antenna_models;
+extern QString cstr_comm_protocol;
+
 //---------------------------------------------
 radarModule::radarModule(QString filename,projectItem *parent ) : projectItem("newRadarModule",DT_RADARMODULE, parent),
     _module_name("newRadarModule"),
@@ -144,7 +151,11 @@ bool radarModule::load_file(QString filename)
 bool radarModule::save_file(QString filename)
 {
     if (filename.isEmpty() && _rfile.fileName().isEmpty()) return false;
-    set_filename(filename);
+    if (filename.isEmpty())
+        filename = _rfile.fileName();
+    else
+        set_filename(filename);
+
     _filename = QFileInfo(filename).fileName();
     return save_xml();
 }
@@ -806,15 +817,23 @@ bool radarModule::load_xml()
         do
         {
             QString script_file = script.attribute("filename");
-            octaveScript_ptr octave_script = (octaveScript*)(get_root()->get_child(QFileInfo(script_file).fileName(),DT_SCRIPT));
-            if (octave_script!=nullptr)
-                _init_scripts.append(octave_script);
+            if (!script_file.isEmpty())
+            {
+                octaveScript_ptr octave_script = (octaveScript*)(get_root()->get_child(QFileInfo(script_file).fileName(),DT_SCRIPT));
+                if (octave_script!=nullptr)
+                    _init_scripts.append(octave_script);
+                else
+                {   // Create a new placeholder script
+                    octaveScript* newScript = new octaveScript (get_root()->get_folder(cstr_scripts)->get_full_path()
+                                                                +QFileInfo(script_file).fileName(),get_root()->get_folder(QString(cstr_scripts)));
+                    get_root()->add_script(newScript);
+                    _init_scripts.append(newScript);
+                }
+            }
 
             script = script.nextSiblingElement("script");
         }
         while(!script.isNull());
-
-       // if (_init_scripts.count()!=num_scripts) return false;
     }
 
 
@@ -828,9 +847,21 @@ bool radarModule::load_xml()
         do
         {
             QString script_file = script.attribute("filename");
-            octaveScript_ptr octave_script = (octaveScript*)(get_root()->get_child(QFileInfo(script_file).fileName(),DT_SCRIPT));
-            if (octave_script!=nullptr)
-                _post_acquisition_scripts.append(octave_script);
+            if (!script_file.isEmpty())
+            {
+
+                octaveScript_ptr octave_script = (octaveScript*)(get_root()->get_child(QFileInfo(script_file).fileName(),DT_SCRIPT));
+                if (octave_script!=nullptr)
+                    _post_acquisition_scripts.append(octave_script);
+                else
+                {   // Create a new placeholder script
+                    octaveScript* newScript = new octaveScript (get_root()->get_folder(cstr_scripts)->get_full_path()
+                                                               +QFileInfo(script_file).fileName(),get_root()->get_folder(QString(cstr_scripts)));
+                    get_root()->add_script(newScript);
+                    _post_acquisition_scripts.append(newScript);
+                }
+
+            }
 
             script = script.nextSiblingElement("script");
         }
@@ -1563,3 +1594,60 @@ bool  radarModule::decode_data_from_radar(const QByteArray& data)
     return true;
 }
 
+
+
+//-----------------------------------------------------------------------------------------
+bool radarModule::contain_script(octaveScript* script)
+{
+    bool bfound = false;
+    if (!bfound)
+    {
+        for (auto& mod_script : _init_scripts)
+        {
+            if (mod_script!=nullptr)
+                if (mod_script->get_name()==script->get_name())
+                {
+                    bfound = true; break;
+                }
+        }
+    }
+
+    if (!bfound)
+    {
+        for (auto& mod_script : _post_acquisition_scripts)
+        {
+            if (mod_script!=nullptr)
+                if (mod_script->get_name()==script->get_name())
+                {
+                    bfound = true; break;
+                }
+        }
+    }
+
+    return bfound;
+}
+
+//-----------------------------------------------------------------------------------------
+void radarModule::remove_script(octaveScript* script)
+{
+    if (script==nullptr) return;
+    auto iter = _init_scripts.begin();
+    while (iter!=_init_scripts.end())
+    {
+        if ((*iter)->get_name()==script->get_name())
+            _init_scripts.erase(iter);
+        else
+            iter++;
+    }
+
+    iter = _post_acquisition_scripts.begin();
+    while (iter!=_post_acquisition_scripts.end())
+    {
+        if ((*iter)->get_name()==script->get_name())
+            _post_acquisition_scripts.erase(iter);
+        else
+            iter++;
+    }
+
+
+}

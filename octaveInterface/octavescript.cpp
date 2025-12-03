@@ -21,7 +21,8 @@ octaveScript::octaveScript() : projectItem("newScript",DT_SCRIPT),
     _lines(),
     _script_file(),
     _breakpoints(),
-    _octave_interface(nullptr)
+    _octave_interface(nullptr),
+    _file_existing(false)
 {
 
 }
@@ -80,38 +81,8 @@ void octaveScript::clear_breakpoint(int lineno)
 {
     if ((lineno >= 0)&&(lineno < _breakpoints.count())) _breakpoints[lineno] = false;
 }
-//------------------------------------
 
-/*
-void octaveScript::set_scriptfile_name(QString filename)
-{
-    if (_script_file.isOpen())
-        _script_file.close();
 
-    QString old_file_name = get_full_filepath();
-
-    _filename = filename;
-
-    _script_file.setFileName(filename);
-
-    if (_filename!=old_file_name)
-    {
-        QFile fOrigin(old_file_name);
-        if (fOrigin.exists())
-        {
-            QFile fDest(_filename);
-            if (!fDest.exists())
-            {
-                fOrigin.copy(_filename);
-            }
-        }
-    }
-
-    if (filename.isEmpty())
-        set_name("noname");
-    else
-        set_name(QFileInfo(filename).fileName());
-}*/
 //------------------------------------
 void octaveScript::set_scriptfile(QString filename)
 {
@@ -119,32 +90,6 @@ void octaveScript::set_scriptfile(QString filename)
     load();
 }
 
-/*
-void octaveScript::set_base_dir(QString new_base_dir, QString relative_dir, bool copy)
-{
-    qDebug() << new_base_dir;
-    qDebug() << relative_dir;
-
-    QString old_file(_filename);
-    projectItem::set_base_dir(new_base_dir,relative_dir);
-
-    if (copy)
-    {
-        QString new_file(_filename);
-        if (new_file!=old_file)
-        {
-            QFile fOrigin(old_file);
-            if (fOrigin.exists())
-            {
-                QFile fDest(new_file);
-                if (!fDest.exists())
-                    fOrigin.copy(new_file);
-            }
-        }
-    }
-     set_scriptfile(get_full_filepath());
-}
-*/
 //------------------------------------
 bool    octaveScript::save_xml(QDomDocument& owner, QDomElement& script_elem)
 {
@@ -163,6 +108,7 @@ octaveScript*  octaveScript::load_xml(QDomDocument& owner, QDomElement& root)
         root = owner.firstChildElement("script");
     if (root.isNull())
         return nullptr;
+    return nullptr;
     out->set_name(root.attribute("script_name","undefined"));
     out->_filename = (root.attribute("filename",""));
     out->_script_file.setFileName(out->get_full_filepath());
@@ -195,7 +141,10 @@ void  octaveScript::load()
         if (!_script_file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
         set_text(_script_file.readAll());
         _script_file.close();
+        _file_existing = true;
     }
+    else
+        _file_existing = false;
 }
 //------------------------------------
 QString         octaveScript::remove_comment_section(int line)
@@ -270,6 +219,15 @@ QString         octaveScript::get_line(int n)
     return _lines[n];
 }
 //------------------------------------
+void octaveScript::setValid(bool bValid)
+{
+    _file_existing = bValid;
+    if (get_root()!=nullptr)
+        emit get_root()->item_updated((projectItem*)(this));
+
+}
+
+//------------------------------------
 void    octaveScript::save()
 {
     if (!_script_file.fileName().isEmpty())
@@ -278,6 +236,8 @@ void    octaveScript::save()
         QTextStream out(&_script_file);
         out << _lines.join("\n");
         _script_file.close();
+
+        setValid();
     }
 }
 //------------------------------------

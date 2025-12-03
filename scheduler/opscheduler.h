@@ -141,6 +141,8 @@ public:
 
     void            set_serial_timeout(int timeout);
 
+    QList<radarInstance*>            get_devices() {return _devices;}
+
 public slots:
 
     void device_connected(radarInstance* device);

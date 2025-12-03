@@ -93,6 +93,15 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionDelete_Scheduler,     &QAction::triggered, this, &MainWindow::deleteScheduler);
     // FW Upload
     connect(ui->actionFW_Upload,            &QAction::triggered, this, &MainWindow::fw_upload);
+    // Scripts
+    ui->menuAdd->setEnabled(false);
+    connect(ui->actionExisting_Script,                      &QAction::triggered, this, &MainWindow::addScript);
+    connect(ui->actionExisting_Radar_Device_Descriptor,     &QAction::triggered, this, &MainWindow::addRadarDescriptorFile);
+    connect(ui->actionExisting_Radar_Module_File,           &QAction::triggered, this, &MainWindow::addModuleFile);
+
+    ui->treeProject->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->treeProject, &QTreeWidget::customContextMenuRequested, this, &MainWindow::projectItemMenuRequest);
+
 
     // Init other UI stuff
     initRadarTable();
@@ -139,6 +148,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    closeAllChildrenExceptOctaveInterface();
     msgHandler->clearTextEdit();
 
     if (wndOctaveInterface!=nullptr)
@@ -159,7 +169,18 @@ void MainWindow::QMessageOutput(QtMsgType , const QMessageLogContext &, const QS
     std::cout<<msg.toStdString().c_str()<<std::endl;    
 }
 
+void MainWindow::closeAllChildrenExceptOctaveInterface()
+{
+    for (auto &child: ui->mdiArea->subWindowList())
+    {
+        mdiOctaveInterface* wnd = qobject_cast<mdiOctaveInterface*>(child->widget());
 
+        if (wnd!=nullptr) continue;
+        ui->mdiArea->removeSubWindow(child);
+        child->close();
+
+    }
+}
 /*
  * Scan for all devices attached to the serial ports
  *
@@ -357,6 +378,7 @@ void MainWindow::newProject()
 
         delete project;
         project = nullptr;
+        ui->menuAdd->setEnabled(false);
     }
     QString projectFile = QFileDialog::getSaveFileName(this,"New ARIA Radar Project",
                                                        ariasdk_projects_path.absolutePath()+QDir::separator()+QString("New project.arp"),
@@ -395,6 +417,7 @@ void MainWindow::newProject()
     if (script_path!=nullptr)
         if (interfaceData!=nullptr) interfaceData->set_pwd(script_path);
     project->save_project_file();
+    ui->menuAdd->setEnabled(true);
 }
 //---------------------------------------------------------------
 // Tree item graphic stuff
@@ -430,7 +453,19 @@ void MainWindow::setTreeItem(QTreeWidgetItem* treeItem, projectItem* projItem)
     QIcon icon(px);
 
     treeItem->setData(0, Qt::UserRole, QVariant::fromValue<void*>(projItem));
-
+    bool bRed = false;
+    if (projItem->get_type()==DT_SCRIPT)
+    {
+        octaveScript *script = (octaveScript*)projItem;
+        bRed = !(script->isValid());
+    }
+    if (bRed)
+    {
+        QBrush b (Qt::red);
+        treeItem->setForeground( 0 , b );
+    }
+    else
+        treeItem->setForeground(0, QBrush(Qt::white));
     treeItem->setText(0,projItem->get_item_descriptor());
     treeItem->setIcon(0, icon);
 
@@ -614,11 +649,13 @@ void MainWindow::configureModule()
 
     for (auto &child: ui->mdiArea->subWindowList())
     {
-        if (typeid(child).name()==typeid(wndRadarModuleEditor).name())
+        //if (typeid(child).name()==typeid(wndRadarModuleEditor).name())
+        wndRadarModuleEditor* wnd = qobject_cast<wndRadarModuleEditor*>(child->widget());
+        if (wnd!=nullptr)
         {
-            if (((wndRadarModuleEditor*)(child))->get_radar_module()==(radarModule*)currentItem)
+            if (wnd->get_radar_module()==(radarModule*)currentItem)
             {
-                ((wndRadarModuleEditor*)(child))->showMaximized();
+                wnd->showMaximized();
                 return;
             }
         }
@@ -691,6 +728,17 @@ void MainWindow::tree_project_double_click(QTreeWidgetItem* widget, int column)
 
     if (currentItem->get_type() == DT_SCRIPT)
     {
+         if (!((octaveScript*)(currentItem))->isValid())
+        {
+            if (QMessageBox::warning(this, "Confirm",
+                    QString("The script ")+((octaveScript*)(currentItem))->get_name()+
+                    QString(" is missing. An empty script will be created instead. \n Do you want to continue?"),
+                    QMessageBox::Yes|QMessageBox::No)==QMessageBox::No)
+                 return;
+            ((octaveScript*)(currentItem))->save();
+
+        }
+
          if (wndOctaveInterface==nullptr) return;
          wndOctaveInterface->openProjectScript((octaveScript*)(currentItem));
          wndOctaveInterface->showMaximized();
@@ -856,6 +904,7 @@ void MainWindow::loadProject()
 
         delete project;
         project = nullptr;
+        ui->menuAdd->setEnabled(false);
     }
 
     project = new radarProject(projectFile,interfaceData==nullptr ? nullptr : interfaceData->get_workspace(), false);
@@ -866,11 +915,14 @@ void MainWindow::loadProject()
     connect(project,&radarProject::project_updated,     this, &MainWindow::updateProjectTree);
     connect(project,&radarProject::add_item,            this, &MainWindow::add_project_item);
     connect(project,&radarProject::remove_item,         this, &MainWindow::remove_project_item);
+    connect(project,&radarProject::item_updated,        this, &MainWindow::update_project_item);
+
     QString script_path = project->get_folder(cstr_scripts)->get_full_path();
     if (script_path!=nullptr)
         if (interfaceData!=nullptr) interfaceData->set_pwd(script_path);
 
     project->save_project_file();
+    ui->menuAdd->setEnabled(true);
 
 }
 
@@ -919,8 +971,12 @@ void MainWindow::closeProject()
 		wndOctaveInterface->clear_and_init_var_table();
 
 
+    closeAllChildrenExceptOctaveInterface();
+
+
     delete project;
     project = nullptr;
+    ui->menuAdd->setEnabled(false);
     ui->treeProject->clear();
 }
 //---------------------------------------------------------------
@@ -970,15 +1026,9 @@ void MainWindow::newDevice()
     }
 
     wndRadarInstanceEditor *radarInstanceEditor = new wndRadarInstanceEditor(nullptr,modules,this);
-    if (interfaceData!=nullptr)
-    {
-//        connect(interfaceData,&octaveInterface::updatedVariable, radarInstanceEditor,&wndRadarInstanceEditor::variable_updated);
-//        connect(interfaceData,&octaveInterface::updatedVariables,radarInstanceEditor,&wndRadarInstanceEditor::variables_updated);
-    }
+
     ui->mdiArea->addSubWindow(radarInstanceEditor);
     radarInstanceEditor->showMaximized();
-
-
 }
 //---------------------------------------------------------------
 void MainWindow::deleteDevice()
@@ -1202,4 +1252,555 @@ void MainWindow::cleanUpFiles()
 {
 	if (m_qd == nullptr) return;
 	m_qd->cleanUpFile();
+}
+
+//---------------------------------------------------------------
+void MainWindow::addScript()
+{
+    QString scriptFile = QFileDialog::getOpenFileName(this,"Import script file",
+                                                       ariasdk_scripts_path.absolutePath()+QDir::separator(),
+                                                       tr("Script files(*.m);;All files (*.*)"),
+                                                       nullptr,
+                                                       QFileDialog::Options(QFileDialog::Detail|QFileDialog::DontUseNativeDialog));
+
+    if (scriptFile==nullptr)
+        return;
+
+    QFileInfo fi(scriptFile);
+
+    QString newScriptName = fi.fileName();
+
+    // Check if the file does not exist into the destination folder.
+    QVector<octaveScript*> scripts = project->get_available_scripts();
+    for (auto &s : scripts)
+    {
+        QString scriptName = (*s).get_name();
+        if (scriptName == newScriptName)
+        {
+            if (QMessageBox::question(this, "Warning", "Script is already present in the project. \n Do you want to override?")==QMessageBox::No)
+                return;
+
+            QFile::copy(scriptFile,  project->get_folder(cstr_scripts)->get_full_path()+newScriptName);
+            s->load();
+        }
+    }
+    project->add_script(scriptFile);
+    project->save_project_file();
+}
+
+
+//---------------------------------------------------------------
+void MainWindow::addModuleFile()
+{
+    QString moduleFile = QFileDialog::getOpenFileName(this,"Load ARIA Radar Module",
+                                                       ariasdk_modules_path.absolutePath()+QDir::separator() +QString("New Radar Module.arm"),
+                                                       tr("ARIA Radar Module(*.arm);;All files (*.*)"),
+                                                       nullptr,
+                                                       QFileDialog::Options(QFileDialog::Detail|QFileDialog::DontUseNativeDialog));
+    if (moduleFile.isEmpty())
+        return;
+
+    QFileInfo fi(moduleFile);
+
+    QString newModuleName = fi.fileName();
+
+    QVector<radarModule*> modules = project->get_available_modules();
+    for (auto &m : modules)
+    {
+        QString moduleName = (*m).get_name();
+        if (moduleName == newModuleName)
+        {
+            if (QMessageBox::question(this, "Warning", "Module is already present in the project. \n Do you want to override?")==QMessageBox::No)
+                return;
+
+            // Test before copying
+            if (!m->load_file(moduleFile))
+            {
+                if (QMessageBox::question(this, "Warning", "Error while loading the module file. \n Maybe missing scripts?")==QMessageBox::No)
+                    return;
+            }
+            else
+            {
+                // Copy into
+
+                QString newFullName = project->get_folder(cstr_radar_modules)->get_full_path() + moduleName;
+                QFile::copy(moduleFile,  newFullName);
+                m->load_file(newFullName);
+            }
+            return;
+        }
+    }
+
+    QFile::copy(moduleFile,  project->get_folder(cstr_radar_modules)->get_full_path()+newModuleName);
+    project->add_radar_module(moduleFile);
+
+}
+
+void MainWindow::addRadarDescriptorFile()
+{
+    QString deviceFile = QFileDialog::getOpenFileName(this,"Import device descriptor file",
+                                                      ariasdk_scripts_path.absolutePath()+QDir::separator(),
+                                                      tr("Device files(*.ard);;All files (*.*)"),
+                                                      nullptr,
+                                                      QFileDialog::Options(QFileDialog::Detail|QFileDialog::DontUseNativeDialog));
+
+    if (deviceFile==nullptr)
+        return;
+
+    QFileInfo fi(deviceFile);
+
+    QString newDeviceName = fi.fileName();
+
+    // Check if the file does not exist into the destination folder.
+    QVector<radarInstance*> devices = project->get_available_radars();
+    for (auto &d : devices)
+    {
+        QString deviceName = (*d).get_name();
+        if (deviceName == newDeviceName)
+        {
+            QMessageBox::warning(this, "Warning", "Device is already present in the project. \n Operation aborted");
+            return;
+        }
+    }
+
+    QFile devfile(deviceFile);
+    devfile.copy(project->get_folder(cstr_radar_devices)->get_full_path()+newDeviceName);
+
+
+    if (project->add_radar_instance(devfile.fileName())==nullptr)
+    {
+        QMessageBox::warning(this, "Warning", "There was an issue with import of the device. Maybe the module is missing?");
+        devfile.remove();
+        return;
+    }
+    project->save_project_file();
+}
+
+//-----------------------------------------------------------------
+void MainWindow::removeScript(octaveScript* script)
+{
+    if (script==nullptr) return;
+    if (project==nullptr) return;
+
+    if (QMessageBox::question(this, "Confirm",
+                              QString("Do you want to remove the script: ")+script->get_name()+QString("\n This will remove the file from the script folder."))==QMessageBox::No)
+        return;
+
+
+
+    // Check that no open window with the same module is open
+    for (auto &child: ui->mdiArea->subWindowList())
+    {
+        //if (typeid(child).name()==typeid(wndRadarModuleEditor).name())
+        wndRadarModuleEditor* wnd = qobject_cast<wndRadarModuleEditor*>(child->widget());
+        if (wnd!=nullptr)
+        {
+            radarModule* module = wnd->get_radar_module();
+            if (module!=nullptr)
+                if (module->contain_script(script))
+                {
+                    QMessageBox::warning(this,"Attention", QString("The module ")+module->get_name()+
+                                                                QString(" contains the script ")+script->get_name() + QString( "but its currently edited.\n Skipping"));
+                    return;
+                }
+        }
+
+        //if (typeid(child).name()==typeid(wndRadarModuleEditor).name())
+        wndRadarInstanceEditor* wnd2 = qobject_cast<wndRadarInstanceEditor*>(child->widget());
+        if (wnd2!=nullptr)
+        {
+            radarInstance* device = wnd2->getRadarInstance();
+            if (device!=nullptr)
+                if (device->contain_script(script))
+                {
+                    QMessageBox::warning(this,"Attention", QString("The module ")+device->get_name()+
+                                                                QString(" contains the script ")+script->get_name() + QString( "but its currently edited.\n Skipping"));
+                    return;
+                }
+        }
+    }
+    for (auto module : project->get_available_modules())
+    {
+        if (module!=nullptr)
+            if (module->contain_script(script))
+            {
+                module->remove_script(script);
+                module->save_file();
+            }
+    }
+    for (auto device : project->get_available_radars())
+    {
+        if (device!=nullptr)
+            if (device->contain_script(script))
+            {
+                device->remove_script(script);
+                device->save_file();
+            }
+    }
+
+    QFile file(script->get_full_filepath());
+    file.remove();
+
+
+    project->save_project_file();
+}
+//-----------------------------------------------------------------
+void MainWindow::removeDeviceFile(radarInstance* instance)
+{
+    if (instance==nullptr) return;
+    if (project==nullptr)  return;
+    // Check that no open window with the same module is open
+
+    for (auto &child: ui->mdiArea->subWindowList())
+    {
+        //if (typeid(child).name()==typeid(wndRadarModuleEditor).name())
+        wndRadarInstanceEditor* wnd2 = qobject_cast<wndRadarInstanceEditor*>(child->widget());
+        if (wnd2!=nullptr)
+        {
+            radarInstance* device = wnd2->getRadarInstance();
+            if (device->get_name()==instance->get_name())
+            {
+                // We have an open window editing the device we want to delete.
+                // Let's give a message and let the user decide on how to proceed.
+                QMessageBox::warning(this,"Warning", "The device you are deleting is currently under modification. Close the window before deleting");
+                return;
+            }
+        }
+    }
+
+    // Check that no open window with the same module is open
+    for (auto &child: ui->mdiArea->subWindowList())
+    {
+        //if (typeid(child).name()==typeid(wndRadarModuleEditor).name())
+        wndScheduler* wnd2 = qobject_cast<wndScheduler*>(child->widget());
+        if (wnd2==nullptr) continue;
+
+        opScheduler* opsched = wnd2->getScheduler();
+        if (opsched==nullptr) continue;
+        if (opsched->has_device(instance->get_device_name()))
+        {
+            QMessageBox::warning(this,"Attention", QString("The scheduler ")+opsched->get_name()+
+                                QString(" contains the device  ")+instance->get_name() + QString( "but its currently edited.\n Skipping"));
+            return;
+        }
+    }
+
+    if (QMessageBox::question(this, "Confirm",
+                              QString("Do you want to remove the device: ")+instance->get_name()+QString("\n This will remove the file from the device folder."))==QMessageBox::No)
+        return;
+
+
+    for (auto op: project->get_available_scheduler())
+    {
+        if (op==nullptr)
+            continue;
+
+        QList<radarInstance*> devices = op->get_devices();
+        auto iter = devices.begin();
+        while (iter != devices.end())
+        {
+            radarInstance* dev = *iter;
+            if (dev->get_name()==instance->get_name())
+                op->delete_radar(dev);
+            else
+                iter++;
+        }
+    }
+
+    QFile file(instance->get_full_filepath());
+    file.remove();
+    project->save_project_file();
+
+}
+
+//-----------------------------------------------------------------
+void MainWindow::deleteItemsRequested()
+{
+    QList<QTreeWidgetItem*> selected = ui->treeProject->selectedItems();
+    for (auto& sel : selected)
+    {
+        projectItem *currentItem = (projectItem*)(sel->data(0, Qt::UserRole).value<void*>());
+        if (currentItem == nullptr) continue;
+
+        if (currentItem->get_type() == DT_SCRIPT)
+        {
+            octaveScript* script = (octaveScript*)currentItem;
+            removeScript(script);
+            continue;
+        }
+        if (currentItem->get_type() == DT_RADARDEVICE)
+        {
+            radarInstance* device = (radarInstance*)currentItem;
+            removeDeviceFile(device);
+            continue;
+        }
+        if (currentItem->get_type() == DT_RADARMODULE)
+        {
+            radarModule* module = (radarModule*)currentItem;
+            removeModule(module);
+            continue;
+        }
+        if (currentItem->get_type() == DT_SCHEDULER)
+        {
+            opScheduler* scheduler = (opScheduler*)currentItem;
+            removeController(scheduler);
+            continue;
+        }
+    }
+   project->save_project_file();
+}
+//-----------------------------------------------------------------
+void MainWindow::openItemsRequested()
+{
+    QList<QTreeWidgetItem*> selected = ui->treeProject->selectedItems();
+    for (auto& sel : selected)
+    {
+        projectItem *currentItem = (projectItem*)(sel->data(0, Qt::UserRole).value<void*>());
+        if (currentItem == nullptr) continue;
+// Scripts
+        if (currentItem->get_type() == DT_SCRIPT)
+        {
+            octaveScript* script = (octaveScript*)currentItem;
+
+            if (wndOctaveInterface!=nullptr)
+                wndOctaveInterface->openProjectScript(script);
+
+            wndOctaveInterface->showMaximized();
+        }
+// Controllers
+        if (currentItem->get_type() == DT_SCHEDULER)
+        {
+            opScheduler* op = (opScheduler*)currentItem;
+            // Check that no open window with the same module is open
+            bool bfound = false;
+            for (auto &child: ui->mdiArea->subWindowList())
+            {
+                //if (typeid(child).name()==typeid(wndRadarModuleEditor).name())
+                wndScheduler* wnd2 = qobject_cast<wndScheduler*>(child->widget());
+                if (wnd2==nullptr) continue;
+
+                opScheduler* opsched = wnd2->getScheduler();
+
+                if (opsched==nullptr) continue;
+                if (opsched->get_name()==op->get_name())
+                {
+                    wnd2->showMaximized(); bfound = true; break;
+                }
+            }
+            if (!bfound)
+            {
+                wndScheduler* wndSched = new wndScheduler(this, project, op);
+                ui->mdiArea->addSubWindow(wndSched);
+                wndSched->showMaximized();
+            }
+        }
+// Modules
+        if (currentItem->get_type() == DT_RADARMODULE)
+        {
+            radarModule* mod = (radarModule*)currentItem;
+            // Check that no open window with the same module is open
+            bool bfound = false;
+            for (auto &child: ui->mdiArea->subWindowList())
+            {
+                //if (typeid(child).name()==typeid(wndRadarModuleEditor).name())
+                wndRadarModuleEditor* wnd2 = qobject_cast<wndRadarModuleEditor*>(child->widget());
+                if (wnd2==nullptr) continue;
+
+                radarModule* wndmod = wnd2->get_radar_module();
+
+                if (wndmod==nullptr) continue;
+                if (wndmod->get_name()==mod->get_name())
+                {
+                    wnd2->showMaximized(); bfound = true; break;
+                }
+            }
+            if (!bfound)
+            {
+                wndRadarModuleEditor* wndModule = new wndRadarModuleEditor(mod, project, this);
+                ui->mdiArea->addSubWindow(wndModule);
+                wndModule->showMaximized();
+            }
+        }
+// Devices
+        if (currentItem->get_type() == DT_RADARDEVICE)
+        {
+            radarInstance* dev = (radarInstance*)currentItem;
+            // Check that no open window with the same module is open
+            bool bfound = false;
+            for (auto &child: ui->mdiArea->subWindowList())
+            {
+                wndRadarInstanceEditor* wnd2 = qobject_cast<wndRadarInstanceEditor*>(child->widget());
+                if (wnd2==nullptr) continue;
+
+                radarInstance* wnddev = wnd2->getRadarInstance();
+
+                if (wnddev==nullptr) continue;
+                if (wnddev->get_name()==dev->get_name())
+                {
+                    wnd2->showMaximized(); bfound = true; break;
+                }
+            }
+            if (!bfound)
+            {
+                wndRadarInstanceEditor* wndDevice = new wndRadarInstanceEditor(dev, project->get_available_modules(),this);
+                ui->mdiArea->addSubWindow(wndDevice);
+                wndDevice->showMaximized();
+            }
+        }
+        // Antennas
+        if (currentItem->get_type() == DT_ANTENNA)
+        {
+            antenna* ant = (antenna*)(currentItem);
+            if (ant==nullptr) continue;
+            wndAntennaDesigner* wndAntenna = new wndAntennaDesigner(ant,this);
+            wndAntenna->setDataEngine(interfaceData);
+            ui->mdiArea->addSubWindow(wndAntenna);
+            wndAntenna->showMaximized();
+        }
+    }
+
+
+
+}
+
+//-----------------------------------------------------------------
+void MainWindow::removeModule(radarModule* module)
+{
+    //1. Check devices (if they are being edited, skip)
+    //2. Check controllers (if they are being edited, skip)
+    //3. Check modules (if they are being edited, skip)
+    //4. Must remove all devices (the user must do it)
+
+    if (module==nullptr) return;
+    if (project==nullptr)  return;
+
+    // 1. Check that no open window with the same module is open
+    for (auto &child: ui->mdiArea->subWindowList())
+    {
+        //if (typeid(child).name()==typeid(wndRadarModuleEditor).name())
+        wndRadarInstanceEditor* wnd2 = qobject_cast<wndRadarInstanceEditor*>(child->widget());
+        if (wnd2!=nullptr)
+        {
+            radarInstance* device = wnd2->getRadarInstance();
+            if (device->get_module()->get_name()==module->get_name())
+            {
+                // We have an open window editing the device we want to delete.
+                // Let's give a message and let the user decide on how to proceed.
+                QMessageBox::warning(this,"Warning", QString("The module you are deleting has a device: ") + device->get_name() +
+                                                    QString(" under modification. Close the window before deleting"));
+                return;
+            }
+        }
+    }
+
+    // 2. Check that no open window with the same module is open
+    for (auto &child: ui->mdiArea->subWindowList())
+    {
+        //if (typeid(child).name()==typeid(wndRadarModuleEditor).name())
+        wndScheduler* wnd2 = qobject_cast<wndScheduler*>(child->widget());
+        if (wnd2==nullptr) continue;
+
+        opScheduler* opsched = wnd2->getScheduler();
+        if (opsched==nullptr) continue;
+        QList<radarInstance*> devs = opsched->get_devices();
+        for (auto dev : devs)
+            if (dev->get_module()->get_name() == module->get_name())
+        {
+            QMessageBox::warning(this,"Attention", QString("The scheduler ")+opsched->get_name()+
+                                        QString(" contains the device which is a  ")+module->get_name() +
+                                        QString( " type but its currently edited.\n Skipping"));
+            return;
+        }
+    }
+    //3. Check modules (if they are being edited, skip)
+    for (auto &child: ui->mdiArea->subWindowList())
+    {
+        wndRadarModuleEditor* wnd = qobject_cast<wndRadarModuleEditor*>(child->widget());
+        if (wnd!=nullptr)
+        {
+            radarModule* mod = wnd->get_radar_module();
+            if (mod->get_name() == module->get_name())
+            {
+                QMessageBox::warning(this,"Warning", QString("The module you are deleting is open in an editing window.") +
+                                                          QString("Close the window before deleting"));
+
+                return;
+            }
+        }
+    }
+
+    //4. Check if any device is of the current type
+    for (auto dev: project->get_available_radars())
+    {
+        if ((*dev).get_module()->get_name()==module->get_name())
+        {
+            QMessageBox::warning(this,"Warning", QString("Found : ") + dev->get_name() +
+                                    QString(" , being an instance of module:") + module->get_name()+ QString(". Operation aborted"));
+            return;
+        }
+    }
+
+    if (QMessageBox::question(this, "Confirm",
+                              QString("Do you want to remove the module: ")+module->get_name()+QString("\n This will remove the file from the module folder."))==QMessageBox::No)
+        return;
+
+
+    project->remove_radar_module(module);
+    project->save_project_file();
+    QFile file(module->get_full_filepath());
+    file.remove();
+
+}
+//-----------------------------------------------------------------
+void MainWindow::removeController(opScheduler* controller)
+{
+    if (controller==nullptr) return;
+    if (project==nullptr)  return;
+
+    // 2. Check that no open window with the same module is open
+    for (auto &child: ui->mdiArea->subWindowList())
+    {
+        //if (typeid(child).name()==typeid(wndRadarModuleEditor).name())
+        wndScheduler* wnd2 = qobject_cast<wndScheduler*>(child->widget());
+        if (wnd2==nullptr) continue;
+
+        opScheduler* opsched = wnd2->getScheduler();
+        if (opsched->get_name() == controller->get_name())
+        {
+            QMessageBox::warning(this,"Warning", "The controller you are deleting is currently under modification. Close the window before deleting");
+            return;
+        }
+    }
+    if (QMessageBox::question(this, "Confirm",
+                              QString("Do you want to remove the controller: ")+controller->get_name()+QString("\n This will remove the file from the controller folder."))==QMessageBox::No)
+        return;
+
+    project->remove_scheduler(controller);
+    project->save_project_file();
+
+    QFile file(controller->get_full_filepath());
+    file.remove();
+
+}
+
+//-----------------------------------------------------------------
+void MainWindow::projectItemMenuRequest(QPoint pos)
+{
+    QList<QTreeWidgetItem *> selected = ui->treeProject->selectedItems();
+    if (selected.empty())
+        return;
+
+    QMenu *menu = new QMenu(this);
+
+    QAction *open   = new QAction("Open");
+    QAction *remove = new QAction("Delete");
+
+    menu->addAction(open);
+    menu->addAction(remove);
+
+    connect(open, &QAction::triggered, this, &MainWindow::openItemsRequested);
+    connect(remove, &QAction::triggered, this, &MainWindow::deleteItemsRequested);
+
+    menu->popup(ui->treeProject->viewport()->mapToGlobal(pos));
+
 }

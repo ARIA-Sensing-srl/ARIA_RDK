@@ -68,7 +68,6 @@ public:
     QString                             get_filename() {return _filename;};
      void                               save_xml(QDomDocument& doc, QDomElement& root);
     QString                             get_item_relative_path_from(QString folder);
-    //void                                   update_filename_relative_to_base(QString basedir);
     void                                move_to_new_basedir(QString new_basedir, QString relative_dir = "", bool keep_original_destination = true, bool copy = false);
     void                                set_temporary_project(radarProject* project);
     void                                remove_temporary_project();
@@ -107,8 +106,8 @@ public:
     projectItem*    get_root() {return this;}
     QString         get_name() {return projectItem::get_name();}
 
-    void   add_module_scripts(radarModule* module);
-    void   add_module_antennas(radarModule* module);
+    void             add_module_scripts(radarModule* module);
+    void             add_module_antennas(radarModule* module);
     projectItem*     load_item(QDomElement& xml_node, projectItem* parent = nullptr, projectItem* leaf=nullptr,  dataType datatype=DT_OTHER);
     projectItem*     load_radar_item(QDomElement& xml_node, projectItem* parent = nullptr, projectItem* leaf=nullptr);
 
@@ -121,9 +120,9 @@ public:
     bool    remove_radar_module(QString &radar_module_name, projectItem* pitem=nullptr);
 
     octaveScript* add_script(QString &filename, projectItem* pitem=nullptr);
-    void    add_script(octaveScript* radar_module_ptr, projectItem* pitem=nullptr);
-    void    remove_script(std::shared_ptr<octaveScript> radar_module_to_remove, projectItem* pitem=nullptr);
-    void    remove_script(QString &radar_module_name, projectItem* pitem=nullptr);
+    void          add_script(octaveScript* radar_module_ptr, projectItem* pitem=nullptr);
+    void          remove_script(std::shared_ptr<octaveScript> radar_module_to_remove, projectItem* pitem=nullptr);
+    void          remove_script(QString &radar_module_name, projectItem* pitem=nullptr);
 
     bool    save_project_file();
     bool    load_project_file(QString filename,bool newProject = true);
@@ -131,7 +130,7 @@ public:
     void    clear();
     void    add_radar_instance(const QByteArray& uid, radarModule* module);
     void    add_radar_instance(radarInstance* radar_ptr);
-    void    add_radar_instance(QString filename);
+    radarInstance*    add_radar_instance(QString filename);
     void    remove_radar_instance(radarInstance* radar_ptr, projectItem* pitem=nullptr);
     void    remove_radar_instance(QString radarName, projectItem* pitem=nullptr);
 

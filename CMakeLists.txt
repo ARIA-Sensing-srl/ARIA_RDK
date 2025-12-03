@@ -13,6 +13,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 list(APPEND CMAKE_MODULE_PATH "~/Qt/6.9.3/gcc_64/lib/cmake/Qt6")
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools SerialPort Xml Sql)
+find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets LinguistTools SerialPort Xml Sql)
 
 set(TS_FILES ARIA_RDK_en_US.ts
   ARIA_RDK_en_US.ts)
@@ -31,8 +32,8 @@ set(PROJECT_SOURCES
 if (WIN32)
 #---------------------------------
 #paths
-  set(JKQT_INSTALL_PREFIX "C:/msys64/usr/local/JKQTPlotter/")
-  list(APPEND CMAKE_PREFIX_PATH "${JKQT_INSTALL_PREFIX}/lib/cmake/JKQTPlotter6")
+  set(JKQT_INSTALL_PREFIX "C:/msys64/usr/local/JKQtPlotter/")
+  list(APPEND CMAKE_MODULE_PATH "${JKQT_INSTALL_PREFIX}/lib/cmake/JKQTPlotter6")
   list(APPEND CMAKE_PREFIX_PATH "${JKQT_INSTALL_PREFIX}/bin")
   list(PREPEND CMAKE_PREFIX_PATH "C:/msys64/mingw64/lib/cmake/vtk/patches/99")
   list(APPEND CMAKE_CURRENT_LIST_DIR "C:/msys64/usr/local/JKQTPlotter/lib/cmake/JKQTPlotter6")
@@ -121,6 +122,12 @@ else()
   find_library( QSCI_LIBRARY_PATH NAME qscintilla2_qt6 PATHS "/usr/lib"  REQUIRED )
   cmake_path(GET QSCI_LIBRARY_PATH PARENT_PATH QSCINTILLA_INSTALL_PATH)
   message("Qsci library path ${QSCINTILLA_INSTALL_PATH}")
+
+#---------------------------------
+# JKQT
+  set(JKQT_INSTALL_PREFIX "/usr/local/jkqtplotter/")
+  list(APPEND CMAKE_PREFIX_PATH "${JKQT_INSTALL_PREFIX}/lib64/cmake/JKQTPlotter6")
+
 #---------------------------------
 #End of Linux
 #---------------------------------
@@ -145,8 +152,6 @@ endif()
 
 #---------------------------------
 # JKQTPlotter
-  set(JKQT_INSTALL_PREFIX "/usr/local/jkqtplotter/")
-  list(APPEND CMAKE_PREFIX_PATH "${JKQT_INSTALL_PREFIX}/lib64/cmake/JKQTPlotter6")
   find_package(JKQTPlotter${QT_VERSION_MAJOR} REQUIRED)
   message("JKQT Root set at ${JKQT_INSTALL_PREFIX}")
 #---------------------------------
@@ -206,7 +211,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         octaveInterface/aria_rdk_interface_message.cpp
         uiElements/dlgqwtplot.h uiElements/dlgqwtplot.cpp uiElements/dlgqwtplot.ui
         uiElements/plotdata.h uiElements/plotdata.cpp
-        old
+
     )
 
 # Define target properties for Android with Qt 6 as:
@@ -342,51 +347,30 @@ include_directories(AFTER ${PROJECT_SOURCE_DIR}/uiElements/)
 message("${CMAKE_INSTALL_BINDIR} ; ${CMAKE_INSTALL_LIBDIR}")
 
 
-install(TARGETS ARIA_RDK
-    BUNDLE DESTINATION .
-    LIBRARY DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
-    RUNTIME DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
-)
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -pthread")
+SET(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR}/output/${CMAKE_BUILD_TYPE})
 
-#get_cmake_property(_variableNames VARIABLES)
-#list (SORT _variableNames)
-#foreach (_variableName ${_variableNames})
-#    message(STATUS "${_variableName}=${${_variableName}}")
-#endforeach()
-
+message("Output folder : ${CMAKE_INSTALL_PREFIX}")
+message("Binary folder : ${CMAKE_INSTALL_BINDIR}")
 #-------------------------------------------------
 # Deploy Qt and all binaries (dlls)
-message("Installing into ${CMAKE_CURRENT_BINARY_DIR}")
+
 # --- windeployqt integration ---
 if(WIN32)
-        if(CMAKE_BUILD_TYPE STREQUAL "Release")
-                # Detect Qt bin directory
-                get_target_property(QT_QMAKE_EXECUTABLE Qt6::qmake IMPORTED_LOCATION) # Qt5::qmake for Qt5
-                get_filename_component(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" DIRECTORY)
 
-                # Post-build step to run windeployqt
-                add_custom_command(TARGET ARIA_RDK POST_BUILD
-                        COMMAND "${WINDEPLOYQT_EXECUTABLE}" --no-translations --no-compiler-runtime
-                                        "$<TARGET_FILE:ARIA_RDK>"
-                        COMMENT "Running windeployqt to bundle Qt dependencies..."
-                )
-
-                message("Current bin dir  ${CMAKE_CURRENT_BINARY_DIR}")
-        endif()
 #-------------------------------------------------------
 # Deploy JKQT
         install(
                         DIRECTORY "${JKQT_INSTALL_PREFIX}/bin/"
-                        DESTINATION "${CMAKE_CURRENT_BINARY_DIR}"
+                        DESTINATION "${CMAKE_INSTALL_BINDIR}"
                         FILES_MATCHING PATTERN "*.dll"
                         )
 #-------------------------------------------------------
 # Deploy QWT
         install(
                         DIRECTORY "${QWT_ROOT}/lib/"
-                        DESTINATION "${CMAKE_CURRENT_BINARY_DIR}"
+                        DESTINATION "${CMAKE_INSTALL_BINDIR}"
                         FILES_MATCHING PATTERN "*.dll"
                         )
 #-------------------------------------------------------
@@ -395,70 +379,103 @@ if(WIN32)
 
         install(
                         DIRECTORY "${MSYS_MINGW_HOME}/bin/"
-                        DESTINATION "${CMAKE_CURRENT_BINARY_DIR}"
+                        DESTINATION "${CMAKE_INSTALL_BINDIR}"
                         FILES_MATCHING PATTERN "*.dll"
                         )
-#-------------------------------------------------------
-# Deploy Required binaries for toolboxes
-        install(
-                        DIRECTORY "${MSYS_MINGW_HOME}../usr/bin/"
-                        DESTINATION "${CMAKE_CURRENT_BINARY_DIR}"
-                        FILES_MATCHING PATTERN "cp.exe"
-                        )
-        install(
-                        DIRECTORY "${MSYS_MINGW_HOME}/bin/"
-                        DESTINATION "${CMAKE_CURRENT_BINARY_DIR}"
-                        FILES_MATCHING PATTERN "unzip.exe"
-                        )
-        install(
-                        DIRECTORY "${MSYS_MINGW_HOME}../usr/bin/"
-                        DESTINATION "${CMAKE_CURRENT_BINARY_DIR}"
-                        FILES_MATCHING PATTERN "tar.exe"
-                        )
-        install(
-                        DIRECTORY "${MSYS_MINGW_HOME}../usr/bin/"
-                        DESTINATION "${CMAKE_CURRENT_BINARY_DIR}"
-                        FILES_MATCHING PATTERN "gzip.exe"
-                        )
-        install(
-                        DIRECTORY "${MSYS_MINGW_HOME}../usr/bin/"
-                        DESTINATION "${CMAKE_CURRENT_BINARY_DIR}"
-                        FILES_MATCHING PATTERN "mv.exe"
-                        )
-#-------------------------------------------------------
-# Deploy Required m files & oct files for toolboxes
-        install(DIRECTORY "${MSYS_MINGW_HOME}/share/octave/${OCTAVE_VERSION}/m/"
-                        DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/octave/m/"
-                        FILES_MATCHING PATTERN "*.m")
 
-        install(DIRECTORY "${MSYS_MINGW_HOME}/lib/octave/${OCTAVE_VERSION}/oct/x86_64-w64-mingw32"
-                        DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/octave/oct/"
-                        FILES_MATCHING PATTERN "*.oct")
+        install(
+                        DIRECTORY "${MSYS_MINGW_HOME}/../usr/bin/"
+                        DESTINATION "${CMAKE_INSTALL_BINDIR}"
+                        FILES_MATCHING PATTERN "*.dll"
+                        )
+
+#-------------------------------------------------------
+# Deploy Required binaries for octave & toolboxes
+                install(
+                        DIRECTORY "${MSYS_MINGW_HOME}/include/"
+                        DESTINATION "${CMAKE_INSTALL_PREFIX}/include/"
+                        FILES_MATCHING PATTERN "*"
+                        )
+                install(
+                        DIRECTORY "${MSYS_MINGW_HOME}/bin/"
+                        DESTINATION "${CMAKE_INSTALL_BINDIR}"
+                        FILES_MATCHING PATTERN "*.exe"
+                        )
+        install(
+                        DIRECTORY "${MSYS_MINGW_HOME}/lib/"
+                        DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/"
+                        FILES_MATCHING PATTERN "*"
+                        )
+        install(
+                        DIRECTORY "${MSYS_MINGW_HOME}/../usr/bin/"
+                        DESTINATION "${CMAKE_INSTALL_PREFIX}/../usr/bin/"
+                        FILES_MATCHING PATTERN "sh.exe"
+                        )
+        install(
+                        DIRECTORY "${MSYS_MINGW_HOME}/../usr/bin/"
+                        DESTINATION "${CMAKE_INSTALL_BINDIR}"
+                        FILES_MATCHING PATTERN "*.exe"
+                        )
+        install(
+                        DIRECTORY "${MSYS_MINGW_HOME}/share/octave/"
+                        DESTINATION "${CMAKE_INSTALL_PREFIX}/share/octave/"
+                        FILES_MATCHING PATTERN "*"
+                        )
+
+        install(
+                        DIRECTORY "${PROJECT_SOURCE_DIR}/octave/toolboxes/"
+                        DESTINATION "${CMAKE_INSTALL_PREFIX}/octave/toolboxes/"
+                        FILES_MATCHING PATTERN "*.zip"
+                        )
+
+#-------------------------------------------------------
+# Finally Deploy Qt and all binaries (dlls)
+                install(TARGETS ARIA_RDK
+                        BUNDLE DESTINATION .
+                        LIBRARY DESTINATION ${CMAKE_INSTALL_BINDIR}
+                        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+                )
+
+                qt_generate_deploy_qml_app_script(
+                        TARGET ARIA_RDK
+                        OUTPUT_SCRIPT deploy_script
+                )
+                install(SCRIPT ${deploy_script})
+
 #-------------------------------------------------------
 # Deploy modified m files  for toolboxes (both Windows)
 # In Windows, we need to override the unpack.m due to issues with /C/, C:
 
         install(DIRECTORY "${PROJECT_SOURCE_DIR}/octave/${OCTAVE_VERSION}/m/"
-                        DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/octave/m/"
+                        DESTINATION "${CMAKE_INSTALL_PREFIX}/share/octave/${OCTAVE_VERSION}/m/"
                         FILES_MATCHING PATTERN "*.m")
+
+#-------------------------------------------------------
+# Deploy modules definitions!
+
         else()
 # Linux
-        if(CMAKE_BUILD_TYPE STREQUAL "Release")
-                message("Deploying Qt into ${CMAKE_INSTALL_PREFIX}")
+        message("Deploying Qt into ${CMAKE_INSTALL_PREFIX}")
 
-                install(TARGETS ARIA_RDK
-                    BUNDLE DESTINATION .
-                    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-                    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-                )
+        install(TARGETS ARIA_RDK
+            BUNDLE DESTINATION .
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        )
 
+        install(
+                        DIRECTORY "${PROJECT_SOURCE_DIR}/octave/toolboxes/"
+                        DESTINATION "${CMAKE_INSTALL_PREFIX}/octave/toolboxes/"
+                        FILES_MATCHING PATTERN "*.zip"
+                        )
 
-        endif()
-
+        install(
+                        DIRECTORY "${OCTAVE_INSTALL_PATH}/share/octave/"
+                        DESTINATION "${CMAKE_INSTALL_PREFIX}/share/octave/"
+                        FILES_MATCHING PATTERN "*"
+                        )
 endif()
 
-
-message("${CMAKE_CXX_FLAGS}")
 
 if(QT_VERSION_MAJOR EQUAL 6)
     qt_finalize_executable(ARIA_RDK)

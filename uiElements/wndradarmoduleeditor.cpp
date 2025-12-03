@@ -2381,6 +2381,11 @@ void wndRadarModuleEditor::init_tables()
 
         item = new QTableWidgetItem();
         item->setText(_init_scripts[n]->get_name());
+        if (!(_init_scripts[n]->isValid()))
+        {
+            QBrush b (Qt::red);
+            item->setForeground(b);
+        }
         item->setFlags(item->flags() & ~Qt::ItemIsEditable);
         ui->tblScriptsInit->setItem(n, 1, item);
     }
@@ -2394,6 +2399,12 @@ void wndRadarModuleEditor::init_tables()
 
         item = new QTableWidgetItem();
         item->setText(_postacq_scripts[n]->get_name());
+        if (!(_init_scripts[n]->isValid()))
+        {
+            QBrush b (Qt::red);
+            item->setForeground(b);
+        }
+
         item->setFlags(item->flags() & ~Qt::ItemIsEditable);
         ui->tblScriptsPostAcq->setItem(n, 1, item);
     }
@@ -2526,6 +2537,7 @@ void    wndRadarModuleEditor::renumber_table(QTableWidget* table)
 //---------------------------------------
 octaveScript* wndRadarModuleEditor::add_new_script()
 {
+    if (_project==nullptr) return nullptr;
     // Open an antenna file and add to the list
     QString scriptFileName = QFileDialog::getOpenFileName(this,"Script file",
                                                           ariasdk_scripts_path.absolutePath()+QDir::separator(),
@@ -2535,9 +2547,35 @@ octaveScript* wndRadarModuleEditor::add_new_script()
 
     if (scriptFileName.isEmpty()) return nullptr;
     ariasdk_scripts_path.setPath(QFileInfo(scriptFileName).absolutePath());
-   octaveScript* script =  _project->add_script(scriptFileName);
-   if (script!=nullptr)
-     _project->save_project_file();
+
+    QVector<octaveScript*> scripts = _project->get_available_scripts();
+
+    QFileInfo fi(scriptFileName);
+    QString newScript = fi.fileName();
+    octaveScript* script = nullptr;
+
+    for (auto s:scripts)
+    {
+        if (s!=nullptr)
+            if ((s->get_name()==newScript)&&(s->get_full_filepath()!=scriptFileName))
+            {
+                if (QMessageBox::question(this,"Confirm","The project already contains a script with the same filename.\n If you continue it will be overwritten. \n Continue?")
+                    ==QMessageBox::No) return nullptr;
+
+                QFile::copy(scriptFileName, _project->get_folder(cstr_scripts)->get_full_path());
+                s->load();
+                script = s;
+                break;
+            }
+    }
+
+    if (script == nullptr)
+    {
+        script =  _project->add_script(scriptFileName);
+
+        if (script!=nullptr)
+             _project->save_project_file();
+    }
 
     return script;
 }
@@ -2583,7 +2621,6 @@ void wndRadarModuleEditor::serial_port_to_module()
             break;
         }
     }
-
 
     QString strFlow = ui->cbFlowControl->currentText();
 

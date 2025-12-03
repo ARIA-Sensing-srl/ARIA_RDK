@@ -1250,23 +1250,26 @@ void    radarProject::add_radar_instance(const QByteArray& uid, radarModule* mod
 
 }
 
-void    radarProject::add_radar_instance(QString filename)
+radarInstance*    radarProject::add_radar_instance(QString filename)
 {
     radarInstance* device = new radarInstance();
-    if (device==nullptr) return;
+    if (device==nullptr) return nullptr;
     device->attach_to_workspace(_workspace);
     device->set_filename(filename);
     device->set_temporary_project(this);
 
     if (!device->load_xml())
+    {
         delete device;
+        device = nullptr;
+    }
     else
     {
         device->remove_temporary_project();
         add_radar_instance(device);
+        save_project_file();
     }
-
-    save_project_file();
+    return device;
 }
 //-----------------------------------------------
 void    radarProject::add_radar_instance(radarInstance* radar_ptr)

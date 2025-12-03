@@ -167,7 +167,7 @@ void    wndFWUpload::close_wnd()
 
 void   wndFWUpload::proc_started()
 {
-    ui->teOutput->setTextColor( QColor( "blue" ) );
+    ui->teOutput->setTextColor( QColor( "green" ) );
     QString data = _status == FW_STARTED_FWUPLOAD ? tr("Firmware upload") : tr("Firmware start");
     ui->teOutput->append( data );
     // restore

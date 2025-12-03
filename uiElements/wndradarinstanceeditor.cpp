@@ -171,6 +171,7 @@ void wndRadarInstanceEditor::init_script_table(QTableWidget* table, QVector<octa
         table->setItem(row,0,item);
         table->setCellWidget(row,1,cb);
         cb->setCurrentText(script->get_name());
+
         if (table == ui->tblScriptsInit)
             connect(cb,&QComboBox::currentIndexChanged, this, &wndRadarInstanceEditor::cbInitScriptChanged);
         if (table == ui->tblScriptsPostAcq)
@@ -186,11 +187,17 @@ void wndRadarInstanceEditor::fill_script_table_widget(QComboBox* cb,octaveScript
     cb->clear();
     cb->addItem("[None]");
     cb->addItem("[New..]");
-
+    int row = 2;
     for (const auto& av_script: _available_scripts)
     {
         if (cb==nullptr) continue;
         cb->addItem(av_script->get_name());
+        if (!(av_script->isValid()))
+        {
+            QBrush b (Qt::red);
+            cb->setItemData(row, QBrush(Qt::red), Qt::ForegroundRole);
+        }
+        row++;
     }
 }
 //---------------------------------------------------------------
@@ -203,12 +210,13 @@ void wndRadarInstanceEditor::add_script_table_empty_row(QTableWidget* table)
     QComboBox* cb = new QComboBox();
     fill_script_table_widget(cb);
 
+
     if (table == ui->tblScriptsInit)
         connect(cb,&QComboBox::currentIndexChanged, this, &wndRadarInstanceEditor::cbInitScriptChanged);
     if (table == ui->tblScriptsPostAcq)
         connect(cb,&QComboBox::currentIndexChanged, this, &wndRadarInstanceEditor::cbPostacqScriptChanged);
     QTableWidgetItem* item = new QTableWidgetItem();
-    item->setText(QString::number(row));
+    item->setText(QString::number(row+1));
     table->setItem(row,0,item);
     table->setCellWidget(row,1,cb);
 }
@@ -278,6 +286,7 @@ void    wndRadarInstanceEditor::cbInitScriptChanged(int index)
         QMessageBox::critical(this, tr("Error"), tr("Script not found in project"));
         return;
     }
+
     if (row == ui->tblScriptsInit->rowCount()-1)
     {
         QVector<octaveScript*> scripts = _radar_instance->get_init_scripts();
@@ -1618,7 +1627,7 @@ void    wndRadarInstanceEditor::connection_done(radarInstance* device)
 {
     if (device==nullptr) return;
     // append
-    ui->teSerialOutput->setTextColor( QColor( "blue" ) );
+    ui->teSerialOutput->setTextColor( QColor( "green" ) );
     ui->teSerialOutput->append( tr("Radar: ")+device->get_device_name()+tr(" connected") );
     // restore
     ui->teSerialOutput->setTextColor( QColor("grey") );
@@ -1629,7 +1638,7 @@ void    wndRadarInstanceEditor::connection_done_all()
     int fw = ui->teSerialOutput->fontWeight();
     // append
     ui->teSerialOutput->setFontWeight( QFont::Bold );
-    ui->teSerialOutput->setTextColor( QColor( "blue" ) );
+    ui->teSerialOutput->setTextColor( QColor( "green" ) );
     ui->teSerialOutput->append( tr("All devices connected") );
     // restore
     ui->teSerialOutput->setFontWeight( fw );
@@ -1653,7 +1662,7 @@ void    wndRadarInstanceEditor::init_done(radarInstance* device)
 {
     if (device==nullptr) return;
     // append
-    ui->teSerialOutput->setTextColor( QColor( "blue" ) );
+    ui->teSerialOutput->setTextColor( QColor( "green" ) );
     ui->teSerialOutput->append( tr("Radar : ")+device->get_device_name()+tr(" initialized") );
     // restore
     ui->teSerialOutput->setTextColor( QColor("grey") );
@@ -1664,7 +1673,7 @@ void    wndRadarInstanceEditor::init_done_all()
     int fw = ui->teSerialOutput->fontWeight();
     // append
     ui->teSerialOutput->setFontWeight( QFont::Bold );
-    ui->teSerialOutput->setTextColor( QColor( "blue" ) );
+    ui->teSerialOutput->setTextColor( QColor( "green" ) );
     ui->teSerialOutput->append( tr("All devices initialized") );
     // restore
     ui->teSerialOutput->setFontWeight( fw );

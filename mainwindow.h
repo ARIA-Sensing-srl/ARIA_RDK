@@ -45,6 +45,7 @@ private:
     mdiOctaveInterface *wndOctaveInterface;
     radarProject        *project;
     QSettings           app_settings;
+    void                closeAllChildrenExceptOctaveInterface();
 
 private:
     void deleteOctaveThread();
@@ -62,6 +63,11 @@ private:
     std::streambuf  *octavepbuf, *coutbackup;
 
     void            octaveInterfaceCreate();
+
+    void removeScript(octaveScript* script);
+    void removeDeviceFile(radarInstance* instance);
+    void removeModule(radarModule* module);
+    void removeController(opScheduler* controller);
 
 public slots:
 
@@ -112,6 +118,18 @@ public slots:
     void showAbout();
 // Clean-up octave interface files
 	void cleanUpFiles();
+// Scripts add/remove
+    void addScript();
+// Device add/remove
+    void addRadarDescriptorFile();
+// Device add/remove
+    void addModuleFile();
+
+// Right click
+    void projectItemMenuRequest(QPoint pos);
+    void deleteItemsRequested();
+    void openItemsRequested();
+
 
 protected:
     void closeEvent(QCloseEvent *event);
@@ -125,5 +143,7 @@ private:
     /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
     MessageHandler *msgHandler = Q_NULLPTR;
     ThreadLogStream* m_qd;
+
+
 };
 #endif // MAINWINDOW_H
