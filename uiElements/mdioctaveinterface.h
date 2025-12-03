@@ -42,6 +42,8 @@ public:
 
 	bool		close_scripts();
     QTextLine currentTextLine(const QTextCursor &cursor);
+
+    void        updateFont();
 signals:
     void plotVariable(QString varname);
 public slots:

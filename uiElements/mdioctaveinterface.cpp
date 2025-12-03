@@ -1651,3 +1651,14 @@ bool		mdiOctaveInterface::close_scripts()
 	}
 	return true;
 }
+
+
+void       mdiOctaveInterface::updateFont()
+{
+    for (auto &child: ui->mdiArea->subWindowList())
+    {
+        wndOctaveScript* wnd = qobject_cast<wndOctaveScript*>(child->widget());
+        if (wnd==nullptr) continue;
+        wnd->updateFont();
+    }
+}

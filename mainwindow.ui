@@ -89,6 +89,7 @@
      <addaction name="actionOctaveScriptSave"/>
      <addaction name="actionOctaveScriptSave_as"/>
      <addaction name="actionOctaveScriptClose"/>
+     <addaction name="actionDefault_font"/>
     </widget>
     <addaction name="actionOctaveInterface"/>
     <addaction name="separator"/>
@@ -385,6 +386,11 @@
   <action name="actionExisting_Radar_Module_File">
    <property name="text">
     <string>Existing Radar Module File</string>
+   </property>
+  </action>
+  <action name="actionDefault_font">
+   <property name="text">
+    <string>Default Font</string>
    </property>
   </action>
  </widget>

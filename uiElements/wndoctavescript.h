@@ -69,6 +69,8 @@ public:
 	void showEvent(QShowEvent *event);
 
 	bool isClosed() {return _b_closed;}
+
+    void updateFont();
 public slots:
     void fileChangedOnDisk(QString str);
     void run_file();

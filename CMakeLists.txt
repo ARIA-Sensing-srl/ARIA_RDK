@@ -450,7 +450,7 @@ if(WIN32)
         install(
                         DIRECTORY "${PROJECT_SOURCE_DIR}/octave/toolboxes/"
                         DESTINATION "${CMAKE_INSTALL_PREFIX}/octave/toolboxes/"
-                        FILES_MATCHING PATTERN "*.zip"
+                        FILES_MATCHING PATTERN "*"
                         )
 
 #-------------------------------------------------------

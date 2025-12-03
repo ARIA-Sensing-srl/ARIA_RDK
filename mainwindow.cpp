@@ -19,6 +19,7 @@
 #include <QFileDialog>
 #include <QPainter>
 #include <QMdiSubWindow>
+#include <QFontDialog>
 #include "octaveinterface.h"
 
 #include <octave.h>
@@ -44,6 +45,8 @@ QString          ariasdk_flag_start;
 QString          ariasdk_flag_verify;
 QString          ariasdk_bin_start_address;
 QString          ariasdk_serial_name;
+
+QFont            ariasdk_script_font;
 
 extern QString cstr_radar_devices;
 extern QString cstr_scripts;
@@ -101,7 +104,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->treeProject->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->treeProject, &QTreeWidget::customContextMenuRequested, this, &MainWindow::projectItemMenuRequest);
-
+    // Font
+    connect(ui->actionDefault_font, &QAction::triggered, this, &MainWindow::setDefaultFont);
 
     // Init other UI stuff
     initRadarTable();
@@ -842,6 +846,9 @@ void MainWindow::read_option_file()
 
     app_settings.endGroup();
 
+    app_settings.beginGroup("Settings");
+    ariasdk_script_font = (app_settings.value("scripts_font")).value<QFont>();
+
 
 }
 //---------------------------------------------------------------
@@ -866,6 +873,11 @@ void MainWindow::update_option_file()
     app_settings.setValue(QString("fw_verify_flag"),    ariasdk_flag_verify);
     app_settings.setValue(QString("fw_start_address"),  ariasdk_bin_start_address);
     app_settings.setValue(QString("fw_serial_port"),    ariasdk_serial_name);
+
+    app_settings.endGroup();
+
+    app_settings.beginGroup("Settings");
+    app_settings.setValue(QString("scripts_font"), QVariant::fromValue<QFont>(ariasdk_script_font));
 
     app_settings.endGroup();
 
@@ -1850,4 +1862,14 @@ void MainWindow::projectItemMenuRequest(QPoint pos)
 
     menu->popup(ui->treeProject->viewport()->mapToGlobal(pos));
 
+}
+
+
+void MainWindow::setDefaultFont()
+{
+    bool bok;
+    QFont newFont = QFontDialog::getFont(&bok, ariasdk_script_font, this);
+    if (!bok) return;
+    ariasdk_script_font = newFont;
+    wndOctaveInterface->updateFont();
 }

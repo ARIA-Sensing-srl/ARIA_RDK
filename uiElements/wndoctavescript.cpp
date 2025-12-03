@@ -23,6 +23,7 @@ extern QDir             ariasdk_projects_path;
 extern QDir             ariasdk_scripts_path;
 extern QDir             ariasdk_antennas_path;
 extern QDir             ariasdk_antennaff_path;
+extern QFont            ariasdk_script_font;
 
 wndOctaveScript::wndOctaveScript(QString filename, octaveInterface* dataEngine,QWidget *parent, QString basedir) :
     QDialog(parent),
@@ -405,4 +406,10 @@ void wndOctaveScript::closeEvent( QCloseEvent* event )
 	_b_closed = true;
 	event->accept();
 	return;
+}
+
+
+void wndOctaveScript::updateFont()
+{
+    ui->textScript->setFont(ariasdk_script_font);
 }

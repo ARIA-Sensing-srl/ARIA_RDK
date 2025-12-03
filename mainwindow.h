@@ -131,6 +131,8 @@ public slots:
     void projectItemMenuRequest(QPoint pos);
     void deleteItemsRequested();
     void openItemsRequested();
+// Default font
+    void setDefaultFont();
 
 
 protected:
