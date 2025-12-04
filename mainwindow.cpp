@@ -1366,6 +1366,8 @@ void MainWindow::addScript()
                 return;
 
             QFile::copy(scriptFile,  project->get_folder(cstr_scripts)->get_full_path()+newScriptName);
+
+            s->set_filename(project->get_folder(cstr_scripts)->get_full_path()+newScriptName);
             s->load();
         }
     }
@@ -1410,6 +1412,7 @@ void MainWindow::addModuleFile()
 
                 QString newFullName = project->get_folder(cstr_radar_modules)->get_full_path() + moduleName;
                 QFile::copy(moduleFile,  newFullName);
+
                 m->load_file(newFullName);
             }
             return;
@@ -1910,7 +1913,7 @@ void MainWindow::projectItemMenuRequest(QPoint pos)
 
     connect(open, &QAction::triggered, this, &MainWindow::openItemsRequested);
     connect(remove, &QAction::triggered, this, &MainWindow::deleteItemsRequested);
-    connect(startStop, &QAction::triggered, this, &MainWindow::startStop);
+    if (startStop!=nullptr) connect(startStop, &QAction::triggered, this, &MainWindow::startStop);
 
     menu->popup(ui->treeProject->viewport()->mapToGlobal(pos));
 
