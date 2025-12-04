@@ -722,14 +722,9 @@ void MainWindow::tree_project_double_click(QTreeWidgetItem* widget, int column)
 
         radarInstance *radar_instance = (radarInstance*)(currentItem);
         wndRadarInstanceEditor *radarInstanceEditor = new wndRadarInstanceEditor(radar_instance,modules,this);
-        if (interfaceData!=nullptr)
-        {
-//            connect(interfaceData,&octaveInterface::updatedVariable,    radarInstanceEditor,&wndRadarInstanceEditor::variable_updated);
-//            connect(interfaceData,&octaveInterface::updatedVariables,   radarInstanceEditor,&wndRadarInstanceEditor::variables_updated);
-        }
+
         ui->mdiArea->addSubWindow(radarInstanceEditor);
         radarInstanceEditor->showMaximized();
-
      }
 
     if (currentItem->get_type() == DT_SCRIPT)
@@ -1147,11 +1142,6 @@ void MainWindow::configureDevice()
     }
     wndRadarInstanceEditor *radarInstanceEditor = new wndRadarInstanceEditor((radarInstance*)currentItem,
                                                                             QVector<radarModule*>({((radarInstance*)(currentItem))->get_module()}),this);
-    if (interfaceData!=nullptr)
-    {
-//        connect(interfaceData,&octaveInterface::updatedVariable, radarInstanceEditor,&wndRadarInstanceEditor::variable_updated);
-//        connect(interfaceData,&octaveInterface::updatedVariables,radarInstanceEditor,&wndRadarInstanceEditor::variables_updated);
-    }
     ui->mdiArea->addSubWindow(radarInstanceEditor);
     radarInstanceEditor->showMaximized();
 }

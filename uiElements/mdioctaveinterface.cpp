@@ -1306,6 +1306,33 @@ void mdiOctaveInterface::updatedSingleVar(const std::string& varname)
 // ---------------------------------------------------------------------------------
 void mdiOctaveInterface::updatedVars(const std::set<std::string>& varlist)
 {
+    int n=0;
+    while (n < ui->workspaceList->rowCount())
+    {
+        QString vname = ui->workspaceList->item(n,1)->text();
+        if (varlist.find(vname.toStdString())==varlist.end())
+        {
+            ui->workspaceList->removeRow(n);
+            for (auto child: _plot2d_children)
+                if (child!=nullptr)
+                    if (child->has_var(vname))
+                    {
+                        child->remove_plot(vname);
+                    }
+
+            for (auto child: _plot_qwt_children)
+            {
+                if (child==nullptr) continue;
+                if (child->has_var(vname))
+                {
+                    child->remove_var(vname);
+                }
+            }
+        }
+        else
+            n++;
+    }
+
 	if (varlist.empty()) return;
 	for (auto &v : varlist)
         updatedSingleVar(v);

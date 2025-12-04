@@ -224,6 +224,7 @@ public:
 	void assign_vars(QString zname, QString yname, QString xname);
 	bool has_var(QString vname);
 	bool has_var(std::set<std::string>& varlist);
+    void remove_var(QString varname);
 
 public slots:
 	void update_data(const std::set<std::string>& varlist);

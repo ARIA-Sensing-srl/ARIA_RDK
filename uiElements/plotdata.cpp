@@ -38,6 +38,31 @@ void plotData_plot::clean_data()
 	x_y.clear();
 }
 
+void plotData_plot::remove_var(QString var)
+{
+    auto curve_set = curves.find(var);
+    // Search for y value
+    if (curve_set==curves.end())
+    {
+        auto y_iter = x_y.find(var);
+        if (y_iter ==x_y.end())
+            return;
+        curve_set = curves.find(y_iter->second);
+    }
+    if (curve_set==curves.end()) return;
+
+    if (parent()==nullptr) return;
+
+    for (auto curve_to_del : curve_set->second)
+    {
+        curve_to_del.first->setSamples(nullptr);
+    }
+
+    curves.erase(var);
+    x_y.erase(var);
+    xvals.erase(var);
+}
+
 
 
 // This function is to *create* a new datastructure: single variable that can be either a vector or a matrix
@@ -972,10 +997,30 @@ void plotData_Density::clean_data()
 
 bool plotData_Density::has_var_in_list(const QStringList& var_changed)
 {
-	return false;
+    for (const auto& v: var_changed)
+        if (has_var_in_list(v)) return true;
+
+    return false;
 }
 
 bool plotData_Density::has_var_in_list(const QString& var_changed)
 {
-	return false;
+    if (xaxis.first==var_changed) return true;
+    if (yaxis.first==var_changed) return true;
+    if (zvalues.first==var_changed) return true;
+    return false;
+}
+
+void   plotData_Density::remove_var(QString var)
+{
+    if ((xaxis.first==var)||(yaxis.first==var)||(zvalues.first==var))
+    {
+        clean_data();
+        delete zvalues.second.second;
+        delete xaxis.second.second;
+        delete yaxis.second.second;
+        xaxis = QPair <QString, ArraySize>("",ArraySize(0,nullptr));
+        yaxis = QPair <QString, ArraySize>("",ArraySize(0,nullptr));
+        zvalues=QPair <QString, ArraySize>("",ArraySize(0,nullptr));
+    }
 }

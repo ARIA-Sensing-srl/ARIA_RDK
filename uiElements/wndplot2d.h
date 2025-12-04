@@ -42,6 +42,9 @@ public:
     void        clear_owners();
     QString     last_error() {return _last_error;}
 
+    bool            has_var(const QString& str_name);
+    void            remove_plot(QString var);
+
 private:
     Ui::wndPlot2d *ui;
 
@@ -86,12 +89,13 @@ private:
     void        populate_vertarrows( plot_descriptor pl);
 
     void        redraw(plot_descriptor& pl);
+    void        clean(JKQTPlotter* main_plotter, plot_descriptor& pl);
+
 
     JKQTPDatastore* get_ds();
     class           mdiOctaveInterface* _owner_mdiOctave;
     class           MainWindow*         _owner_mainWnd;
 
-    bool            has_var(const QString& str_name);
 };
 
 #endif // WNDPLOT2D_H

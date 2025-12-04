@@ -164,10 +164,6 @@ void wndPlot2d::populate_plot( plot_descriptor pl)
         {
             if (line_graph->getXColumn()==-1)
                 line_graph->setXColumn(ds->getColumnNum(QString::fromStdString(pl._indep_x)));
-
-            //QString xaxis_label = plotter->getXAxis()->getAxisLabel();
-            //xaxis_label += QString::fromStdString(pl._indep_x) + " ";
-            //plotter->getXAxis()->setAxisLabel(xaxis_label);
         }
         else
             if (line_graph->getXColumn()==-1)
@@ -198,8 +194,6 @@ void wndPlot2d::populate_plot( plot_descriptor pl)
         }
 
     }
-	//plotter->zoomToFit();
-
     redraw(pl);
 }
 //---------------------------------------------------------------------
@@ -543,13 +537,7 @@ void        wndPlot2d::populate_dens( plot_descriptor pl)
     density_graph->setY(ymin);
     density_graph->setWidth(xmax-xmin);
     density_graph->setHeight(ymax-ymin);
-/*
-    if (!pl._indep_x.empty())
-        plotter->getXAxis()->setAxisLabel(QString::fromStdString(pl._indep_x));
 
-    if (!pl._indep_y.empty())
-        plotter->getYAxis()->setAxisLabel(QString::fromStdString(pl._indep_y));
-*/
     plotter->getPlotter()->setMaintainAspectRatio(true);
     plotter->getPlotter()->setMaintainAxisAspectRatio(true);
     density_graph->setTitle(QString::fromStdString(pl._dep));
@@ -1428,6 +1416,45 @@ int wndPlot2d::add_barplot(const QString& var, const QString& x, int plot_id)
     update_plots();
 
     return plot_id;
+}
+
+void wndPlot2d::remove_plot(QString var)
+{
+    std::string str_name_str = var.toStdString();
+    auto plot_iter = _plots.begin();
+    bool bredraw = false;
+    while (plot_iter != _plots.end())
+    {
+        plot_descriptor& plot = *(plot_iter);
+        if ((plot._dep == str_name_str)||(plot._depy == str_name_str))
+        {
+           // clean(plot);
+            JKQTPlotter* plotter = _plotters[plot._plot_id];
+            if (plotter!=nullptr)
+                clean(plotter, plot);
+
+            _plots.erase(plot_iter);
+            bredraw = true;
+        }
+        else
+            plot_iter++;
+    }
+
+    if (bredraw)
+        update_plots();
+
+}
+//---------------------------------------------------------------------
+// Add a new area-descriptor
+//---------------------------------------------------------------------
+
+void wndPlot2d::clean(JKQTPlotter* main_plotter, plot_descriptor& pl)
+{
+    if (main_plotter == nullptr) return;
+    // Remove graphs
+    for (size_t g=0; g < pl._graph.size(); g++)
+        main_plotter->deleteGraph((JKQTPPlotElement*)(pl._graph[g]));
+    pl._graph.clear();
 }
 //---------------------------------------------------------------------
 // Add a new area-descriptor

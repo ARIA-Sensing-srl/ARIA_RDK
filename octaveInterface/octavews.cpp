@@ -239,29 +239,6 @@ void            octavews::interpreter_to_workspace()
     for (const auto& varname : varnames)
     {
         octave_value val = _oct_int->varval(varname);
-//        oct_dataset::iterator vfound_int = _internal_variables.find(varname);
-//        oct_dataset::iterator vfound_oct = _octave_variables.find(varname);
-/*
-        if (vfound_int != _internal_variables.end())
-        {
-            octave_value prev = _internal_variables[varname];
-            if (!(ov_equal(prev,val)))
-            {
-                add_variable_to_updatelist(varname);
-                _internal_variables[varname] = val;
-            }
-            continue;
-        }
-        if (vfound_oct != _internal_variables.end())
-        {
-            octave_value prev = _octave_variables[varname];
-            if (!(ov_equal(prev,val)))
-            {
-                add_variable_to_updatelist(varname);
-                _octave_variables[varname] = val;
-            }
-            continue;
-        }*/
 
         _octave_variables[varname] = val;
         add_variable_to_updatelist(varname);

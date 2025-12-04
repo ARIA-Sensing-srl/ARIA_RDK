@@ -275,8 +275,8 @@ void dlgQWTPlot::assign_vars(QString yname, QString xname)
 	_plotdata->set_data_plot(yname,xname);
 	std::map<QString,PlotCurves> curves = _plotdata->get_curves();
 
-	for (auto& curve_map: curves)
-		for (auto curve : curve_map.second)
+    for (auto& curve_map: curves)
+        for (auto& curve : curve_map.second)
 		{
 			if (curve.first!=nullptr)
 				curve.first->attach(ui->plot);
@@ -319,6 +319,20 @@ bool dlgQWTPlot::has_var(QString vname)
 	return _plotdata->has_var_in_list(vname);
 }
 
+
+void dlgQWTPlot::remove_var(QString varname)
+{
+    _plotdata->remove_var(varname);
+    if (_density_plot_ref!=nullptr)
+    {
+        _plotdata.reset();
+        _density_plot_ref->updateData(nullptr);
+
+        delete _density_plot_ref;
+        _density_plot_ref = nullptr;
+    }
+
+}
 
 void dlgQWTPlot::cbContourChanged(Qt::CheckState state)
 {
@@ -526,19 +540,6 @@ void QwtDensityPlot::drawItems( QPainter* painter, const QRectF& canvasRect,
 					 const QwtScaleMap maps[QwtAxis::AxisPositions] ) const
 {
 	QwtPlot::drawItems( painter, canvasRect, maps );
-/*
-	if ( m_spectrogram )
-	{
-		QwtImageSCPlot* spectrogram = static_cast< QwtImageSCPlot* >( m_spectrogram );
-
-		QString info( "%1 x %2 pixels: %3 ms" );
-		info = info.arg( spectrogram->renderedSize().width() );
-		info = info.arg( spectrogram->renderedSize().height() );
-		info = info.arg( spectrogram->elapsed() );
-
-		QwtDensityPlot* plot = const_cast< QwtDensityPlot* >( this );
-		plot->Q_EMIT rendered( info );
-	}*/
 }
 
 #ifndef WIN32

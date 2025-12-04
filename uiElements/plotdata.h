@@ -52,6 +52,7 @@ public:
 	virtual double get_zmax() {return 1.0;}
 	virtual double get_zmin() {return -1.0;}
 	virtual void   update_min_max(QwtPlot_MinMaxUpdate policy = FULL) {};
+    virtual void   remove_var(QString var) {};
 };
 
 class plotData_plot : public plotData
@@ -92,7 +93,7 @@ public:
 	double get_ymin() override {return _ymin*(_ymin > 0 ? 0.9 : 1.1);}
 	double get_zmax() override {return 1.0;}
 	double get_zmin() override {return -1.0;}
-
+    void   remove_var(QString var) override;
 };
 
 
@@ -124,7 +125,6 @@ public:
 	void clean_data()   override;
 	bool		has_var_in_list(const QStringList& var_changed) override;
 	bool		has_var_in_list(const QString& var_changed) override;
-	//	bool		has_var_in_list(std::set<std::string>& var_list) override;
 	std::map<QString,PlotCurves>		get_curves() override {return plotData::get_curves();}
 
 	double get_xmax() override {return _xmax*(_xmax > 0 ? 1.1 : 0.9);}
@@ -136,5 +136,6 @@ public:
 
 	virtual QwtInterval interval( Qt::Axis axis ) const QWT_OVERRIDE;
 	virtual double value( double x, double y ) const QWT_OVERRIDE;
+    void   remove_var(QString var) override;
 };
 #endif // PLOTDATA_H
