@@ -148,6 +148,8 @@ MainWindow::MainWindow(QWidget *parent)
         wndOctaveInterface->update_octave_interface();
 
     mainWnd = this;
+    _scheduler = nullptr;
+    ui->treeProject->setColumnCount(2);
 }
 
 MainWindow::~MainWindow()
@@ -162,6 +164,14 @@ MainWindow::~MainWindow()
     deleteOctaveThread();
     if (project!=nullptr)
         delete project;
+
+    if (_scheduler!=nullptr)
+    {
+        _scheduler->stop();
+        delete _scheduler;
+        _scheduler = nullptr;
+    }
+    update_option_file();
 }
 
 // Catch QMessage, redirect to cout
@@ -705,6 +715,19 @@ void MainWindow::tree_project_double_click(QTreeWidgetItem* widget, int column)
 
      if (currentItem->get_type() == DT_RADARDEVICE)
      {
+         if (_scheduler!=nullptr)
+         {
+             if (_scheduler->has_device((radarInstance*)currentItem))
+             {
+                 if (_scheduler->isRunning())
+                    if (QMessageBox::warning(this,"Warning","The current radar is running. It will be stopped. Continue?", QMessageBox::Yes|QMessageBox::No)
+                         ==QMessageBox::No) return;
+
+                 if (_scheduler->isRunning()) _scheduler->stop();
+                 delete _scheduler;
+                 _scheduler = nullptr;
+             }
+         }
          QList<QMdiSubWindow*> subwnds = ui->mdiArea->subWindowList();
          for (auto &child: subwnds)
          {
@@ -875,6 +898,7 @@ void MainWindow::update_option_file()
     app_settings.setValue(QString("scripts_font"), QVariant::fromValue<QFont>(ariasdk_script_font));
 
     app_settings.endGroup();
+
 
 }
 
@@ -1066,6 +1090,7 @@ void MainWindow::deleteDevice()
         return;
     radarInstance *radar = (radarInstance*)(currentItem);
 
+
     // Check if we don't have radar devices
     QVector<opScheduler*> ops= project->get_available_scheduler();
 
@@ -1085,9 +1110,20 @@ void MainWindow::deleteDevice()
 
     if (QMessageBox::question(this, "Confirm", tr("Do you want to delete ")+radar->get_device_name()+tr(" ?"))==QMessageBox::No)
         return;
-    // Close any window related to the module itself
 
-	// FIXME!
+    // Clear the scheduler
+    if ((_scheduler!=nullptr)&&(_scheduler->has_device(radar)))
+    {
+        if (_scheduler->isRunning())
+        {
+            if (QMessageBox::warning(this, "Confirm", tr("The device ")+radar->get_device_name()+tr(" is running. Need to stop it before deleting. Confirm?"))==QMessageBox::No)
+                return;
+        }
+        _scheduler->stop();
+        delete _scheduler;
+        _scheduler = nullptr;
+    }
+    // Close any window related to the module itself
     for (auto &child: ui->mdiArea->subWindowList())
     {
 		wndRadarInstanceEditor* wnd = qobject_cast<wndRadarInstanceEditor*>(child->widget());
@@ -1843,12 +1879,38 @@ void MainWindow::projectItemMenuRequest(QPoint pos)
 
     QAction *open   = new QAction("Open");
     QAction *remove = new QAction("Delete");
+    QAction *startStop= nullptr;
+    if (selected.count()==1)
+    {
+        projectItem *currentItem = (projectItem*)(selected[0]->data(0, Qt::UserRole).value<void*>());
+        if ((currentItem!=nullptr)&&(currentItem->get_type()==DT_RADARDEVICE))
+        {
+            radarInstance* device = (radarInstance*)currentItem;
+            if ((_scheduler!=nullptr)&&(_scheduler->has_device(device)))
+            {
+                startStop = new QAction(_scheduler->isRunning()?"Stop":"Run");
+                if (_scheduler->isRunning())
+                    startStop->setIcon(QIcon(":/icons/stop-road-sign-icon.png"));
+                else
+                    startStop->setIcon(QIcon(":/icons/business-management-icon.png"));
+            }
+            else
+            {
+                startStop = new QAction("Run");
+                startStop->setIcon(QIcon(":/icons/business-management-icon.png"));
+            }
+        }
+
+    }
+
 
     menu->addAction(open);
     menu->addAction(remove);
+    menu->addAction(startStop);
 
     connect(open, &QAction::triggered, this, &MainWindow::openItemsRequested);
     connect(remove, &QAction::triggered, this, &MainWindow::deleteItemsRequested);
+    connect(startStop, &QAction::triggered, this, &MainWindow::startStop);
 
     menu->popup(ui->treeProject->viewport()->mapToGlobal(pos));
 
@@ -1863,3 +1925,250 @@ void MainWindow::setDefaultFont()
     ariasdk_script_font = newFont;
     wndOctaveInterface->updateFont();
 }
+
+void MainWindow::startStop()
+{
+
+    QList<QTreeWidgetItem *> selected = ui->treeProject->selectedItems();
+    _itemRadarRunning = nullptr;
+    bool bDelete = false;
+
+    if (selected.count()!=1)
+        bDelete = true;
+
+    projectItem *currentItem = (projectItem*)(selected[0]->data(0, Qt::UserRole).value<void*>());
+    if ((currentItem!=nullptr)&&(currentItem->get_type()!=DT_RADARDEVICE))
+        bDelete = true;
+
+    if (bDelete)
+        if (_scheduler!=nullptr)
+    {
+        _scheduler->stop();
+        delete _scheduler;
+        _scheduler = nullptr;
+        return;
+    }
+    _itemRadarRunning = selected[0];
+    radarInstance* device = (radarInstance*)(currentItem);
+    // If we have an editing window open on this selected device (we cannot allow for conflict on schedulers)
+    QList<QMdiSubWindow*> subwnds = ui->mdiArea->subWindowList();
+    for (auto &child: subwnds)
+    {
+        wndRadarInstanceEditor* wnd = qobject_cast<wndRadarInstanceEditor*>(child->widget());
+        if (wnd!=nullptr)
+        {
+            if (wnd->getRadarInstance()==device)
+            {
+                QMessageBox::warning(this, "Warning", "Cannot start the device since it is edited. Close editing window");
+                return;
+            }
+        }
+    }
+    if ((_scheduler != nullptr)&&(_scheduler->has_device(device)))
+    {
+        if (_scheduler->isRunning())
+            _scheduler->stop();
+        else
+            _scheduler->run();
+
+        return;
+    }
+    if ((_scheduler != nullptr)&&(!_scheduler->has_device(device)))
+    {
+        delete _scheduler;
+        _scheduler = nullptr;
+    }
+    // Create a new dummy scheduler (if we are here, we need to start)
+    _scheduler = new opScheduler(device->get_workspace()->data_interface());
+    _scheduler->set_policy_on_error(HALT_ALL);
+    _scheduler->set_policy_on_timeout(HALT_ON_TIMEOUT);
+    _scheduler->add_radar(device);
+
+    connect(_scheduler, &opScheduler::running,                  this, &MainWindow::scheduler_running);
+    connect(_scheduler, &opScheduler::halted,                   this, &MainWindow::scheduler_halted);
+    connect(_scheduler, &opScheduler::connection_done,          this, &MainWindow::connection_done);
+    connect(_scheduler, &opScheduler::connection_done_all,      this, &MainWindow::connection_done_all);
+    connect(_scheduler, &opScheduler::connection_error,         this, &MainWindow::connection_error);
+    connect(_scheduler, &opScheduler::init_done,                this, &MainWindow::init_done);
+    connect(_scheduler, &opScheduler::init_done_all,            this, &MainWindow::init_done_all);
+    connect(_scheduler, &opScheduler::init_error,               this, &MainWindow::init_error);
+    connect(_scheduler, &opScheduler::postacquisition_error,    this, &MainWindow::postacquisition_error);
+    connect(_scheduler, &opScheduler::postacquisition_done_all, this, &MainWindow::postacquisition_done_all);
+
+    _scheduler->run();
+    return;
+}
+
+QTreeWidgetItem* MainWindow::findTreeItem(projectItem* projItem, QTreeWidgetItem* parent)
+{
+    // Sweep thru topItems
+    if (parent==nullptr)
+    {
+        for (int nt = 0; nt < ui->treeProject->topLevelItemCount(); nt++)
+        {
+            QTreeWidgetItem* newParent = ui->treeProject->topLevelItem(nt);
+            if (newParent==nullptr) continue;
+            QTreeWidgetItem* found = findTreeItem(projItem, newParent);
+            if (found!=nullptr) return found;
+        }
+        return nullptr;
+    }
+    // Check if we are on the right node
+    projectItem *currentItem = (projectItem*)(parent->data(0, Qt::UserRole).value<void*>());
+    if (currentItem==projItem) return parent;
+
+    // Otherwise search further down the tree
+    for (int nt = 0; nt < parent->childCount(); nt++)
+    {
+        QTreeWidgetItem* child = parent->child(nt);
+        if (child==nullptr) continue;
+        QTreeWidgetItem* found = findTreeItem(projItem, child);
+        if (found!=nullptr) return found;
+    }
+    return nullptr;
+}
+
+//----------------------------------------------------
+void    MainWindow::scheduler_running()
+{
+    if (_scheduler==nullptr) return;
+    if (_itemRadarRunning==nullptr) return;
+    _itemRadarRunning->setText(1, "running");
+    QBrush b (Qt::green);
+    _itemRadarRunning->setForeground( 1 , b );
+
+}
+//----------------------------------------------------
+void    MainWindow::scheduler_halted()
+{
+    if (_scheduler==nullptr) return;
+    if (_itemRadarRunning==nullptr) return;
+
+    if (_itemRadarRunning->text(1)=="running")
+    {
+        _itemRadarRunning->setText(1, "halted");
+        QBrush b (Qt::lightGray);
+        _itemRadarRunning->setForeground( 1 , b );
+    }
+    else
+        _itemRadarRunning->setText(1,_itemRadarRunning->text(1)+" ; halted");
+}
+
+//----------------------------------------------------
+void    MainWindow::connection_done(radarInstance* device)
+{
+    if (device==nullptr) return;
+    if (_scheduler==nullptr) return;
+    if (_itemRadarRunning==nullptr) return;
+
+    _itemRadarRunning->setText(1, "connected");
+    QBrush b (Qt::yellow);
+    _itemRadarRunning->setForeground( 1 , b );
+
+}
+//----------------------------------------------------
+void    MainWindow::connection_done_all()
+{
+    if (_scheduler==nullptr) return;
+    if (_itemRadarRunning==nullptr) return;
+
+    _itemRadarRunning->setText(1, "connected");
+    QBrush b (Qt::yellow);
+    _itemRadarRunning->setForeground( 1 , b );
+}
+//----------------------------------------------------
+void    MainWindow::connection_error(radarInstance* device)
+{
+    if (device==nullptr) return;
+    if (_scheduler==nullptr) return;
+    if (_itemRadarRunning==nullptr) return;
+
+    _itemRadarRunning->setText(1, "connection error");
+    QBrush b (Qt::red);
+    _itemRadarRunning->setForeground( 1 , b );
+
+}
+//----------------------------------------------------
+void    MainWindow::init_done(radarInstance* device)
+{
+    if (device==nullptr) return;
+    if (_scheduler==nullptr) return;
+    if (_itemRadarRunning==nullptr) return;
+
+    _itemRadarRunning->setText(1, "init done");
+    QBrush b (Qt::yellow);
+    _itemRadarRunning->setForeground( 1 , b );
+}
+//----------------------------------------------------
+void    MainWindow::init_done_all()
+{
+    if (_scheduler==nullptr) return;
+    if (_itemRadarRunning==nullptr) return;
+
+    _itemRadarRunning->setText(1, "init done");
+    QBrush b (Qt::yellow);
+    _itemRadarRunning->setForeground( 1 , b );
+}
+//----------------------------------------------------
+void    MainWindow::init_error(radarInstance* device)
+{
+    if (device==nullptr) return;
+    if (_scheduler==nullptr) return;
+    if (_itemRadarRunning==nullptr) return;
+
+    _itemRadarRunning->setText(1, "init error");
+    QBrush b (Qt::red);
+    _itemRadarRunning->setForeground( 1 , b );
+
+}
+//----------------------------------------------------
+void MainWindow::postacquisition_error(radarInstance* device)
+{
+    if (device==nullptr) return;
+    if (_scheduler==nullptr) return;
+    if (_itemRadarRunning==nullptr) return;
+
+    _itemRadarRunning->setText(1, "postacq script error");
+    QBrush b (Qt::red);
+    _itemRadarRunning->setForeground( 1 , b );
+}
+//----------------------------------------------------
+void MainWindow::preacquisition_error(radarInstance* device)
+{
+    if (device==nullptr) return;
+    if (_scheduler==nullptr) return;
+    if (_itemRadarRunning==nullptr) return;
+
+    _itemRadarRunning->setText(1, "preacq script error");
+    QBrush b (Qt::red);
+    _itemRadarRunning->setForeground( 1 , b );
+}
+//----------------------------------------------------
+void MainWindow::scheduler_timing_error()
+{
+    if (_scheduler==nullptr) return;
+    if (_itemRadarRunning==nullptr) return;
+
+    _itemRadarRunning->setText(1, "framerate error");
+    QBrush b (Qt::yellow);
+    _itemRadarRunning->setForeground( 1 , b );
+}
+//----------------------------------------------------
+void MainWindow::postacquisition_done_all()
+{
+    if (_scheduler==nullptr) return;
+    if (_itemRadarRunning==nullptr) return;
+    _itemRadarRunning->setText(1, "running");
+    QBrush b (Qt::green);
+    _itemRadarRunning->setForeground( 1 , b );
+}
+//----------------------------------------------------
+void MainWindow::preacquisition_done_all()
+{
+    if (_scheduler==nullptr) return;
+    if (_itemRadarRunning==nullptr) return;
+    _itemRadarRunning->setText(1, "running");
+    QBrush b (Qt::green);
+    _itemRadarRunning->setForeground( 1 , b );
+}
+

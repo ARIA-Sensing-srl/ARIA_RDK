@@ -46,6 +46,8 @@ private:
     radarProject        *project;
     QSettings           app_settings;
     void                closeAllChildrenExceptOctaveInterface();
+    opScheduler         *_scheduler;
+    QTreeWidgetItem     *_itemRadarRunning;
 
 private:
     void deleteOctaveThread();
@@ -70,6 +72,7 @@ private:
     void removeController(opScheduler* controller);
 
     void updateModuleDevices(octaveScript* script);
+    QTreeWidgetItem* findTreeItem(projectItem* projItem, QTreeWidgetItem* parent=nullptr);
 
 public slots:
 
@@ -131,8 +134,23 @@ public slots:
     void projectItemMenuRequest(QPoint pos);
     void deleteItemsRequested();
     void openItemsRequested();
+    void startStop();
 // Default font
     void setDefaultFont();
+// Dummy scheduler
+    void                        scheduler_running();
+    void                        scheduler_halted();
+    void                        connection_done(radarInstance* device);
+    void                        connection_done_all();
+    void                        connection_error(radarInstance* device);
+    void                        init_done(radarInstance* device);
+    void                        init_done_all();
+    void                        init_error(radarInstance* device);
+    void                        postacquisition_error(radarInstance* device);
+    void                        postacquisition_done_all();
+    void                        preacquisition_done_all();
+    void                        preacquisition_error(radarInstance* device);
+    void                        scheduler_timing_error();
 
 
 protected:

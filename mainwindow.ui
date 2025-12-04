@@ -25,12 +25,20 @@
        <enum>Qt::Orientation::Horizontal</enum>
       </property>
       <widget class="QTreeWidget" name="treeProject">
+       <property name="columnCount">
+        <number>2</number>
+       </property>
        <attribute name="headerVisible">
         <bool>true</bool>
        </attribute>
        <column>
         <property name="text">
          <string>Project</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>item details</string>
         </property>
        </column>
       </widget>

@@ -178,7 +178,6 @@ void    opSchedulerOperations::post_acquisition()
             _status = ACQUISITION_SCRIPTS_START;
             if (!_device->postacquisition_scripts())
                 emit postAcquisitionError(this);
-
             return;
         }
 
@@ -573,7 +572,7 @@ void opScheduler::postAcquisitionDone(opSchedulerOperations* op)
 //----------------------------
 void opScheduler::postAcquisitionError(opSchedulerOperations* op)
 {
-    emit init_error(op->get_device());
+    emit postacquisition_error(op->get_device());
     if (_policy_on_error == HALT_ALL)
     {
         stop();

@@ -1306,26 +1306,28 @@ void mdiOctaveInterface::updatedSingleVar(const std::string& varname)
 // ---------------------------------------------------------------------------------
 void mdiOctaveInterface::updatedVars(const std::set<std::string>& varlist)
 {
+    if (_workspace==nullptr) return;
     int n=0;
     while (n < ui->workspaceList->rowCount())
     {
-        QString vname = ui->workspaceList->item(n,1)->text();
-        if (varlist.find(vname.toStdString())==varlist.end())
+        QString vqname = ui->workspaceList->item(n,1)->text();
+        std::string vname = vqname.toStdString();
+        if ((!_workspace->is_internal(vname))&&(!_workspace->is_octave(vname)))
         {
             ui->workspaceList->removeRow(n);
             for (auto child: _plot2d_children)
                 if (child!=nullptr)
-                    if (child->has_var(vname))
+                    if (child->has_var(vqname))
                     {
-                        child->remove_plot(vname);
+                        child->remove_plot(vqname);
                     }
 
             for (auto child: _plot_qwt_children)
             {
                 if (child==nullptr) continue;
-                if (child->has_var(vname))
+                if (child->has_var(vqname))
                 {
-                    child->remove_var(vname);
+                    child->remove_var(vqname);
                 }
             }
         }
@@ -1606,13 +1608,6 @@ void mdiOctaveInterface::variableQwtDensityPlot()
 		// Get var name
 		QString varname = ui->workspaceList->item(row,1)->text();
 		vars.append(varname);
-		//wnd2d->add_plot(varname,"");
-		//QString last_error = wnd2d->last_error();
-		//if (!last_error.isEmpty())
-		//{
-		//	QMessageBox::critical(this,"Error creating plot",last_error);
-		//return;
-		//}
 	}
 
 	if (vars.size()==1)
