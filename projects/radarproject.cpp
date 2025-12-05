@@ -1308,9 +1308,6 @@ void    radarProject::add_radar_instance(radarInstance* radar_ptr)
                 }
     }
 
-//    radarInstance* radar = new radarInstance(*radar_ptr);
-
-//    if (radar==nullptr) return;
     radar_ptr->attach_to_workspace(_workspace);
 
     projectItem *pitem = get_folder(QString(cstr_radar_devices));

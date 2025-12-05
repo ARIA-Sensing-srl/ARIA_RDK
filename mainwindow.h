@@ -39,15 +39,15 @@ public:
     /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 
 private:
-    QThread                   *octaveThread;
-    class qDataThread         *elabThread;
-
-    mdiOctaveInterface *wndOctaveInterface;
-    radarProject        *project;
-    QSettings           app_settings;
-    void                closeAllChildrenExceptOctaveInterface();
-    opScheduler         *_scheduler;
-    QTreeWidgetItem     *_itemRadarRunning;
+    QThread                     *octaveThread;
+    class qDataThread           *elabThread;
+    mdiOctaveInterface          *wndOctaveInterface;
+    radarProject                *project;
+    QSettings                   app_settings;
+    QMap<radarInstance*, QTreeWidgetItem*>
+                                _radarTreeItems;
+    opScheduler                 *_multiradarScheduler;
+    void                        closeAllChildrenExceptOctaveInterface();
 
 private:
     void deleteOctaveThread();
@@ -134,7 +134,8 @@ public slots:
     void projectItemMenuRequest(QPoint pos);
     void deleteItemsRequested();
     void openItemsRequested();
-    void startStop();
+    void runRadars();
+    void stopRadars();
 // Default font
     void setDefaultFont();
 // Dummy scheduler

@@ -378,20 +378,33 @@ void        opScheduler::stop(radarInstance* device)
     }
     else
     {
+        bool banyworkerRunning = false;
         for (auto& worker : _workers)
 		{
             if (worker!=nullptr)
+            {
                 if (worker->get_device() == device)
                 {
                     worker->halt();
                     emit halted(device);
+
                 }
+            }
 		}
+        // Check if we have any left worker running
+        for (auto& worker : _workers)
+        {
+            if (worker!=nullptr)
+            {
+                if ((worker->get_status()!=IDLE)&&(worker->get_status()!=HALT))
+                    banyworkerRunning = true;
+            }
+        }
         //delete_radar(device);
 		if (MainWindow::mainWnd!=nullptr)
 			MainWindow::mainWnd->cleanUpFiles();
 
-        if (_workers.isEmpty())
+        if ((_workers.isEmpty())||(banyworkerRunning==false))
         {
             _b_running = false;
         }
@@ -420,9 +433,10 @@ void    opScheduler::   delete_radar(radarInstance* device)
             worker->halt();
             _workers.removeAll(worker);
             delete worker;
-            return;
+            break;
         }
     }
+    _devices.removeAll(device);
     _device_names.removeAll(device->get_device_name());
 }
 //----------------------------

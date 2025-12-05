@@ -54,14 +54,9 @@ wndOctaveScript::wndOctaveScript(QString filename, octaveInterface* dataEngine,Q
 	else
 		_lexer = new QsciLexerOctave(ui->textScript);
 
-	_lexer->setColor(Qt::green, QsciLexerOctave::Operator);
-	_lexer->setColor(Qt::darkYellow, QsciLexerOctave::Keyword);
-	_lexer->setColor(Qt::gray, QsciLexerOctave::Identifier);
-	_lexer->setColor(Qt::darkGreen, QsciLexerOctave::Command);
-	_lexer->setColor(Qt::darkCyan, QsciLexerOctave::Number);
-    _lexer->setColor(Qt::yellow, QsciLexerOctave::DoubleQuotedString);
-    _lexer->setColor(Qt::darkYellow, QsciLexerOctave::SingleQuotedString);
-	ui->textScript->setLexer(_lexer);
+    setDefaultColor(_lexer);
+
+    ui->textScript->setLexer(_lexer);
 	_api = new QsciAPIs(_lexer);
 
 #endif
@@ -99,7 +94,8 @@ wndOctaveScript::wndOctaveScript(QString filename, octaveInterface* dataEngine,Q
 #endif
 	ui->textScript->update();
 
-	connect(ui->textScript, &QsciScintilla::textChanged, this, &wndOctaveScript::modified);
+    connect(ui->textScript, &QsciScintilla::textChanged, this, &wndOctaveScript::modified);
+    createShortcutActions();
 }
 
 wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* dataEngine,QWidget *parent, QString basedir) : QDialog(parent),
@@ -119,17 +115,12 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
     ui(new Ui::wndOctaveScript)
 {
     ui->setupUi(this);
-
+    _lexer = new QsciLexerOctave(ui->textScript);
 #ifdef USE_NATIVE_LEXER
 	hl = new octaveSyntaxHighlighter(_data_interface,ui->textScript->document());
 #else
-	_lexer = new QsciLexerOctave(ui->textScript);
-	_lexer->setColor(Qt::green, QsciLexerOctave::Operator);
-	_lexer->setColor(Qt::darkYellow, QsciLexerOctave::Keyword);
-	_lexer->setColor(Qt::gray, QsciLexerOctave::Identifier);
-	_lexer->setColor(Qt::darkGreen, QsciLexerOctave::Command);
-	_lexer->setColor(Qt::darkCyan, QsciLexerOctave::Number);
-	ui->textScript->setLexer(_lexer);
+    setDefaultColor(_lexer);
+    ui->textScript->setLexer(_lexer);
 	_api = new QsciAPIs(_lexer);
 	_lexer->setAPIs(_api);
 #endif
@@ -140,7 +131,6 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
         _script = new octaveScript();
         _bInternal = true;
         _script->attach_to_dataengine(dataEngine);
-
 
         QFile fi(filename+QString(".m"));
         QString newFilename;
@@ -164,8 +154,6 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
         _bInternal = false;
         _script->load();
         ui->textScript->setText(_script->get_text());
-
-
     }
 
 	ui->textScript->update();
@@ -177,6 +165,29 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
 
 #endif
     this->setWindowTitle(QString("Octave Script:")+QFileInfo(_script->get_full_filepath()).fileName());
+
+    createShortcutActions();
+}
+
+
+void wndOctaveScript::setDefaultColor(QsciLexer* lexer)
+{
+    lexer->setColor(Qt::green, QsciLexerOctave::Operator);
+    lexer->setColor(Qt::darkYellow, QsciLexerOctave::Keyword);
+    lexer->setColor(Qt::white, QsciLexerOctave::Identifier);
+    lexer->setColor(Qt::darkGreen, QsciLexerOctave::Command);
+    lexer->setColor(Qt::darkCyan, QsciLexerOctave::Number);
+    lexer->setColor(Qt::yellow, QsciLexerOctave::DoubleQuotedString);
+    lexer->setColor(Qt::darkYellow, QsciLexerOctave::SingleQuotedString);
+}
+
+
+void wndOctaveScript::createShortcutActions()
+{
+    save = new QAction(this);
+    save->setShortcut(tr("Ctrl+N"));
+    connect(save, &QAction::triggered, this, &wndOctaveScript::save_file);
+
 }
 
 wndOctaveScript::~wndOctaveScript()
@@ -191,6 +202,8 @@ wndOctaveScript::~wndOctaveScript()
         delete(_script);
     _script = nullptr;
     delete ui;
+
+    if (save!=nullptr) delete save;
 }
 
 

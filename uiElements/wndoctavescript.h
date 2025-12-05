@@ -57,6 +57,11 @@ private:
 
     void update_wnd_title();
 
+    QAction *save;
+
+    void setDefaultColor(QsciLexer* lexer);
+    void createShortcutActions();
+
 signals:
     void update_tree(projectItem* item);
 public:
