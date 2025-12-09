@@ -46,6 +46,7 @@ radarInstance::radarInstance(radarModule* module) : radarModule("newRadar", DT_R
     }
     _device_name ="";
     _expected_portname ="";
+
 }
 //-----------------------------------------------
 radarInstance::radarInstance(radarInstance& radar) : radarModule(radar.get_uid().toHex(), DT_RADARDEVICE)

@@ -212,6 +212,9 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         uiElements/dlgqwtplot.h uiElements/dlgqwtplot.cpp uiElements/dlgqwtplot.ui
         uiElements/plotdata.h uiElements/plotdata.cpp
 
+        uiElements/wnddatatable.h uiElements/wnddatatable.cpp uiElements/wnddatatable.ui
+
+
     )
 
 # Define target properties for Android with Qt 6 as:
@@ -343,6 +346,7 @@ include_directories(AFTER ${PROJECT_SOURCE_DIR}/serialcomm)
 include_directories(AFTER ${PROJECT_SOURCE_DIR}/utils/)
 include_directories(AFTER ${PROJECT_SOURCE_DIR}/editor/)
 include_directories(AFTER ${PROJECT_SOURCE_DIR}/uiElements/)
+
 
 message("${CMAKE_INSTALL_BINDIR} ; ${CMAKE_INSTALL_LIBDIR}")
 

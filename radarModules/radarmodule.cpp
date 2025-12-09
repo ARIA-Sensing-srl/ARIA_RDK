@@ -41,7 +41,7 @@ radarModule::radarModule(QString filename,projectItem *parent ) : projectItem("n
     _equivalent_array_antenna(),
     _freq_of_interest(-1),
     _protocol(nullptr),
-    _init_commands(),    
+    _init_commands(),
     _postacquisition_commands()
 
 {
@@ -526,7 +526,7 @@ bool radarModule::save_xml(QDomDocument& document)
     for (int i = 0; i < _ant.count(); i++)
     {
         antenna_pointer ant = _ant[i];
-//        ant->rebase_dir_samedest(get_base_dir());
+        //        ant->rebase_dir_samedest(get_base_dir());
         ant->save_xml(document, antenna_root);
     }
     root.appendChild(antenna_root);
@@ -578,7 +578,7 @@ bool radarModule::save_xml(QDomDocument& document)
 
     for (int i = 0; i < _init_scripts.count(); i++)
     {
-//        _init_scripts[i]->rebase_dir_samedest(get_base_dir());
+        //        _init_scripts[i]->rebase_dir_samedest(get_base_dir());
         _init_scripts[i]->save_xml(document,init_scripts_root);
     }
 
@@ -589,7 +589,7 @@ bool radarModule::save_xml(QDomDocument& document)
 
     for (int i = 0; i < _post_acquisition_scripts.count(); i++)
     {
-//        _acquisition_scripts[i]->rebase_dir_samedest(get_base_dir());
+        //        _acquisition_scripts[i]->rebase_dir_samedest(get_base_dir());
         _post_acquisition_scripts[i]->save_xml(document,post_acq_scripts_root);
     }
 
@@ -679,7 +679,7 @@ bool radarModule::load_xml()
             radarParamPointer p_param = radarParamBase::create_from_xml_node(document,param_elem);
             if (p_param == nullptr)
                 break;
-             _params.append(p_param);
+            _params.append(p_param);
         }
         if (_params.count()!=param_count) return false;
     }
@@ -825,7 +825,7 @@ bool radarModule::load_xml()
                 else
                 {   // Create a new placeholder script
                     octaveScript* newScript = new octaveScript (get_root()->get_folder(cstr_scripts)->get_full_path()
-                                                                +QFileInfo(script_file).fileName(),get_root()->get_folder(QString(cstr_scripts)));
+                                                                   +QFileInfo(script_file).fileName(),get_root()->get_folder(QString(cstr_scripts)));
                     get_root()->add_script(newScript);
                     _init_scripts.append(newScript);
                 }
@@ -856,7 +856,7 @@ bool radarModule::load_xml()
                 else
                 {   // Create a new placeholder script
                     octaveScript* newScript = new octaveScript (get_root()->get_folder(cstr_scripts)->get_full_path()
-                                                               +QFileInfo(script_file).fileName(),get_root()->get_folder(QString(cstr_scripts)));
+                                                                   +QFileInfo(script_file).fileName(),get_root()->get_folder(QString(cstr_scripts)));
                     get_root()->add_script(newScript);
                     _post_acquisition_scripts.append(newScript);
                 }
@@ -867,7 +867,7 @@ bool radarModule::load_xml()
         }
         while(!script.isNull());
 
-       // if (_post_acquisition_scripts.count()!=num_scripts) return false;
+        // if (_post_acquisition_scripts.count()!=num_scripts) return false;
     }
 
 
@@ -883,7 +883,7 @@ bool radarModule::load_xml()
         _serial_port_info.stopBits = serial_port_stopbits_descriptor.key
                                      (serial_port.attribute("stopbits"), QSerialPort::OneStop);
         _serial_port_info.flowControl = serial_port_flowcontrol_descriptor.key
-                                (serial_port.attribute("flowcontrol"), QSerialPort::NoFlowControl);
+                                        (serial_port.attribute("flowcontrol"), QSerialPort::NoFlowControl);
         int databits = serial_port.attribute("databits","8").toInt();
         if ((databits < 5)||(databits>8)) databits = 8;
         _serial_port_info.dataBits = QSerialPort::DataBits(databits);
@@ -1052,7 +1052,7 @@ void radarModule::calculate_direction_focusing(double a_ref, double z_ref, int n
         if (npair==0)
             _equivalent_array_antenna.copy_from( ant_i);
         else
-             _equivalent_array_antenna.add(ant_i);
+            _equivalent_array_antenna.add(ant_i);
     }
     calc_gain_equivalent();
 }
@@ -1071,21 +1071,21 @@ NDArray radarModule::gain_equivalent()
 
     NDArray out(
         _freq_of_interest >= 0 ? dim_vector(_azimuth.numel(), _zenith.numel()) :
-                                 dim_vector(_azimuth.numel(), _zenith.numel(), _freqs.numel()));
+            dim_vector(_azimuth.numel(), _zenith.numel(), _freqs.numel()));
 
     NDArray gain_eq(_equivalent_array_antenna.gain_equivalent());
 
     if (_freq_of_interest <0)
     {
         for (int f=0; f < _freqs.numel(); f++)
-             for (int a=0; a < _azimuth.numel(); a++)
+            for (int a=0; a < _azimuth.numel(); a++)
                 for (int z=0; z < _zenith.numel(); z++)
                     out(a,z,f) = (gain_eq(a,z,f)/(double)(_txrx_scheme.count()));
     }
     else
     {
         for (int a=0; a < _azimuth.numel(); a++)
-             for (int z=0; z < _zenith.numel(); z++)
+            for (int z=0; z < _zenith.numel(); z++)
                 out(a,z) = (gain_eq(a,z,_freq_of_interest)/(double)(_txrx_scheme.count()));
     }
 
@@ -1159,7 +1159,7 @@ int     radarModule::get_postacquisition_command(int command_order)
 void    radarModule::set_init_script(int script_order, octaveScript_ptr script)
 {
     if (script==nullptr) return;
-	if ((script_order<0)||(script_order>=_init_scripts.count()))
+    if ((script_order<0)||(script_order>=_init_scripts.count()))
         return;
     script->move_to_new_basedir(get_full_path());
     _init_scripts[script_order] = script;
@@ -1169,7 +1169,7 @@ void    radarModule::set_init_script(int script_order, octaveScript_ptr script)
 void    radarModule::set_postacquisition_script(int script_order, octaveScript_ptr script)
 {
     if (script==nullptr) return;
-	if ((script_order<0)||(script_order>=_post_acquisition_scripts.count()))
+    if ((script_order<0)||(script_order>=_post_acquisition_scripts.count()))
         return;
     script->move_to_new_basedir(get_full_path());
     _post_acquisition_scripts[script_order] = script;
@@ -1197,7 +1197,7 @@ bool    radarModule::copy_scripts_to_folder(QString base_dir, QString newfolder)
     const QVector<octaveScript_ptr>& init_scripts = _init_scripts;
     for (const auto& script: init_scripts)
         if (script!=nullptr)
-        {        
+        {
             script->move_to_new_basedir(base_dir,newfolder,false,true);
         }
     const QVector<octaveScript_ptr>& postacq_scripts = _post_acquisition_scripts;
@@ -1216,9 +1216,9 @@ bool    radarModule::copy_antenna_models_to_folder(QString base_dir, QString new
 
     for (const auto& model: _available_antennas)
         if (model!=nullptr)
-            {
-                model->move_to_new_basedir(base_dir, newfolder, false, true);
-            }
+        {
+            model->move_to_new_basedir(base_dir, newfolder, false, true);
+        }
 
     const antenna_array& ants = _ant;
     for (const auto& ant:ants)
@@ -1227,8 +1227,8 @@ bool    radarModule::copy_antenna_models_to_folder(QString base_dir, QString new
     }
 
     for (const auto& model: _available_antennas)
-            if (model!=nullptr)
-                model->save();
+        if (model!=nullptr)
+            model->save();
     return true;
 }
 //---------------------------------------------
@@ -1520,14 +1520,15 @@ QByteArray      radarModule::encode_param_for_transmission(const QVector<radarPa
             payload.append(params[0]->get_inquiry_value());
 
             bool any_is_vector = false;
+
             for (auto param:params)
                 if (param!=nullptr)
                 {
                     if (!param->is_scalar()) any_is_vector = true;
                     exp_size+=param->value_bytes_count();
                 }
-
-            if ((!any_is_vector)&&(exp_size != payload.length()))
+            //structured params handle short message (0 payload) as inquiry, if param count greater then 1 ignore expected size
+            if ((!any_is_vector)&&(exp_size != payload.length())&&(params.count()==1))
                 return QByteArray();
 
             out.append(_protocol->encode_tx(payload));

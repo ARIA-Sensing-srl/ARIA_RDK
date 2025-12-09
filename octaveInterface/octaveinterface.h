@@ -29,12 +29,12 @@ private:
     QString                 last_output;
     bool                    bStopThread;
     QMutex                  sync;
-    octave::interpreter     *_octave_engine; // This is the MAIN _octave_engine (only one _octave_engine)
+    octave::interpreter     *_octave_engine;                        // This is the MAIN _octave_engine (only one _octave_engine)
     octavews                *_workspace;
     //std::set<std::string>   _vars_immediate_update;
     std::pair<std::string, std::string> _var_immediate_update;      // This is the variable / filename associated with the pipe
 #ifndef OCTAVE_THREAD
-    bool                    _b_running_command; // true if we are running a command from the command line
+    bool                    _b_running_command;                     // true if we are running a command from the command line
     bool                    _b_running_script;
     int                     _stopped_at;
 #endif
