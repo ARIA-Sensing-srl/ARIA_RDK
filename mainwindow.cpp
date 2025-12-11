@@ -240,6 +240,7 @@ void MainWindow::octaveInterfaceCreate()
     if (wndOctaveInterface==nullptr)
     {
         wndOctaveInterface = new mdiOctaveInterface(elabThread, this);
+        wndOctaveInterface->updateScriptsProject(project);
         // Connect closing
         // Octave Interface: menu signals
         connect(wndOctaveInterface,  &QDialog::destroyed, this, &MainWindow::octaveInterface_CloseWnd);
@@ -407,6 +408,7 @@ void MainWindow::newProject()
 
         delete project;
         project = nullptr;
+        wndOctaveInterface->updateScriptsProject(project);
         ui->menuAdd->setEnabled(false);
     }
     QString projectFile = QFileDialog::getSaveFileName(this,"New ARIA Radar Project",
@@ -447,6 +449,7 @@ void MainWindow::newProject()
         if (interfaceData!=nullptr) interfaceData->set_pwd(script_path);
     project->save_project_file();
     ui->menuAdd->setEnabled(true);
+    wndOctaveInterface->updateScriptsProject(project);
 }
 //---------------------------------------------------------------
 // Tree item graphic stuff
@@ -880,9 +883,14 @@ void MainWindow::read_option_file()
     ariasdk_serial_name         = app_settings.value("fw_serial_port","").toString();
 
     app_settings.endGroup();
-
     app_settings.beginGroup("Settings");
-    ariasdk_script_font = (app_settings.value("scripts_font")).value<QFont>();
+
+    QString qfontscript = app_settings.value("scripts_font","").toString();
+    if (qfontscript=="") qfontscript = "Arial";
+    bool bok;
+    int     qfontsize   = app_settings.value("scripts_font_size").toInt(&bok);
+    if (!bok) qfontsize = 12;
+    ariasdk_script_font = QFont(qfontscript, qfontsize);
 
 
 }
@@ -912,11 +920,10 @@ void MainWindow::update_option_file()
     app_settings.endGroup();
 
     app_settings.beginGroup("Settings");
-    app_settings.setValue(QString("scripts_font"), QVariant::fromValue<QFont>(ariasdk_script_font));
+    app_settings.setValue("scripts_font", ariasdk_script_font.family());
+    app_settings.setValue("scripts_font_size", ariasdk_script_font.pointSize());
 
     app_settings.endGroup();
-
-
 }
 
 //---------------------------------------------------------------
@@ -954,10 +961,13 @@ void MainWindow::loadProject()
 
         delete project;
         project = nullptr;
+
         ui->menuAdd->setEnabled(false);
     }
 
     project = new radarProject(projectFile,interfaceData==nullptr ? nullptr : interfaceData->get_workspace(), false);
+
+    wndOctaveInterface->updateScriptsProject(project);
 
     project->move_to_new_basedir(QFileInfo(projectFile).absolutePath());
     updateProjectTree();
@@ -999,6 +1009,7 @@ void MainWindow::cloneProject()
 
     delete project;
     project = nullptr;
+    wndOctaveInterface->updateScriptsProject(project);
     ui->treeProject->clear();
 }
 //---------------------------------------------------------------
@@ -1033,6 +1044,7 @@ void MainWindow::closeProject()
 
     delete project;
     project = nullptr;
+    wndOctaveInterface->updateScriptsProject(project);
     ui->menuAdd->setEnabled(false);
     ui->treeProject->clear();
 }
@@ -1449,8 +1461,7 @@ void MainWindow::addScript()
 
             QFile::copy(scriptFile,  project->get_folder(cstr_scripts)->get_full_path()+newScriptName);
 
-            s->set_filename(project->get_folder(cstr_scripts)->get_full_path()+newScriptName);
-            s->load();
+            s->set_filename(project->get_folder(cstr_scripts)->get_full_path()+newScriptName, false);
         }
     }
     project->add_script(scriptFile);

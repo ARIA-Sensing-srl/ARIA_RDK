@@ -14,18 +14,43 @@
    <string>Dialog</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="1">
-    <widget class="QSpinBox" name="sbPage"/>
-   </item>
-   <item row="0" column="0">
-    <widget class="QLabel" name="label">
+   <item row="1" column="2">
+    <widget class="QLabel" name="leVarName">
      <property name="text">
-      <string>Current data page</string>
+      <string>TextLabel</string>
      </property>
     </widget>
    </item>
-   <item row="1" column="0" colspan="2">
+   <item row="0" column="0">
+    <widget class="QToolButton" name="tbExportCSV">
+     <property name="text">
+      <string>Export as CSV</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0" colspan="3">
+    <widget class="QLabel" name="leWarning">
+     <property name="text">
+      <string>Warning</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Variable:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0" colspan="3">
     <widget class="QTableWidget" name="dataTable"/>
+   </item>
+   <item row="0" column="1">
+    <widget class="QToolButton" name="tbExportOctave">
+     <property name="text">
+      <string>Export to Octave</string>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>

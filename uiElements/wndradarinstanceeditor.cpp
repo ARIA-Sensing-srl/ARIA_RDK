@@ -1675,7 +1675,7 @@ void    wndRadarInstanceEditor::connection_done(radarInstance* device)
     if (device==nullptr) return;
     // append
     ui->teSerialOutput->setTextColor( QColor( "green" ) );
-    ui->teSerialOutput->append( tr("Radar: ")+device->get_device_name()+tr(" connected") );
+    ui->teSerialOutput->append( tr("Radar: ")+device->get_device_name()+tr(" connected on port :")+device->get_current_portname() );
     // restore
     ui->teSerialOutput->setTextColor( QColor("grey") );
 }

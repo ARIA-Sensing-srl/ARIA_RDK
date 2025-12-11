@@ -944,7 +944,7 @@ octaveScript*    radarProject::add_script(QString &filename, projectItem* pitem)
 
     octaveScript* new_script = new octaveScript(new_file,script_folder);
     //Use only fileName since path is defined by the project tree
-    new_script->set_filename(filename);
+    new_script->set_filename(filename,false);
 
     emit add_item(script_folder,new_script);
     return new_script;

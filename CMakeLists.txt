@@ -275,6 +275,8 @@ else()
             uiElements/wndscheduler.h uiElements/wndscheduler.cpp uiElements/wndscheduler.ui
             uiElements/wndabout.h uiElements/wndabout.cpp uiElements/wndabout.ui
             uiElements/wndfwupload.h uiElements/wndfwupload.cpp uiElements/wndfwupload.ui
+
+
         )
     endif()
 

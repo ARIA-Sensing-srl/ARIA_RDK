@@ -42,14 +42,12 @@ public:
     octaveScript(QString filename, projectItem* parent=nullptr);
     octaveScript(const octaveScript& script);
     ~octaveScript();
-    void                    set_filename(QString filename);
-
-    void                    set_scriptfile(QString filename);
+    void                    set_filename(QString filename, bool save_nload=false);
     bool                    has_breakpoints();
     bool                    is_breakpoint(int lineno);
     void                    set_breakpoint(int lineno);
     void                    clear_breakpoint(int lineno);
-
+    QString                 get_fullfilename(){return _script_file.fileName();}
     int                     get_lines_count();
 
     const octaveScript& operator = (const octaveScript& script);

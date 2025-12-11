@@ -44,13 +44,13 @@ public:
     QTextLine currentTextLine(const QTextCursor &cursor);
 
     void        updateFont();
+    void        updateScriptsProject(radarProject* proj);
 signals:
     void plotVariable(QString varname);
 public slots:
     void newScript();
     void openScript();
     void saveScript();
-    void saveSctiptAs();
     void closeScript();
     void openProjectScript(octaveScript* script);
     bool eventFilter(QObject *obj, QEvent *event);
@@ -114,17 +114,21 @@ public slots:
     void cleanOutput();
     void cleanHistory();
 
+    void viewDataInTable();
+
 private:
     Ui::mdiOctaveInterface *ui;
     class qDataThread           *_elabThread;
     class octaveInterface       *_interfaceData;
     class octavews              *_workspace;
     class dataWorkspace         *_dataws;
-
+    class radarProject          *_project;
     QVector<class wndOctaveScript*>     _scripts_children;
     QVector<class wndPlot2d*>           _plot2d_children;
 	QVector<class dlgQWTPlot*>			_plot_qwt_children;
     bool                                _b_deleting;
+
+    void                                workspaceTableDblClick(const QModelIndex &index);
 };
 
 #endif // MDIOCTAVEINTERFACE_H

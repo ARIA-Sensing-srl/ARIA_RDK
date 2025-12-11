@@ -25,13 +25,14 @@ extern QDir             ariasdk_antennas_path;
 extern QDir             ariasdk_antennaff_path;
 extern QFont            ariasdk_script_font;
 
-wndOctaveScript::wndOctaveScript(QString filename, octaveInterface* dataEngine,QWidget *parent, QString basedir) :
+wndOctaveScript::wndOctaveScript(radarProject* proj, QString filename, octaveInterface* dataEngine,QWidget *parent, QString basedir) :
     QDialog(parent),
     _data_interface(dataEngine),
     _bInternal(true),
     _b_need_save_as(false),
 	_b_modified(false),
 	_b_closed(false),
+    _project(proj),
 
 #ifdef USE_NATIVE_LEXER
     hl(nullptr),
@@ -61,12 +62,13 @@ wndOctaveScript::wndOctaveScript(QString filename, octaveInterface* dataEngine,Q
 
 #endif
 
-    _script = new octaveScript(filename);
-    _bInternal = true;
-    _script->attach_to_dataengine(dataEngine);
-
+    // Create a new script object in case of a new file
     if (filename.isEmpty())
     {
+        _script = new octaveScript(filename);
+        _bInternal = true;
+        _script->attach_to_dataengine(dataEngine);
+
         filename = "newscript";
         QFile fi(filename+QString(".m"));
         QString newFilename;
@@ -79,15 +81,40 @@ wndOctaveScript::wndOctaveScript(QString filename, octaveInterface* dataEngine,Q
         }
 
         filename = newFilename;
-        _script->set_scriptfile(filename);
+        _script->set_filename(filename,false);
         _script->save();
         _b_need_save_as = true;
     }
+    else
+    {
+        // If we have a valid filename AND a project, let's check if the script
+        // that we are opening does not already belong to the project
+        if (_project!=nullptr)
+        {
+            octaveScript* script = nullptr;
+            QVector<octaveScript*> scripts = _project->get_available_scripts();
+            for (auto s : scripts)
+                if (s!=nullptr)
+                    if (s->get_fullfilename() == filename)
+                    {
+                        _script = s;
+                        _bInternal = false;
+                        break;
+                    }
+        }
+        // if the file does not belong to the script, this is a file not linked
+        // to the project
+        if (_script==nullptr)
+        {
+            _script = new octaveScript();
+            _script->attach_to_dataengine(_data_interface);
+            _script->set_filename(filename,false);
+            _bInternal = true;
+        }
+    }
     ui->textScript->setText(_script->get_text());
 
-    connect(ui->btnOctaveScriptRun, &QPushButton::clicked, this, &wndOctaveScript::run_file);
-    connect(ui->btnScriptSave,      &QPushButton::clicked, this, &wndOctaveScript::save_file);
-    connect(ui->btnScriptSaveAs,    &QPushButton::clicked, this, &wndOctaveScript::save_file_as);
+
 #ifdef USE_NATIVE_LEXER
     int fontWidth = QFontMetrics(ui->textScript->currentCharFormat().font()).averageCharWidth();
     ui->textScript->setTabStopDistance( 4 * fontWidth );
@@ -143,13 +170,13 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
         }
 
         filename = newFilename;
-        _script->set_scriptfile(filename);
-        _script->save();
+        _script->set_filename(filename,true);
         _b_need_save_as = true;
         _bInternal = true;
     }
     else
     {
+        _project = _script->get_root();
         _b_need_save_as = false;
         _bInternal = false;
         _script->load();
@@ -157,9 +184,6 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
     }
 
 	ui->textScript->update();
-    connect(ui->btnOctaveScriptRun, &QPushButton::clicked, this, &wndOctaveScript::run_file);
-    connect(ui->btnScriptSave,      &QPushButton::clicked, this, &wndOctaveScript::save_file);
-	connect(ui->btnScriptSaveAs,    &QPushButton::clicked, this, &wndOctaveScript::save_file_as);
 #ifndef USE_NATIVE_LEXER
 	connect(ui->textScript, &QsciScintilla::textChanged, this, &wndOctaveScript::modified);
 
@@ -184,9 +208,11 @@ void wndOctaveScript::setDefaultColor(QsciLexer* lexer)
 
 void wndOctaveScript::createShortcutActions()
 {
-    save = new QAction(this);
-    save->setShortcut(tr("Ctrl+N"));
-    connect(save, &QAction::triggered, this, &wndOctaveScript::save_file);
+    connect(ui->tbRun,      &QToolButton::clicked, this, &wndOctaveScript::run_file);
+    connect(ui->tbSave,     &QToolButton::clicked, this, &wndOctaveScript::save_file);
+    connect(ui->tbSaveAs,   &QToolButton::clicked, this, &wndOctaveScript::save_file_as);
+    connect(ui->tbOpen,     &QToolButton::clicked, this, &wndOctaveScript::open_file);
+    connect(ui->tbNew,     &QToolButton::clicked, this, &wndOctaveScript::new_file);
 
 }
 
@@ -202,15 +228,13 @@ wndOctaveScript::~wndOctaveScript()
         delete(_script);
     _script = nullptr;
     delete ui;
-
-    if (save!=nullptr) delete save;
 }
 
 
 
 void wndOctaveScript::update_wnd_title()
 {
-    this->setWindowTitle(_script->get_name());
+    this->setWindowTitle(_script->get_full_filepath());
 }
 
 
@@ -219,8 +243,7 @@ void wndOctaveScript::loadFile(QString fname)
     update_wnd_title();
     connect(&watcher,SIGNAL(fileChanged(QString)), this, SLOT(fileChangedOnDisk(QString)));
 
-    _script->set_scriptfile(fname);
-    _script->load();
+    _script->set_filename(fname,false);
     ui->textScript->setText(_script->get_text());
 }
 
@@ -317,9 +340,9 @@ void wndOctaveScript::fileChangedOnDisk(QString str)
 }
 
 
-void wndOctaveScript::  save_file()
+bool wndOctaveScript::save_file()
 {
-    if (_b_need_save_as) { save_file_as(); return;}
+    if (_b_need_save_as) { return save_file_as(); }
 
 #ifdef USE_NATIVE_LEXER
 	_script->set_text(ui->textScript->toPlainText());
@@ -333,9 +356,140 @@ void wndOctaveScript::  save_file()
 	if (windowTitle().endsWith("*"))
 		setWindowTitle(windowTitle().removeLast());
 
+    return true;
 }
 
-void wndOctaveScript::save_file_as()
+void wndOctaveScript::new_file()
+{
+    if (_b_modified)
+    {
+        auto res = QMessageBox::question(this,"Confirm","The current file has been modified. Do you want to save it?",
+                                         QMessageBox::Yes | QMessageBox::Cancel | QMessageBox::No, QMessageBox::Cancel);
+
+        if (res ==  QMessageBox::Yes)
+            if (!save_file()) return;
+
+        if (res == QMessageBox::Cancel)
+            return;
+    }
+
+    if (!_bInternal)
+    {
+        // if if was a project script, we need to create a new one detached from the project
+        _script = new octaveScript();
+        _script->attach_to_dataengine(_data_interface);
+        _bInternal = true;
+    }
+
+    _script->set_text("");
+    QString filename = "newscript";
+    QFile fi(filename+QString(".m"));
+    QString newFilename;
+
+    int n=0;
+    while (fi.exists())
+    {
+        newFilename = filename + QString::number(n) + QString(".m");
+        fi.setFileName(newFilename);
+    }
+
+    filename = newFilename;
+    _script->set_filename(filename,true);
+    _b_need_save_as = true;
+    ui->textScript->setText("");
+    setModified(false);
+}
+
+void wndOctaveScript::open_file()
+{
+    if (_b_modified)
+    {
+        auto res = QMessageBox::question(this,"Confirm","The current file has been modified. Do you want to save it?",
+                                         QMessageBox::Yes | QMessageBox::Cancel | QMessageBox::No, QMessageBox::Cancel);
+
+        if (res ==  QMessageBox::Yes)
+            if (!save_file()) return;
+
+        if (res == QMessageBox::Cancel)
+            return;
+
+   }
+
+    QString scriptFile = QFileDialog::getOpenFileName(this,"Import script file",
+                                                      ariasdk_scripts_path.absolutePath()+QDir::separator(),
+                                                      tr("Script files(*.m);;All files (*.*)"),
+                                                      nullptr,
+                                                      QFileDialog::Options(QFileDialog::Detail|QFileDialog::DontUseNativeDialog));
+
+   if (scriptFile.isEmpty())
+        return;
+
+   // Check if we are not opening a project script
+   bool bNewInternal = true;
+
+   octaveScript* possibleOldScript =  nullptr;
+   QVector<octaveScript*> scripts;
+
+   if (_project!=nullptr) scripts = _project->get_available_scripts();
+
+   for (auto s : scripts)
+       if (s!=nullptr)
+       {
+           if (s->get_fullfilename() == scriptFile)
+           {
+               possibleOldScript = s;
+               bNewInternal = false;
+               break;
+           }
+       }
+
+    if ((!_bInternal)&&(!bNewInternal))
+   {
+       // The new one is a project script. Update the script to the project's one
+       _script = possibleOldScript;
+       _script->set_filename(scriptFile,false);
+       _bInternal = false;
+   }
+
+   if ((_bInternal)&&(!bNewInternal))
+   {
+       // The new one is a project script. Update the script pointer to the project's one
+       _script = possibleOldScript;
+       _script->set_filename(scriptFile,false);
+       _bInternal = false;
+   }
+
+   if ((!_bInternal)&&(bNewInternal))
+   {
+       // The old one is a project script and the new one is not. We need to create a temporary octaveScript object
+       _script = new octaveScript();
+        _script->attach_to_dataengine(_data_interface);
+       _script->set_filename(scriptFile,false);
+        _bInternal = true;
+   }
+
+   if ((_bInternal)&&(bNewInternal))
+   {
+       // The new one is not a project script, we need to create a temporary octaveScript object iff prev was null
+       if (_script==nullptr)
+       {
+            _script = new octaveScript();
+            _script->attach_to_dataengine(_data_interface);
+       }
+
+        _bInternal = true;
+       _script->set_filename(scriptFile,false);
+   }
+
+   ui->textScript->setText(_script->get_text());
+   setModified(false);
+
+   _b_need_save_as = false;
+
+
+}
+
+bool wndOctaveScript::save_file_as()
 {
     QString fname = _script->get_filename();
     QFileInfo fi(fname);
@@ -348,7 +502,7 @@ void wndOctaveScript::save_file_as()
                                                        nullptr,
                                                        QFileDialog::Options(QFileDialog::Detail|QFileDialog::DontUseNativeDialog));
 
-    if (projectFile.isEmpty()) return;
+    if (projectFile.isEmpty()) return false;
 
     fi.setFile(projectFile);
     ariasdk_scripts_path.setPath(fi.absolutePath());
@@ -372,11 +526,18 @@ void wndOctaveScript::save_file_as()
             root->add_script(_script);
 
     _b_need_save_as = false;
-    this->setWindowTitle(QString("Octave Script:")+QFileInfo(_script->get_full_filepath()).fileName());
-	_b_modified = false;
-	if (windowTitle().endsWith("*"))
-		setWindowTitle(windowTitle().removeLast());
+    setModified(false);
+    return true;
+}
 
+void wndOctaveScript::setModified(bool bmodified)
+{
+    _b_modified = bmodified;
+    updateTitle();
+}
+void wndOctaveScript::updateTitle()
+{
+    this->setWindowTitle(QString("Octave Script:")+_script->get_fullfilename()+QString(_b_modified?"*":""));
 }
 
 
@@ -384,11 +545,7 @@ void wndOctaveScript::save_file_as()
 //---------------------------------------------
 void wndOctaveScript::modified()
 {
-	if (!_b_modified)
-	{
-		setWindowTitle(this->windowTitle()+"*");
-		_b_modified = true;
-	}
+    setModified(true);
 }
 
 
@@ -425,5 +582,70 @@ void wndOctaveScript::closeEvent( QCloseEvent* event )
 
 void wndOctaveScript::updateFont()
 {
-    ui->textScript->setFont(ariasdk_script_font);
+    if (_lexer==nullptr)
+        ui->textScript->setFont(ariasdk_script_font);
+    else
+    {
+        _lexer->setFont(ariasdk_script_font);
+    }
+}
+
+
+void wndOctaveScript::updateProject(radarProject* proj)
+{
+
+    if ((_project==nullptr)&&(proj==nullptr))
+        return;
+    // We are moving onto a new project
+    if ((proj!=nullptr)&&(proj!=_project))
+    {
+        _project = proj;
+        // 1. Check if the current script is a script of the new project
+        QVector<octaveScript*> scripts = proj->get_available_scripts();
+
+        octaveScript* projScript = nullptr;
+        for (auto s : scripts)
+            if ((s!=nullptr)&&(s->get_fullfilename()==_script->get_fullfilename()))
+            { projScript = s; break;}
+        // We have found a script item pointing to same file as current text under editing
+        if (projScript!=nullptr)
+        {
+            if ((_bInternal)&&(_script!=nullptr))
+            {
+                delete _script;
+            }
+            projScript->set_text(ui->textScript->text());
+            _script = projScript;
+            _bInternal = false;
+            return;
+        }
+
+        // Previous script was linked to the previous project and not on the new one.
+        if (!_bInternal)
+        {
+            octaveScript* newScript = new octaveScript();
+            newScript->set_filename(_script->get_full_filepath(),false);
+            newScript->set_text(ui->textScript->text());
+            _bInternal= true;
+            return;
+       }
+
+       // If script was internal (i.e. detached from any project) and detached from this one too,
+       // we don't need to do anything
+        return;
+    }
+
+    if (proj==nullptr)
+    {
+        if (!_bInternal)
+        {
+            // In this case, current script was linked to a project but we need to detach.
+            octaveScript* newScript = new octaveScript();
+            newScript->set_filename(_script->get_full_filepath(),false);
+            newScript->set_text(ui->textScript->text());
+            _script = newScript;
+            _bInternal= true;
+        }
+        _project = proj;
+    }
 }

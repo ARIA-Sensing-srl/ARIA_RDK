@@ -14,7 +14,7 @@ octaveScript::octaveScript(QString filename, projectItem* parent) : projectItem(
     _octave_interface(nullptr)
 {
 
-    set_scriptfile(filename);
+    set_filename(filename,false);
 }
 //------------------------------------
 octaveScript::octaveScript() : projectItem("newScript",DT_SCRIPT),
@@ -49,7 +49,7 @@ const octaveScript& octaveScript::operator = (const octaveScript& script)
 }
 
 
-void octaveScript::set_filename(QString filename)
+void octaveScript::set_filename(QString filename, bool save_nload)
 {
     QFileInfo fi(filename);
     _filename = fi.fileName();
@@ -58,6 +58,10 @@ void octaveScript::set_filename(QString filename)
         set_name("[noname]");
     else
         set_name(_filename);
+    if (save_nload)
+        save();
+    else
+        load();
 }
 //------------------------------------
 bool octaveScript::has_breakpoints()
@@ -83,12 +87,6 @@ void octaveScript::clear_breakpoint(int lineno)
 }
 
 
-//------------------------------------
-void octaveScript::set_scriptfile(QString filename)
-{
-    set_filename(filename);
-    load();
-}
 
 //------------------------------------
 bool    octaveScript::save_xml(QDomDocument& owner, QDomElement& script_elem)
@@ -243,7 +241,7 @@ void    octaveScript::save()
     }
 }
 //------------------------------------
-void                octaveScript::attach_to_dataengine(octaveInterface* octint)
+void    octaveScript::attach_to_dataengine(octaveInterface* octint)
 {
     _octave_interface= octint;
 }

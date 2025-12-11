@@ -128,6 +128,7 @@ public:
 
     void            set_expected_portname(const QString& portname);
     QString         get_expected_portname();
+    QString         get_current_portname() {return _serialport==nullptr? "no port": _serialport->portName();}
 
     bool            can_differentiate();
 

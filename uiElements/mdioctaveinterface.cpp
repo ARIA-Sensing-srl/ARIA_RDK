@@ -15,6 +15,7 @@
 #include "ui_mdioctaveinterface.h"
 #include "octaveinterface.h"
 #include "wndplot2d.h"
+#include "wnddatatable.h"
 #include <octave.h>
 #include <interpreter.h>
 
@@ -41,7 +42,8 @@ mdiOctaveInterface::mdiOctaveInterface(qDataThread* worker,  QWidget *parent) :
     _workspace(nullptr),
     _scripts_children(),
     _plot2d_children(),
-    _b_deleting(false)
+    _b_deleting(false),
+    _project(nullptr)
 {
     ui->setupUi(this);
 
@@ -85,6 +87,7 @@ mdiOctaveInterface::mdiOctaveInterface(qDataThread* worker,  QWidget *parent) :
 
     connect(ui->btnCleanOutput, &QPushButton::clicked, this, &mdiOctaveInterface::cleanOutput);
     connect(ui->pbCleanHistory, &QPushButton::clicked, this, &mdiOctaveInterface::cleanHistory);
+    connect(ui->workspaceList, &QTableWidget::doubleClicked, this, &mdiOctaveInterface::workspaceTableDblClick);
 
 }
 
@@ -130,7 +133,7 @@ void mdiOctaveInterface::closeEvent( QCloseEvent* event )
 
 void mdiOctaveInterface::newScript()
 {
-    wndOctaveScript* wndScript = new wndOctaveScript("",_interfaceData,this);
+    wndOctaveScript* wndScript = new wndOctaveScript(_project,"",_interfaceData,this);
     ui->mdiArea->addSubWindow(wndScript);
     wndScript->showMaximized();
 
@@ -149,7 +152,7 @@ void mdiOctaveInterface::openProjectScript(octaveScript* script)
 		octaveScript* wnd_script = wnd->get_script();
 
 		if ((wnd_script!=nullptr)&&(script!=nullptr))
-			if (wnd_script->get_full_filepath() == script->get_full_filepath())
+            if (wnd_script->get_fullfilename() == script->get_fullfilename())
 			{
 				((wndOctaveScript*)(child))->showMaximized();
 				return;
@@ -183,6 +186,7 @@ QTextLine mdiOctaveInterface::currentTextLine(const QTextCursor &cursor)
 bool mdiOctaveInterface::eventFilter(QObject *obj, QEvent *event) {
 
     if (event->type() == QMouseEvent::MouseButtonDblClick)
+    {
         if (obj == ui->historyCommands->viewport())
         {
             //QTextLine tl = currentTextLine(ui->historyCommands->textCursor());
@@ -193,11 +197,17 @@ bool mdiOctaveInterface::eventFilter(QObject *obj, QEvent *event) {
             qsizetype start= strCopy.lastIndexOf("\n",pos);
             strCopy = strCopy.mid(start,send-start);
             ui->lineEdit->setText(strCopy);
-
         }
+
+    }
     return QWidget::eventFilter(obj, event);
 }
 
+
+void mdiOctaveInterface::workspaceTableDblClick(const QModelIndex &index)
+{
+    viewDataInTable();
+}
 
 
 void mdiOctaveInterface::openScript()
@@ -212,10 +222,30 @@ void mdiOctaveInterface::openScript()
     for (int n=0; n < filesToRead.count(); n++)
     {
         QString fname = filesToRead.at(n);
-        wndOctaveScript* wndScript = new wndOctaveScript(fname,_interfaceData,this);
-        ui->mdiArea->addSubWindow(wndScript);
-        wndScript->showMaximized();
-		connect(_interfaceData, &octaveInterface::workspaceUpdated, wndScript, &wndOctaveScript::update_tips);
+
+        QList<QMdiSubWindow*> subwnds = ui->mdiArea->subWindowList();
+
+        bool bfound = false;
+        for (auto &child: subwnds)
+        {
+            wndOctaveScript* wnd = qobject_cast<wndOctaveScript*>(child->widget());
+
+            if ((wnd!=nullptr)&&(wnd->get_script()->get_fullfilename()==fname))
+            {
+                bfound = true;
+                break;
+            }
+
+            if (!bfound)
+            {
+                wndOctaveScript* wndScript = new wndOctaveScript(_project, fname,_interfaceData,this);
+                ui->mdiArea->addSubWindow(wndScript);
+                wndScript->showMaximized();
+                connect(_interfaceData, &octaveInterface::workspaceUpdated, wndScript, &wndOctaveScript::update_tips);
+            }
+            else
+                wnd->showMaximized();
+        }
     }
 
     if (filesToRead.count()>0)
@@ -242,14 +272,9 @@ void mdiOctaveInterface::closeScript()
 
 }
 
-void mdiOctaveInterface::saveSctiptAs()
-{
-
-}
 
 void mdiOctaveInterface::error(QString errorString)
 {
-	//    QMessageBox::critical(this,"Error",errorString);
 	QColor backup_color = ui->outputCommands->textColor();
 	ui->outputCommands->setTextColor(Qt::red);
 	ui->outputCommands->append(errorString);
@@ -374,6 +399,38 @@ void  mdiOctaveInterface::updateVarTable()
 	}
 }
 
+void mdiOctaveInterface::viewDataInTable()
+{
+    QModelIndexList selected = ui->workspaceList->selectionModel()->selectedRows();
+
+    for (const auto& sel : selected)
+    {
+        QString vname = ui->workspaceList->item(sel.row(),1)->text();
+        bool bfound = false;
+        for (auto &child: ui->mdiArea->subWindowList())
+        {
+            wnddatatable* wnd = qobject_cast<wnddatatable*>(child->widget());
+            if (wnd==nullptr)
+                continue;
+
+            if (wnd->getVariable()==vname)
+            {
+                wnd->showMaximized();
+                bfound = true;
+                break;
+            }
+        }
+
+        if (!bfound)
+        {
+            wnddatatable* wnd = new wnddatatable(_interfaceData, vname, this);
+            connect(interfaceData, &octaveInterface::updatedVariables, wnd, &wnddatatable::workSpaceModified);
+            ui->mdiArea->addSubWindow(wnd);
+            wnd->showMaximized();
+        }
+    }
+}
+
 
 void mdiOctaveInterface::workspaceTableRightClick(QPoint pos)
 {
@@ -382,7 +439,8 @@ void mdiOctaveInterface::workspaceTableRightClick(QPoint pos)
         return;
 
     QMenu *menu = new QMenu(this);
-
+    QAction *view = new QAction("View");
+    menu->addAction(view);
     QMenu *plot = menu->addMenu("Plot");
     QMenu *scatter = menu->addMenu("Scatter");
     QMenu *boxplot = menu->addMenu("Boxplot");
@@ -398,7 +456,7 @@ void mdiOctaveInterface::workspaceTableRightClick(QPoint pos)
 	QAction *plotNewPlot       = new QAction("New plot (each curve into own plot)");
 	QAction *plotNewSinglePlot = new QAction("New plot (all data into the same plot)");
 	QAction *plotNewSinglePlotXData = new QAction("New plot (x, y1,...yn)");
-
+    connect(view, &QAction::triggered, this, &mdiOctaveInterface::viewDataInTable);
 	connect(plotNewPlot, &QAction::triggered, this, &mdiOctaveInterface::variablePlot);
 	connect(plotNewSinglePlot, &QAction::triggered, this, &mdiOctaveInterface::variablePlotAllInOne);
 	connect(plotNewSinglePlotXData, &QAction::triggered, this, &mdiOctaveInterface::variablePlotXData);
@@ -1682,5 +1740,17 @@ void       mdiOctaveInterface::updateFont()
         wndOctaveScript* wnd = qobject_cast<wndOctaveScript*>(child->widget());
         if (wnd==nullptr) continue;
         wnd->updateFont();
+    }
+}
+
+
+void mdiOctaveInterface::updateScriptsProject(radarProject* proj)
+{
+    _project = proj;
+    for (auto &child: ui->mdiArea->subWindowList())
+    {
+        wndOctaveScript* wnd = qobject_cast<wndOctaveScript*>(child->widget());
+        if (wnd==nullptr) continue;
+        wnd->updateProject(proj);
     }
 }
