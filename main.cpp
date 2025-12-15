@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
 
 	QString tmpPath = QFileInfo(currentPath, QString("../tmp/")).absolutePath();
 	if (!QDir(tmpPath).exists())
-		QDir().mkdir(tmpPath);
+        QDir().mkdir(tmpPath);
 
 
 	QString xtmp = (QDir().toNativeSeparators(tmpPath)+QDir().separator());
@@ -43,7 +43,9 @@ int main(int argc, char *argv[])
 	qputenv("ROOT_PATH",currentPath.toUtf8());
 #endif
 
-	QApplication a(argc, argv);
+    QApplication a(argc, argv);
+    QIcon icon(":/icons/ARIA_Logo.ico");
+    a.setWindowIcon(icon);
 	QTranslator translator;
 	const QStringList uiLanguages = QLocale::system().uiLanguages();
 	for (const QString &locale : uiLanguages) {
@@ -53,7 +55,7 @@ int main(int argc, char *argv[])
 			break;
 		}
 	}
-
+    qApp->setWindowIcon(icon);
 	// set style
 	qApp->setStyle(QStyleFactory::create("Fusion"));
 	// increase font size for better reading
@@ -86,17 +88,12 @@ int main(int argc, char *argv[])
 	qApp->setPalette(darkPalette);
 
 	MainWindow w;
-
+    w.setWindowIcon(icon);
 	w.showMaximized();
 	// Setup QMessageCatch
 	/*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 	qInstallMessageHandler(MainWindow::QMessageOutput);
 	/*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
-	QIcon icon(":/icons/ARIA_Logo.ico");
-
-	a.setWindowIcon(icon);
-
-
 
 	return a.exec();
 }

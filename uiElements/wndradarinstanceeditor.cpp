@@ -549,7 +549,17 @@ void    wndRadarInstanceEditor::init_parameter_table()
    for (int row = 0; row < params.count(); row++)
    {
         radarParamPointer param = params[row];      // This is the actual value.
+        if (param==nullptr)
+        {
+            QMessageBox::warning(this, "Error", QString("Null param at row : ")+ QString::number(row));
+            continue;
+        }
         radarParamPointer defpar= ref->get_param(param->get_name());
+         if (defpar==nullptr)
+            {
+                QMessageBox::warning(this, "Error", QString("Null defparam at row : ")+ QString::number(row));
+                continue;
+            }
         param_to_table_row(row, param, defpar);
         update_read_value(row);
    }
@@ -874,18 +884,23 @@ void    wndRadarInstanceEditor::current_param_to_table(int row, radarParamPointe
 			case RPT_FLOAT:
             case RPT_STRING:
             {
+                QTableWidgetItem* item = nullptr;
                 if (ui->tblParams->cellWidget(row,COL_SETVALUE )!=nullptr)
+                {
                     ui->tblParams->removeCellWidget(row, COL_SETVALUE);
+                }
 
-                QTableWidgetItem* item = ui->tblParams->currentItem() == nullptr ? new QTableWidgetItem() :
-                                             ui->tblParams->currentItem();
+                if (ui->tblParams->item(row,COL_SETVALUE)==nullptr)
+                    item = new QTableWidgetItem();
+                else
+                    item = ui->tblParams->item(row,COL_SETVALUE);
 
                 QVector<QVariant> vals = current_value->value_to_variant();
-                if (vals.count()>0)
-                    item->setText(vals[0].toString());
+
+                item->setText(vals.count()>0 ? vals[0].toString() : "");
                 ui->tblParams->setItem(row,COL_SETVALUE,item);
                 RADARPARAMIOTYPE  io_type = current_value->get_io_type();
-               if (io_type == RPT_IO_OUTPUT)
+                if (io_type == RPT_IO_OUTPUT)
                    item->setFlags(item->flags() ^ Qt::ItemIsEditable);
                 break;
             }
@@ -1270,12 +1285,17 @@ void wndRadarInstanceEditor::connect_radar()
 
     if (_radar_instance->is_connected())
     {
-        _radar_instance->disconnect();
+
         if (_scheduler!=nullptr)
         {
             if (_scheduler->isRunning())
                 _scheduler->stop();
         }
+        _radar_instance->disconnect();
+        ui->teSerialOutput->setTextColor( QColor( "yellow" ) );
+        ui->teSerialOutput->append( tr("Radar: ")+_radar_instance->get_device_name()+tr(" disconnected "));
+        // restore
+        ui->teSerialOutput->setTextColor( QColor("grey") );
 
     }
     else
@@ -1303,6 +1323,14 @@ void wndRadarInstanceEditor::connect_radar()
        }
         else
             _radar_instance->set_ports(ports);
+    }
+
+    if (_radar_instance->is_connected())
+    {
+        ui->teSerialOutput->setTextColor( QColor( "green" ) );
+        ui->teSerialOutput->append( tr("Radar: ")+_radar_instance->get_device_name()+tr(" connected on port :")+_radar_instance->get_current_portname() );
+        // restore
+        ui->teSerialOutput->setTextColor( QColor("grey") );
     }
 }
 //-----------------------------------------------------------

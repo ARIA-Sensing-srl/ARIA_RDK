@@ -26,6 +26,8 @@ private:
     std::string      varName;
 public slots:
     void             workSpaceModified(const std::set<std::string>& vars);
+    void             exportToCSV();
+    void             exportToMat();
 };
 
 #endif // WNDDATATABLE_H

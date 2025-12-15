@@ -25,6 +25,7 @@ extern QDir             ariasdk_projects_path;
 extern QDir             ariasdk_scripts_path;
 extern QDir             ariasdk_antennas_path;
 extern QDir             ariasdk_antennaff_path;
+extern QDir             ariasdk_data_path;
 using namespace octave;
 
 extern octaveInterface         *interfaceData;
@@ -134,6 +135,7 @@ void mdiOctaveInterface::closeEvent( QCloseEvent* event )
 void mdiOctaveInterface::newScript()
 {
     wndOctaveScript* wndScript = new wndOctaveScript(_project,"",_interfaceData,this);
+
     ui->mdiArea->addSubWindow(wndScript);
     wndScript->showMaximized();
 
@@ -1431,18 +1433,25 @@ void    mdiOctaveInterface::delete_children(dlgQWTPlot* child)
 // ---------------------------------------------------------------------------------
 void mdiOctaveInterface::saveWorkspaceData()
 {
+    if ((_interfaceData == nullptr)||(_workspace==nullptr))
+    {
+        QMessageBox::warning(this, "Warning", "No available workspace");
+        return;
+    }
+
     QDateTime date = QDateTime::currentDateTime();
     QString formatted_date_tme = date.toString("yyyy_MM_dd_hh_mm_ss");
 
-    QString projectFile = QFileDialog::getSaveFileName(this,"Workspace file",
-                                                       ariasdk_projects_path.absolutePath()+QDir::separator()+QString("data_")+formatted_date_tme,
+    QString dataFile = QFileDialog::getSaveFileName(this,"Workspace file",
+                                                       ariasdk_projects_path.absolutePath()+QDir::separator()+QString("data_")+formatted_date_tme+QString(".mat"),
                                                        tr("Data workspace(*.mat);;All files (*.*)"),
                                                        nullptr,
                                                        QFileDialog::Options(QFileDialog::Detail|QFileDialog::DontUseNativeDialog));
-    if (projectFile.isEmpty())
+    if (dataFile.isEmpty())
         return;
 
-    _workspace->save_to_file(projectFile.toStdString());
+    ariasdk_data_path = QFileInfo(dataFile).absolutePath()+QDir::separator();
+    _workspace->save_to_file(dataFile.toStdString());
 }
 
 // ---------------------------------------------------------------------------------

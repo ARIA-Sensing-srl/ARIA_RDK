@@ -1,0 +1,8 @@
+// icon.rc
+// This file defines resources for a Windows application.
+
+#include <windows.h> // Required for standard resource definitions
+
+// Define an icon resource
+// IDC_MAIN_ICON is the ID, 101 is a unique numerical ID, ICON is the resource type, and my_icon.ico is the file.
+IDC_MAIN_ICON ICON "./icons/ARIA_Logo.ico"

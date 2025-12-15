@@ -35,6 +35,7 @@ QDir             ariasdk_projects_path;
 QDir             ariasdk_scripts_path;
 QDir             ariasdk_antennas_path;
 QDir             ariasdk_antennaff_path;
+QDir             ariasdk_data_path;
 
 QString          ariasdk_fw_uploader;
 QString          ariasdk_fw_bin;
@@ -60,7 +61,7 @@ MainWindow* MainWindow::mainWnd = nullptr;
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
     app_settings(QSettings::NativeFormat, QSettings::UserScope,
-                 "ARIA Sensing", "ARIA UWB SDK") ,
+                 "ARIA Sensing", "ARIA RDK") ,
     ui(new Ui::MainWindow),
     _plot2d_children(),
     _plot3d_children()
@@ -680,10 +681,43 @@ void MainWindow::configureModule()
     if (items.count()!=1) return;
 
     QTreeWidgetItem* widget = items[0];
-    projectItem *currentItem = (projectItem*)(widget->data(0, Qt::UserRole).value<void*>());
+    projectItem* currentItem = (projectItem*)(widget->data(0, Qt::UserRole).value<void*>());
+    configureSingleModule(currentItem);
+
+}
+void MainWindow::configureSingleModule(projectItem* item)
+{
+    projectItem* currentItem= item;
     if (currentItem==nullptr) return;
     if (currentItem->get_type() != DT_RADARMODULE)
         return;
+
+    // Avoid to edit modules if any associated instance is running
+    if ((_multiradarScheduler!=nullptr)&&(_multiradarScheduler->isRunning()))
+    {
+        QVector<radarInstance*> devs = _multiradarScheduler->get_devices();
+        for (auto dev: devs)
+        {
+            if (dev->get_module()==(radarModule*)currentItem)
+            {
+                QMessageBox::warning(this,"Warning", "Cannot edit a module if any associated device is running");
+                return;
+            }
+        }
+    }
+    // Don't edit a module if a device is being edited.
+    for (auto &child: ui->mdiArea->subWindowList())
+    {
+        wndRadarInstanceEditor* wnd = qobject_cast<wndRadarInstanceEditor*>(child->widget());
+        if (wnd!=nullptr)
+        {
+            if ((wnd->getRadarInstance()!=nullptr)&&(wnd->getRadarInstance()->get_module() ==((radarModule*)currentItem)))
+            {
+                QMessageBox::warning(this,"Warning","Cannot edit the module: a device is currently being edited");
+                return;
+            }
+        }
+    }
 
     for (auto &child: ui->mdiArea->subWindowList())
     {
@@ -711,63 +745,16 @@ void MainWindow::tree_project_double_click(QTreeWidgetItem* widget, int column)
         return;
 
      projectItem *currentItem = (projectItem*)(widget->data(0, Qt::UserRole).value<void*>());
+    if (currentItem==nullptr) return;
 
     if (currentItem->get_type() == DT_RADARMODULE)
      {
-        QList<QMdiSubWindow*> subwnds = ui->mdiArea->subWindowList();
-        for (auto &child: subwnds)
-        {
-            wndRadarModuleEditor* wnd = qobject_cast<wndRadarModuleEditor*>(child->widget());
-            if (wnd!=nullptr)
-            {
-             if (wnd->get_radar_module()->get_name()==((radarModule*)currentItem)->get_name())
-             {
-                 wnd->showMaximized();
-                 return;
-             }
-            }
-        }
-
-        radarModule *radar_module = (radarModule*)(currentItem);
-        wndRadarModuleEditor *radarModuleEditor = new wndRadarModuleEditor(radar_module,project,this);
-        connect(radarModuleEditor, &wndRadarModuleEditor::radar_saved, this, &MainWindow::update_radar_module);
-        ui->mdiArea->addSubWindow(radarModuleEditor);
-        radarModuleEditor->showMaximized();
+         configureSingleModule(currentItem);
      }
 
      if (currentItem->get_type() == DT_RADARDEVICE)
      {
-         if (_multiradarScheduler!=nullptr)
-         {
-             if (_multiradarScheduler->has_device((radarInstance*)currentItem))
-             {
-                 if (_multiradarScheduler->isRunning())
-                    if (QMessageBox::warning(this,"Warning","The current radar is running. It will be stopped. Continue?", QMessageBox::Yes|QMessageBox::No)
-                         ==QMessageBox::No) return;
-
-                 if (_multiradarScheduler->isRunning()) _multiradarScheduler->stop();
-             }
-         }
-         QList<QMdiSubWindow*> subwnds = ui->mdiArea->subWindowList();
-         for (auto &child: subwnds)
-         {
-             wndRadarInstanceEditor* wnd = qobject_cast<wndRadarInstanceEditor*>(child->widget());
-             if (wnd!=nullptr)
-             {
-                 if (wnd->getRadarInstance()->get_device_name()==((radarInstance*)currentItem)->get_device_name())
-                 {
-                     wnd->showMaximized();
-                     return;
-                 }
-             }
-         }
-        QVector<radarModule*> modules  = project->get_available_modules();
-
-        radarInstance *radar_instance = (radarInstance*)(currentItem);
-        wndRadarInstanceEditor *radarInstanceEditor = new wndRadarInstanceEditor(radar_instance,modules,this);
-
-        ui->mdiArea->addSubWindow(radarInstanceEditor);
-        radarInstanceEditor->showMaximized();
+         configureSingleDevice(currentItem);
      }
 
     if (currentItem->get_type() == DT_SCRIPT)
@@ -787,12 +774,6 @@ void MainWindow::tree_project_double_click(QTreeWidgetItem* widget, int column)
          wndOctaveInterface->openProjectScript((octaveScript*)(currentItem));
          wndOctaveInterface->showMaximized();
 
-        /*
-        wndOctaveScript *script_editor = new wndOctaveScript((octaveScript*)(currentItem), interfaceData, this);
-        connect(script_editor, SIGNAL(update_tree(projectItem*)),  this, &MainWindow::updateProjectTree(projectItem*)));
-        ui->mdiArea->addSubWindow(script_editor);
-        script_editor->showMaximized();
-*/
     }
 
     if (currentItem->get_type() == DT_ANTENNA)
@@ -868,7 +849,9 @@ void MainWindow::read_option_file()
     ariasdk_scripts_path.setPath(app_settings.value(QString("script_path"),def_path).toString());
     ariasdk_antennas_path.setPath(app_settings.value(QString("antennas_path"),def_path).toString());
     ariasdk_antennaff_path.setPath(app_settings.value(QString("farfield_path"),def_path).toString());
+    ariasdk_data_path.setPath(app_settings.value(QString("data_path"),def_path).toString());
     app_settings.endGroup();
+
     app_settings.beginGroup("FW_Upload");
     ariasdk_fw_uploader = app_settings.value("fw_loader").toString();
     ariasdk_fw_bin      = app_settings.value("fw_binary_file").toString();
@@ -883,11 +866,11 @@ void MainWindow::read_option_file()
     ariasdk_serial_name         = app_settings.value("fw_serial_port","").toString();
 
     app_settings.endGroup();
-    app_settings.beginGroup("Settings");
+    app_settings.beginGroup("Text Settings");
 
     QString qfontscript = app_settings.value("scripts_font","").toString();
     if (qfontscript=="") qfontscript = "Arial";
-    bool bok;
+    bool    bok;
     int     qfontsize   = app_settings.value("scripts_font_size").toInt(&bok);
     if (!bok) qfontsize = 12;
     ariasdk_script_font = QFont(qfontscript, qfontsize);
@@ -904,6 +887,7 @@ void MainWindow::update_option_file()
     app_settings.setValue(QString("script_path"),ariasdk_scripts_path.absolutePath()+QDir::separator());
     app_settings.setValue(QString("antennas_path"),ariasdk_antennas_path.absolutePath()+QDir::separator());
     app_settings.setValue(QString("farfield_path"),ariasdk_antennaff_path.absolutePath()+QDir::separator());
+    app_settings.setValue(QString("data_path"),ariasdk_data_path.absolutePath()+QDir::separator());
     app_settings.endGroup();
 
     app_settings.beginGroup("FW_Upload");
@@ -919,7 +903,7 @@ void MainWindow::update_option_file()
 
     app_settings.endGroup();
 
-    app_settings.beginGroup("Settings");
+    app_settings.beginGroup("Text Settings");
     app_settings.setValue("scripts_font", ariasdk_script_font.family());
     app_settings.setValue("scripts_font_size", ariasdk_script_font.pointSize());
 
@@ -1186,65 +1170,76 @@ void MainWindow::deleteDevice()
 //---------------------------------------------------------------
 void MainWindow::configureDevice()
 {
-    if (project==nullptr) return;
-
     QList<QTreeWidgetItem*> items = ui->treeProject->selectedItems();
     if (items.count()!=1) return;
+    QTreeWidgetItem* widget = items[0];
+    projectItem* currentItem = (projectItem*)(widget->data(0, Qt::UserRole).value<void*>());
+    configureSingleDevice(currentItem);
+}
 
-    QStringList devsRunning;
+void MainWindow::configureSingleDevice(projectItem* item)
+{
 
-    for (auto item : items)
+    if (project==nullptr) return;
+
+    projectItem *currentItem = item;
+    if (currentItem==nullptr) return;
+    if (currentItem->get_type() != DT_RADARDEVICE)
+        return;
+
+    radarInstance* device = (radarInstance*)currentItem;
+
+    if (_multiradarScheduler!=nullptr)
     {
-        QTreeWidgetItem* widget = item;
-        projectItem *currentItem = (projectItem*)(widget->data(0, Qt::UserRole).value<void*>());
-
-
-        if (currentItem==nullptr) continue;
-        if (currentItem->get_type() != DT_RADARDEVICE)
-            continue;
-
-        radarInstance* device = (radarInstance*)currentItem;
-
-        if (_multiradarScheduler!=nullptr)
-        {
-            if (_multiradarScheduler->has_device(device))
-                if (_multiradarScheduler->isRunning())
-                {
-                    devsRunning.append(device->get_device_name());
-                    continue;
-                }
-        }
-
-        bool bExisting = false;
-        for (auto &child: ui->mdiArea->subWindowList())
-        {
-            wndRadarInstanceEditor* wnd = qobject_cast<wndRadarInstanceEditor*>(child->widget());
-
-            if (wnd!=nullptr)
+        if (_multiradarScheduler->has_device(device))
+            if (_multiradarScheduler->isRunning())
             {
-                if (wnd->getRadarInstance()==(radarInstance*)currentItem)
-                {
-                    wnd->showMaximized();
-                    bExisting = true;
-                    break;
-                }
+                QMessageBox::warning(this,"Warning",
+                                     QString("The device is running. It cannot be edited"));
+                return;
+            }
+    }
+
+    // Cannot edit a device if its module is being edited
+
+    for (auto &child: ui->mdiArea->subWindowList())
+    {
+        wndRadarModuleEditor* wnd = qobject_cast<wndRadarModuleEditor*>(child->widget());
+        if (wnd!=nullptr)
+        {
+            if (wnd->get_radar_module()->get_name()==((radarInstance*)currentItem)->get_module()->get_name())
+            {
+                QMessageBox::warning(this,"Warning","Cannot edit a device if its module is currently edited");
+                return;
             }
         }
+    }
 
-        if (!bExisting)
+    bool bExisting = false;
+    for (auto &child: ui->mdiArea->subWindowList())
+    {
+        wndRadarInstanceEditor* wnd = qobject_cast<wndRadarInstanceEditor*>(child->widget());
+
+        if (wnd!=nullptr)
         {
-            wndRadarInstanceEditor *radarInstanceEditor = new wndRadarInstanceEditor((radarInstance*)currentItem,
-                                                                                    QVector<radarModule*>({((radarInstance*)(currentItem))->get_module()}),this);
-            ui->mdiArea->addSubWindow(radarInstanceEditor);
-            radarInstanceEditor->showMaximized();
+            if (wnd->getRadarInstance()==(radarInstance*)currentItem)
+            {
+                wnd->showMaximized();
+                bExisting = true;
+                break;
+            }
         }
     }
 
-    if (!devsRunning.empty())
+    if (!bExisting)
     {
-        QMessageBox::warning(this,"Warning",
-                             QString("The following devices :")+devsRunning.join("n")+QString(" are running. They cannot be edited"));
+        wndRadarInstanceEditor *radarInstanceEditor = new wndRadarInstanceEditor((radarInstance*)currentItem,
+                                                                                QVector<radarModule*>({((radarInstance*)(currentItem))->get_module()}),this);
+        ui->mdiArea->addSubWindow(radarInstanceEditor);
+        radarInstanceEditor->showMaximized();
     }
+
+
 }
 
 //---------------------------------------------------------------

@@ -83,6 +83,7 @@ public slots:
     void newDevice();
     void deleteDevice();
     void configureDevice();
+    void configureSingleDevice(projectItem* item);
 
 // Octave interface
     void octaveCompletedTask(QString task);
@@ -111,6 +112,7 @@ public slots:
     void importRadarModule();
     void update_radar_module(radarModule* modified);
     void configureModule();
+    void configureSingleModule(projectItem* item);
     void deleteModule();
 // Scheduler
     void newScheduler();

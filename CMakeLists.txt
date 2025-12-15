@@ -29,6 +29,7 @@ set(PROJECT_SOURCES
 # Windows
 #---------------------------------
 
+
 if (WIN32)
 #---------------------------------
 #paths
@@ -160,6 +161,8 @@ endif()
   include_directories("${EIGEN_ROOT}")
 #---------------------------------
 
+set(app_icon_resource_windows "${CMAKE_CURRENT_SOURCE_DIR}/icons/icon.rc")
+
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
 
     qt_add_executable(ARIA_RDK
@@ -213,6 +216,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         uiElements/plotdata.h uiElements/plotdata.cpp
 
         uiElements/wnddatatable.h uiElements/wnddatatable.cpp uiElements/wnddatatable.ui
+        icons/icon.rc
 
 
     )
@@ -509,5 +513,6 @@ endif()
 
 
 if(QT_VERSION_MAJOR EQUAL 6)
+  qt_add_resources(${ARIA_RDK_RESOURCES})
     qt_finalize_executable(ARIA_RDK)
 endif()

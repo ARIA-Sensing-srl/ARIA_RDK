@@ -1,5 +1,10 @@
 #include "wnddatatable.h"
 #include "ui_wnddatatable.h"
+#include <QDateTime>
+#include <QFileDialog>
+#include <QMessageBox>
+
+extern QDir             ariasdk_data_path;
 
 wnddatatable::wnddatatable(octaveInterface* datainterface, QString var, QWidget *parent)
     : QDialog(parent)
@@ -11,12 +16,69 @@ wnddatatable::wnddatatable(octaveInterface* datainterface, QString var, QWidget 
     ui->leVarName->setText(var);
     this->setWindowTitle(QString("Data view : ")+var);
     ui->dataTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
     updateTable();
 }
 
 wnddatatable::~wnddatatable()
 {
     delete ui;
+}
+
+void wnddatatable::exportToCSV()
+{
+    QDateTime date = QDateTime::currentDateTime();
+    QString formatted_date_tme = date.toString("yyyy_MM_dd_hh_mm_ss");
+
+    QString dataFile = QFileDialog::getSaveFileName(this,"Comma Separated Values file",
+                                                    ariasdk_data_path.absolutePath()+QDir::separator()+QString("data_")+formatted_date_tme+QString(".csv"),
+                                                    tr("Data workspace(*.mat);;All files (*.*)"),
+                                                    nullptr,
+                                                    QFileDialog::Options(QFileDialog::Detail|QFileDialog::DontUseNativeDialog));
+    if (dataFile.isEmpty())
+        return;
+
+    ariasdk_data_path = QFileInfo(dataFile).absolutePath()+QDir::separator();
+
+    QFile file(dataFile);
+    if(file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream out(&file);
+        out << "# Data exported from ARIA-RDK : " << formatted_date_tme << "\n";
+        out << "# Var name : " << QString::fromStdString(varName) << "\n";
+        out << "# n Rows : " << ui->dataTable->rowCount() << " ; n Cols : " << ui->dataTable->columnCount() << "\n";
+        for (int r = 0; r < ui->dataTable->rowCount(); r++)
+            for (int c = 0; c < ui->dataTable->columnCount(); c++)
+            {
+                out << ui->dataTable->item(r,c)->text();
+                out << ((c < ui->dataTable->columnCount() - 1) ? " , " : "\n");
+            }
+    }
+    file.close();
+
+}
+void wnddatatable::exportToMat()
+{
+    if ((dataInterface == nullptr)||(dataInterface->get_workspace()==nullptr))
+    {
+        QMessageBox::warning(this, "Warning", "No available workspace");
+        return;
+    }
+
+    QDateTime date = QDateTime::currentDateTime();
+    QString formatted_date_tme = date.toString("yyyy_MM_dd_hh_mm_ss");
+
+    QString dataFile = QFileDialog::getSaveFileName(this,"Workspace file",
+                                                       ariasdk_data_path.absolutePath()+QDir::separator()+QString("data_")+formatted_date_tme+QString(".mat"),
+                                                       tr("Data workspace(*.mat);;All files (*.*)"),
+                                                       nullptr,
+                                                       QFileDialog::Options(QFileDialog::Detail|QFileDialog::DontUseNativeDialog));
+    if (dataFile.isEmpty())
+        return;
+
+    ariasdk_data_path = QFileInfo(dataFile).absolutePath()+QDir::separator();
+
+    dataInterface->get_workspace()->save_to_file(dataFile.toStdString());
+
 }
 
 

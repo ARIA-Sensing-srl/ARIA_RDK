@@ -123,6 +123,7 @@ wndOctaveScript::wndOctaveScript(radarProject* proj, QString filename, octaveInt
 
     connect(ui->textScript, &QsciScintilla::textChanged, this, &wndOctaveScript::modified);
     createShortcutActions();
+    _lexer->setFont(ariasdk_script_font);
 }
 
 wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* dataEngine,QWidget *parent, QString basedir) : QDialog(parent),
@@ -191,6 +192,8 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
     this->setWindowTitle(QString("Octave Script:")+QFileInfo(_script->get_full_filepath()).fileName());
 
     createShortcutActions();
+
+    _lexer->setFont(ariasdk_script_font);
 }
 
 
