@@ -513,6 +513,5 @@ endif()
 
 
 if(QT_VERSION_MAJOR EQUAL 6)
-  qt_add_resources(${ARIA_RDK_RESOURCES})
     qt_finalize_executable(ARIA_RDK)
 endif()
