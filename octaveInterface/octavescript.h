@@ -14,12 +14,14 @@
 #include <octavews.h>
 #include <octaveinterface.h>
 
-class octaveScript : public projectItem
+
+
+class octaveScript : public QObject, public projectItem
 {
+    Q_OBJECT
+private:
     QStringList      _lines;
     QFile            _script_file;
-    QVector<bool>    _breakpoints;
-    QVector<bool>    _comment;
     octavews*        _octavews;
     QVector<int>    _begin_line, _end_line;
 
@@ -31,22 +33,31 @@ class octaveScript : public projectItem
     int             end_line(int line);
     int             begin_line(int line);
 
-    octaveInterface*        _octave_interface;
+    octaveInterface*
+                    _octave_interface;
 
     bool           _file_existing;  // if the file is missing this is just a placeholder.
 
-    void            setValid(bool bValid = true);
+    void                setValid(bool bValid = true);
 
+    QMap<int,int>      _breakpoint_lines;   // This is a map between the line we ask a breakpoint and the effective one
+
+    struct breakpoint_info
+    {
+        bool remove_next;
+        int remove_line;
+        int do_not_remove_line;
+    };
+
+    bool                b_need_parsing;
+    breakpoint_info     m_breakpoint_info;
+    enum InterpStatus   _interp_status;
 public:
     octaveScript();
     octaveScript(QString filename, projectItem* parent=nullptr);
     octaveScript(const octaveScript& script);
     ~octaveScript();
     void                    set_filename(QString filename, bool save_nload=false);
-    bool                    has_breakpoints();
-    bool                    is_breakpoint(int lineno);
-    void                    set_breakpoint(int lineno);
-    void                    clear_breakpoint(int lineno);
     QString                 get_fullfilename(){return _script_file.fileName();}
     int                     get_lines_count();
 
@@ -68,10 +79,31 @@ public:
     void                    attach_to_dataengine(octaveInterface* octint);
     octaveInterface*        get_octave_interface();
 
-    bool    operator == (octaveScript script);
-
+    bool                    operator == (octaveScript script);
     bool                    isValid() {return _file_existing;}
 
+    // Breakpoints management
+    void                    add_breakpoint (int line, const QString& cond="");
+    void                    remove_all_breakpoints();
+    void                    remove_breakpoint (int line);
+    bool                    has_breakpoint_at_line(int line);
+    bool                    has_breakpoints();
+
+    // Parsing status
+    bool                    needParsing() {return b_need_parsing;};
+    void                    setParsed()   {b_need_parsing = false;}
+
+signals:
+    void                    db_stop(octaveScript* script,int line);
+    void                    db_run(octaveScript* script);
+    void                    db_complete(octaveScript* script);
+
+public slots:
+    void                    interpreter_dbstop(const QString& fname, int line);
+    void                    interpreter_dbrun(const QString& fname, int line);
+    void                    interpreter_dbcomplete(const QString& fname, int line);
+    void                    request_pause();
+    void                    request_run();
 };
 
 typedef octaveScript* octaveScript_ptr;

@@ -57,28 +57,43 @@
           </item>
           <item row="0" column="1">
            <widget class="QPushButton" name="btnOctaveScriptLoad">
+            <property name="toolTip">
+             <string>Open an existing m file</string>
+            </property>
             <property name="text">
              <string>Open Script</string>
             </property>
             <property name="icon">
-             <iconset theme="document-open"/>
+             <iconset resource="../icons/aria_rdk.qrc">
+              <normaloff>:/icons/open-file-folder-icon.png</normaloff>:/icons/open-file-folder-icon.png</iconset>
             </property>
            </widget>
           </item>
           <item row="0" column="2">
            <widget class="QPushButton" name="btnExport">
+            <property name="toolTip">
+             <string>Export data to Octave format</string>
+            </property>
             <property name="text">
              <string>Export data to file</string>
+            </property>
+            <property name="icon">
+             <iconset resource="../icons/aria_rdk.qrc">
+              <normaloff>:/icons/data-transfer-icon.png</normaloff>:/icons/data-transfer-icon.png</iconset>
             </property>
            </widget>
           </item>
           <item row="0" column="0">
            <widget class="QPushButton" name="btnOctaveScriptNew">
+            <property name="toolTip">
+             <string>Create a new blank script</string>
+            </property>
             <property name="text">
              <string>New Script</string>
             </property>
             <property name="icon">
-             <iconset theme="document-new"/>
+             <iconset resource="../icons/aria_rdk.qrc">
+              <normaloff>:/icons/file-line-icon.png</normaloff>:/icons/file-line-icon.png</iconset>
             </property>
            </widget>
           </item>
@@ -245,6 +260,8 @@
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="../icons/aria_rdk.qrc"/>
+ </resources>
  <connections/>
 </ui>

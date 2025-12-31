@@ -1997,13 +1997,15 @@ void MainWindow::projectItemMenuRequest(QPoint pos)
             break;
         }
     }
+    open->setIcon(QIcon(":/icons/open-file-folder-icon.png"));
+    remove->setIcon(QIcon(":/icons/recycle-bin-line-icon.png"));
     QAction *start = nullptr;
     QAction *stop  = nullptr;
     if (bhasRadar)
     {
         start = new QAction("Run");
         stop  = new QAction("Stop");
-        start->setIcon(QIcon(":/icons/business-management-icon.png"));
+        start->setIcon(QIcon(":/icons/green-play-button-icon.png"));
         stop->setIcon(QIcon(":/icons/stop-road-sign-icon.png"));
     }
 

@@ -18,7 +18,12 @@
 
 #undef OCTAVE_THREAD
 
-
+enum InterpStatus
+{
+    IS_IDLE,
+    IS_RUNNING,
+    IS_DBPAUSE
+};
 
 class octaveInterface : public QObject
 {
@@ -33,16 +38,14 @@ private:
     octavews                *_workspace;
     //std::set<std::string>   _vars_immediate_update;
     std::pair<std::string, std::string> _var_immediate_update;      // This is the variable / filename associated with the pipe
-#ifndef OCTAVE_THREAD
-    bool                    _b_running_command;                     // true if we are running a command from the command line
-    bool                    _b_running_script;
-    int                     _stopped_at;
-#endif
     //------------------------------------------------------------------------
     std::shared_ptr<class octaveScript> _current_script;
     std::string                         _immediate_filename;
 	QString								_last_error;
 	QString								_last_warning;
+
+    enum InterpStatus   _interp_status;
+    octaveScript*       _running_script;
 public:
 	static octaveInterface*	_octave_interface_instance;
 
@@ -50,6 +53,7 @@ public:
     ~octaveInterface();
     // Commands from in-line command editor
     bool                    appendCommand(const QString &strCommand);
+    bool                    executeNextCommandInQueue();
     const QString &         getCurrentCommand();
     bool                    retrieveCommand(QString &commandToExecute);
     void                    completeCommand();
@@ -60,9 +64,11 @@ public:
     void                    stopThread(bool bStop=true);
     // Main octave engine
     inline octave::interpreter*    get_octave_engine() {return _octave_engine;}
-    void                    run(std::shared_ptr<class octaveScript> script);
-    bool                    run(const QString &program, bool remove_immediate_error_msg = false);
+    bool                    run(octaveScript* script);
+    bool                    step(octaveScript* script);
     void                    set_pwd(const QString& path);
+
+    InterpStatus            getStatus() {return _interp_status;}
 /*----------------------------------------*/
 	void					set_last_error_message(QString error = "");
  /*--------------------------------------------
@@ -87,6 +93,7 @@ public:
     void            immediate_inquiry_of_radar_var(const std::string& str, const std::string& filename);
     void            immediate_command(const std::string& str, const std::string& filename);
     void            remove_interface_file();
+    octaveScript*   get_running_script() {return _running_script;}
 signals:
     void            workerError(QString error);
     void            workspaceUpdated();
@@ -96,8 +103,12 @@ signals:
     void            workspaceVarModified();
     void            workspaceVarDeleted();
     void            errorWhileRunning();
+
 #ifndef OCTAVE_THREAD
-    void            commandCompleted(QString command, int errorcode);
+    void            engineRunning();
+    void            engineDone(const QString& command, int errorcode);
+    void            engineBusy();
+    void            enginePaused();
 #endif
     void            updatedVariable(const std::string& var);
     void            updatedVariables(const std::set<std::string>& vars);

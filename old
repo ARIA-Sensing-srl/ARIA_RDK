@@ -1,0 +1,37 @@
+#-------------------------------------------------------
+# Deploy JKQT - Not needed if static linking
+        install(
+                        DIRECTORY "${JKQT_INSTALL_PREFIX}/bin/"
+                        DESTINATION "${CMAKE_CURRENT_BINARY_DIR}"
+                        FILES_MATCHING PATTERN "*.so"
+                        )
+#-------------------------------------------------------
+# Deploy QWT
+        install(
+                        DIRECTORY "${QWT_ROOT}/lib/"
+                        DESTINATION "${CMAKE_CURRENT_BINARY_DIR}"
+                        FILES_MATCHING PATTERN "*.so*"
+                        )
+#-------------------------------------------------------
+# Deploy Octave
+        install(
+                        DIRECTORY "${OCTAVE_LIBRARY_PATH}"
+                        DESTINATION "${CMAKE_CURRENT_BINARY_DIR}"
+                        FILES_MATCHING PATTERN "*.so"
+                        )
+#-------------------------------------------------------
+# Deploy QScintilla
+        install(
+                        DIRECTORY "${QSCINTILLA_INSTALL_PATH}"
+                        DESTINATION "${CMAKE_CURRENT_BINARY_DIR}"
+                        FILES_MATCHING PATTERN "*.so"
+                        )
+#-------------------------------------------------------
+# Deploy Required m files & oct files for toolboxes
+        install(DIRECTORY "${MSYS_MINGW_HOME}/share/octave/${OCTAVE_VERSION}/m/"
+                        DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/octave/m/"
+                        FILES_MATCHING PATTERN "*.m")
+
+        install(DIRECTORY "${MSYS_MINGW_HOME}/lib/octave/${OCTAVE_VERSION}/oct/x86_64-w64-mingw32"
+                        DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/octave/oct/"
+                        FILES_MATCHING PATTERN "*.oct")

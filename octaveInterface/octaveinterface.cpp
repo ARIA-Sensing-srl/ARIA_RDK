@@ -31,15 +31,19 @@ octaveInterface::octaveInterface() :
     , bStopThread(false)
     , _workspace(nullptr)
     , _immediate_filename("")
+    ,_running_script(nullptr)
 {
     // Initialize Octave Interpreter
     _octave_engine = new octave::interpreter();
-    _octave_engine->interactive(true);
+    _octave_engine->interactive(false);
     _octave_engine->initialize();
     _octave_engine->initialize_history(true);
     _octave_engine->initialize_load_path();
 
+
     _octave_engine->get_error_system().debug_on_caught(false);
+    _octave_engine->interactive(false);
+    _octave_engine->get_input_system().gud_mode(false);
     _octave_engine->execute();
 
     octave::output_system& os = _octave_engine->get_output_system();
@@ -52,8 +56,7 @@ octaveInterface::octaveInterface() :
     _current_script = nullptr;
 
 #ifndef OCTAVE_THREAD
-    _b_running_command = false;
-    _b_running_script = true;
+    _interp_status = IS_IDLE;
 #endif
     // These dummy declarations allow for proper linking of the radarparameter template.
     // to be investigated.
@@ -81,7 +84,7 @@ octaveInterface::octaveInterface() :
     catch(...)
     {
     }
-
+    _interp_status = IS_IDLE;
 #ifdef EXPLICIT_PATHS
     // Add General
     try
@@ -218,34 +221,44 @@ void octaveInterface::stopThread(bool bStop)
     bStopThread = bStop;
 }
 //-----------------------------
+
+
 bool octaveInterface::appendCommand(const QString &newCommand)
 {
     last_output = "";
-    if (_b_running_command) return true;
-#ifdef OCTAVE_THREAD
-    sync.lock();
     commandList.append(newCommand);
-    sync.unlock();
-    return bStopThread;
-#else
+    if (_interp_status==IS_RUNNING)
+    {
+        // Put the current command into the queue
+        emit engineBusy();
+        return false;
+    }
+
+    return executeNextCommandInQueue();
+}
+
+bool octaveInterface::executeNextCommandInQueue()
+{
+    if (commandList.isEmpty()) return true;
+
     int parse_status;
 
-    _b_running_command = true;
+    const QString& newCommand = commandList.constFirst();
+    commandList.removeFirst();
     bool b_ok = true;
     try
     {
         octave::flush_stdout();
         update_interpreter_internal_vars();
-
+        _interp_status = IS_RUNNING;
+        emit engineRunning();
         _octave_engine->eval_string(newCommand.toStdString(),false,parse_status);
-
 
     }
     catch (const octave::exit_exception& ex)
     {
         QString str_error = "";
         emit workerError(QString("Error while executing:\n")+newCommand+"\n"+str_error);
-
         parse_status = -2;
         b_ok = false;
 
@@ -259,17 +272,20 @@ bool octaveInterface::appendCommand(const QString &newCommand)
         parse_status = -1;
         b_ok = false;
     }
-    emit commandCompleted(newCommand,parse_status);
+    _interp_status = IS_IDLE;
+    emit engineDone(newCommand,parse_status);
     if (b_ok)
+    {
         completeCommand();
+    }
     else
     {
         remove_interface_file();
         emit errorWhileRunning();
     }
 
-    _b_running_command = false;
-#endif
+    // Go with the next command
+    executeNextCommandInQueue();
     return b_ok;
 }
 //-----------------------------
@@ -338,8 +354,49 @@ void octaveInterface::completeCommand()
 //-----------------------------
 octave_value_list octaveInterface::execute_feval(QString command, octave_value_list& in, int n_outputs)
 {
+    bool bok = true;
+    int parse_status = 0;
 
-    return _octave_engine->feval(command.toLatin1(),in,n_outputs);
+
+    octave_value_list retval;
+    if (_octave_engine==nullptr) return retval;
+    if (_interp_status==IS_RUNNING)
+    {
+        emit engineBusy();
+        return retval;
+    }
+
+    try
+    {
+        _interp_status = IS_RUNNING;
+        emit engineRunning();
+        retval = _octave_engine->feval(command.toLatin1(),in,n_outputs);
+
+    }
+    catch (const octave::exit_exception& ex)
+    {
+        QString str_error = "";
+        emit workerError(QString("Error while executing:\n")+command+"\n"+str_error);
+        parse_status = -1;
+        bok = false;
+    }
+    catch (const octave::execution_exception& ex)
+    {
+        _octave_engine->get_error_system().save_exception(ex);
+        QString str_error = QString::fromStdString(_octave_engine->get_error_system().last_error_message());
+        emit workerError(QString("Error while executing:\n")+command+"\n"+str_error);
+        parse_status = -1;
+        bok = false;
+    }
+    _interp_status = IS_IDLE;
+    emit engineDone(command,parse_status);
+
+    if (bok)
+    {
+        completeCommand();
+    }
+
+    return retval;
 }
 
 
@@ -364,53 +421,47 @@ int octaveInterface::findFunc(QString funcName,bool wait)
 }
 
 
-void octaveInterface::run(std::shared_ptr<octaveScript> script)
+bool octaveInterface::run(octaveScript* script)
 {
-    if (_b_running_command)
-        return;
-
     if (script == nullptr)
-        return;
+        return true;
 
     if (_octave_engine==nullptr)
-        return;
+        return true;
 
-    if (!script->isValid()) return;
+    if (!script->isValid()) return false;
 
-    if (script->has_breakpoints())
+    if (_interp_status==IS_RUNNING)
     {
-        //int nline = 0;
+        emit engineBusy();
+        return false;
     }
 
-    for (int n=0; n < script->get_line_count(); n++)
-    {
-        //int bOk;
-        QString current_line = script->get_line(n);
-        appendCommand(current_line);
-    }
-}
-
-bool    octaveInterface::run(const QString &program, bool remove_immediate_error_msg)
-{
-    if (_b_running_command)
-        return false;
-
-    if (_octave_engine==nullptr)
-        return false;
+    std::string strfilename = script->get_fullfilename().toStdString();
 
     try
     {
         update_interpreter_internal_vars();
+        _interp_status = IS_RUNNING;
+        emit engineRunning();
+        // Note, source_file will not re-read the file. If it has been modified we need to re-read it
+        _octave_engine->get_evaluator().quiet_breakpoint_flag(true);
+        if (script->needParsing())
+            _octave_engine->clear_symbol(QFileInfo(script->get_fullfilename()).baseName().toStdString());
 
-        _octave_engine->eval(program.toStdString(),0);
+        _running_script = script;
+
+        _octave_engine->source_file(strfilename,"",false,true);
+        script->setParsed();
 
     }
     catch (const octave::exit_exception& ex)
     {
-        if (!remove_immediate_error_msg)
-            emit workerError(QString("Octave exit-exception while executing current script\n")+QString::number(ex.exit_status()));
-        //fi.remove();
-        _b_running_command = false;
+        emit workerError(QString("Octave exit-exception while executing current script\n")+QString::number(ex.exit_status()));
+
+        _interp_status = IS_IDLE;
+        emit engineDone(script->get_fullfilename(), -1);
+        _running_script = nullptr;
         return false;
     }
     catch (const octave::execution_exception& ex)
@@ -418,21 +469,49 @@ bool    octaveInterface::run(const QString &program, bool remove_immediate_error
         _octave_engine->get_error_system().save_exception(ex);
         QString str_error = QString::fromStdString(_octave_engine->get_error_system().last_error_message());
 
-        if (!remove_immediate_error_msg)
-            emit workerError(QString("Octave execution exception while executing current script\n")+str_error);
-        //fi.remove();
-        _b_running_command = false;
+        emit workerError(QString("Octave execution exception while executing current script\n")+str_error);
+
+        emit engineDone(script->get_fullfilename(), -2);
+        _interp_status = IS_IDLE;
+        _running_script = nullptr;
         return false;
     }
 
+    _interp_status = IS_IDLE;
+    _running_script = nullptr;
+    emit engineDone(script->get_fullfilename(), 0);
     completeCommand();
-    //fi.remove();
 
-    _b_running_command = false;
     emit workspaceUpdated();
     return true;
 }
 
+
+bool            octaveInterface::step(octaveScript* script)
+{
+    if (script==nullptr) return true;
+
+    if (_octave_engine==nullptr)
+        return true;
+
+
+    if (_interp_status==IS_RUNNING)
+    {
+        emit engineBusy();
+        return false;
+    }
+
+
+    if (_interp_status==IS_IDLE)
+    {
+        emit engineRunning();
+
+    }
+
+
+    return true;
+
+}
 
 void            octaveInterface::append_variable(QString name, const octave_value& val, bool internal)
 {

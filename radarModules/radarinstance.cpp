@@ -1322,7 +1322,7 @@ bool radarInstance::init_scripts()
 
     for (auto& script: _init_scripts)
         if (script != nullptr)
-            if (!_workspace->data_interface()->run(script->get_text(),true)) return false;
+            if (!_workspace->data_interface()->run(script)) return false;
 
     if (_params_to_modify.empty()||_init_scripts.empty())
     {
@@ -1448,7 +1448,7 @@ bool radarInstance::postacquisition_scripts()
 
     for (auto& script: _post_acquisition_scripts)
         if (script != nullptr)
-            if (!_workspace->data_interface()->run(script->get_text(),true)) return false;
+            if (!_workspace->data_interface()->run(script)) return false;
 
     if (_params_to_modify.empty()||_post_acquisition_scripts.isEmpty())
     {

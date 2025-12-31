@@ -105,7 +105,7 @@ void mdiOctaveInterface::cleanHistory()
 
 void mdiOctaveInterface::update_octave_interface()
 {
-    connect(interfaceData, &octaveInterface::commandCompleted, this, &mdiOctaveInterface::octaveCompletedTask);
+    connect(interfaceData, &octaveInterface::engineDone, this, &mdiOctaveInterface::octaveCompletedTask);
     connect(interfaceData, &octaveInterface::workspaceUpdated, this, &mdiOctaveInterface::updateVarTable);
     _interfaceData = interfaceData;
     if (_interfaceData!=nullptr)
@@ -226,28 +226,28 @@ void mdiOctaveInterface::openScript()
         QString fname = filesToRead.at(n);
 
         QList<QMdiSubWindow*> subwnds = ui->mdiArea->subWindowList();
-
+        wndOctaveScript* wnd = nullptr;
         bool bfound = false;
         for (auto &child: subwnds)
         {
-            wndOctaveScript* wnd = qobject_cast<wndOctaveScript*>(child->widget());
+            wnd = qobject_cast<wndOctaveScript*>(child->widget());
 
             if ((wnd!=nullptr)&&(wnd->get_script()->get_fullfilename()==fname))
             {
                 bfound = true;
                 break;
             }
-
-            if (!bfound)
-            {
-                wndOctaveScript* wndScript = new wndOctaveScript(_project, fname,_interfaceData,this);
-                ui->mdiArea->addSubWindow(wndScript);
-                wndScript->showMaximized();
-                connect(_interfaceData, &octaveInterface::workspaceUpdated, wndScript, &wndOctaveScript::update_tips);
-            }
-            else
-                wnd->showMaximized();
         }
+        if (!bfound)
+        {
+            wndOctaveScript* wndScript = new wndOctaveScript(_project, fname,_interfaceData,this);
+            ui->mdiArea->addSubWindow(wndScript);
+            wndScript->showMaximized();
+            connect(_interfaceData, &octaveInterface::workspaceUpdated, wndScript, &wndOctaveScript::update_tips);
+        }
+        else
+            wnd->showMaximized();
+
     }
 
     if (filesToRead.count()>0)

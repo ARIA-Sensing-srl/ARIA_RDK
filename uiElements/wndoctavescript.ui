@@ -31,19 +31,50 @@
      </property>
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
-       <widget class="QToolButton" name="tbRun">
+       <widget class="QToolButton" name="tbNew">
+        <property name="toolTip">
+         <string>Create a new empty script (Ctrl+N)</string>
+        </property>
         <property name="text">
-         <string>Run</string>
+         <string>New</string>
+        </property>
+        <property name="icon">
+         <iconset resource="../icons/aria_rdk.qrc">
+          <normaloff>:/icons/file-line-icon.png</normaloff>:/icons/file-line-icon.png</iconset>
         </property>
         <property name="shortcut">
-         <string>F5</string>
+         <string>Ctrl+N</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QToolButton" name="tbOpen">
+        <property name="toolTip">
+         <string>Open an existing m-file (Ctrl+O)</string>
+        </property>
+        <property name="text">
+         <string>Open</string>
+        </property>
+        <property name="icon">
+         <iconset resource="../icons/aria_rdk.qrc">
+          <normaloff>:/icons/open-file-folder-icon.png</normaloff>:/icons/open-file-folder-icon.png</iconset>
+        </property>
+        <property name="shortcut">
+         <string>Ctrl+O</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QToolButton" name="tbSave">
+        <property name="toolTip">
+         <string>Save current script (Ctrl+S)</string>
+        </property>
         <property name="text">
          <string>Save</string>
+        </property>
+        <property name="icon">
+         <iconset resource="../icons/aria_rdk.qrc">
+          <normaloff>:/icons/save-icon.png</normaloff>:/icons/save-icon.png</iconset>
         </property>
         <property name="shortcut">
          <string>Ctrl+S</string>
@@ -52,8 +83,15 @@
       </item>
       <item>
        <widget class="QToolButton" name="tbSaveAs">
+        <property name="toolTip">
+         <string>Save current script as new m-file (Ctrl+Shift+S)</string>
+        </property>
         <property name="text">
          <string>Save as</string>
+        </property>
+        <property name="icon">
+         <iconset resource="../icons/aria_rdk.qrc">
+          <normaloff>:/icons/save-as-icon.png</normaloff>:/icons/save-as-icon.png</iconset>
         </property>
         <property name="shortcut">
          <string>Ctrl+Shift+S</string>
@@ -61,22 +99,96 @@
        </widget>
       </item>
       <item>
-       <widget class="QToolButton" name="tbOpen">
+       <widget class="QToolButton" name="tbRun">
+        <property name="toolTip">
+         <string>Run, Continue (F5)</string>
+        </property>
         <property name="text">
-         <string>Open</string>
+         <string>Run</string>
+        </property>
+        <property name="icon">
+         <iconset resource="../icons/aria_rdk.qrc">
+          <normaloff>:/icons/green-play-button-icon.png</normaloff>:/icons/green-play-button-icon.png</iconset>
         </property>
         <property name="shortcut">
-         <string>Ctrl+O</string>
+         <string>F5</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QToolButton" name="tbNew">
+       <widget class="QToolButton" name="tbToggleBreakpoint">
+        <property name="toolTip">
+         <string>Toggle a breakpoint at the current line (F9)</string>
+        </property>
         <property name="text">
-         <string>New</string>
+         <string>Breakpoint</string>
+        </property>
+        <property name="icon">
+         <iconset resource="../icons/aria_rdk.qrc">
+          <normaloff>:/icons/stop-blocked-icon.png</normaloff>:/icons/stop-blocked-icon.png</iconset>
         </property>
         <property name="shortcut">
-         <string>Ctrl+N</string>
+         <string>F9</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QToolButton" name="tbStep">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="toolTip">
+         <string>Run one step (F11)</string>
+        </property>
+        <property name="text">
+         <string>...</string>
+        </property>
+        <property name="icon">
+         <iconset resource="../icons/aria_rdk.qrc">
+          <normaloff>:/icons/play-next-button-green-icon.png</normaloff>:/icons/play-next-button-green-icon.png</iconset>
+        </property>
+        <property name="shortcut">
+         <string>F11</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QToolButton" name="tbPause">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="toolTip">
+         <string>Pause the elaboration engine (Ctrl+P)</string>
+        </property>
+        <property name="text">
+         <string>...</string>
+        </property>
+        <property name="icon">
+         <iconset resource="../icons/aria_rdk.qrc">
+          <normaloff>:/icons/red-pause-button-icon.png</normaloff>:/icons/red-pause-button-icon.png</iconset>
+        </property>
+        <property name="shortcut">
+         <string>Ctrl+P</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QToolButton" name="tbStop">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="toolTip">
+         <string>Stop the execution (Ctrl+C)</string>
+        </property>
+        <property name="text">
+         <string>...</string>
+        </property>
+        <property name="icon">
+         <iconset resource="../icons/aria_rdk.qrc">
+          <normaloff>:/icons/stop-road-sign-icon.png</normaloff>:/icons/stop-road-sign-icon.png</iconset>
+        </property>
+        <property name="shortcut">
+         <string>Ctrl+C</string>
         </property>
        </widget>
       </item>
@@ -105,6 +217,8 @@
    <header location="global">Qsci/qsciscintilla.h</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="../icons/aria_rdk.qrc"/>
+ </resources>
  <connections/>
 </ui>
