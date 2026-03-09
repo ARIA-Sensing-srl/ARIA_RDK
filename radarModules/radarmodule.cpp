@@ -826,6 +826,7 @@ bool radarModule::load_xml()
                 {   // Create a new placeholder script
                     octaveScript* newScript = new octaveScript (get_root()->get_folder(cstr_scripts)->get_full_path()
                                                                    +QFileInfo(script_file).fileName(),get_root()->get_folder(QString(cstr_scripts)));
+                    newScript->attach_to_dataengine(get_root()->get_workspace()->data_interface());
                     get_root()->add_script(newScript);
                     _init_scripts.append(newScript);
                 }
@@ -857,6 +858,7 @@ bool radarModule::load_xml()
                 {   // Create a new placeholder script
                     octaveScript* newScript = new octaveScript (get_root()->get_folder(cstr_scripts)->get_full_path()
                                                                    +QFileInfo(script_file).fileName(),get_root()->get_folder(QString(cstr_scripts)));
+                    newScript->attach_to_dataengine(get_root()->get_workspace()->data_interface());
                     get_root()->add_script(newScript);
                     _post_acquisition_scripts.append(newScript);
                 }

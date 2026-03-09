@@ -217,6 +217,9 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
 
         uiElements/wnddatatable.h uiElements/wnddatatable.cpp uiElements/wnddatatable.ui
         icons/icon.rc
+        uiElements/marker.h uiElements/marker.cc
+        octaveInterface/rdk_event_manager.h octaveInterface/rdk_event_manager.cpp
+        octaveInterface/octavethreadhandler.h octaveInterface/octavethreadhandler.cpp
 
 
     )

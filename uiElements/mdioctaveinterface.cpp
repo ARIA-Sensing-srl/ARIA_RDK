@@ -63,8 +63,8 @@ mdiOctaveInterface::mdiOctaveInterface(qDataThread* worker,  QWidget *parent) :
 
     //-----------------------------------------------
     // Update workspace table
-    QStringList columnHeader{"","Var","Size","Value"};
-    ui->workspaceList->setHorizontalHeaderLabels(columnHeader);
+    ui->workspaceList->setColumnCount(5);
+    ui->workspaceList->setHorizontalHeaderLabels(QStringList({"","name","size","value","type"}));
     QStringList fileNames{":/icons/tech-icon.png",":/icons/shortcut-icon.png"};
     for (int n=0; n<2; n++)
     {
@@ -90,8 +90,104 @@ mdiOctaveInterface::mdiOctaveInterface(qDataThread* worker,  QWidget *parent) :
     connect(ui->pbCleanHistory, &QPushButton::clicked, this, &mdiOctaveInterface::cleanHistory);
     connect(ui->workspaceList, &QTableWidget::doubleClicked, this, &mdiOctaveInterface::workspaceTableDblClick);
 
+    // as default, make the "local variables" (debug window) as hidden
+    ui->LocalVars->setVisible(false);
+
+
 }
 
+
+
+void mdiOctaveInterface::handle_interpreter_busy(const QString& currentCmd)
+{
+    QMessageBox::warning(this, "Warning", "The elaboration engine is currently busy. Operation Aborted");
+}
+
+
+void mdiOctaveInterface::updateLocalVar(bool b_clear_only)
+{
+
+    return;
+    ui->tbLocalVars->clearContents();
+    if (b_clear_only) return;
+    if (_interfaceData==nullptr) return;
+    _workspace->data_interface()->operation_wait_and_lock();
+    std::shared_ptr<stack_frame> frame = _interfaceData->engine_get_octave_engine()->get_evaluator().get_current_stack_frame();
+    if (frame==nullptr)  return;
+
+    std::list<std::string> local_var_list = frame->variable_names();
+
+
+    int i =0;
+    for (std::list<std::string>::iterator iter_var = local_var_list.begin();
+         iter_var != local_var_list.end(); iter_var++)
+    {
+        ui->tbLocalVars->setRowCount(ui->tbLocalVars->rowCount()+1);
+        ui->tbLocalVars->setItem(i,0,new QTableWidgetItem(QString::fromStdString(*iter_var)));
+        std::stringstream os;
+        frame->varval(*iter_var).short_disp(os);
+        std::string strval = os.str();
+        ui->tbLocalVars->setItem(i++,1,new QTableWidgetItem(QString::fromStdString(strval)));
+    }
+
+    if (i==0)
+        ui->LocalVars->setVisible(false);
+    _workspace->data_interface()->operation_unlock();
+}
+
+void mdiOctaveInterface::handle_interpreter_debug(const QString& fname, int line)
+{
+//    if (!ui->LocalVars->isVisible()) ui->LocalVars->setVisible(true);
+//    updateLocalVar(false);
+    QList<QMdiSubWindow*> subwnds = ui->mdiArea->subWindowList();
+    for (auto &child: subwnds)
+    {
+        wndOctaveScript* wnd = qobject_cast<wndOctaveScript*>(child->widget());
+
+        if (wnd==nullptr) continue;
+        octaveScript* wnd_script = wnd->get_script();
+
+        if ((wnd_script!=nullptr))
+            if (wnd_script->get_fullfilename() == fname)
+            {
+                ((wndOctaveScript*)(child))->show();
+                ui->mdiArea->setActiveSubWindow(child);
+                return;
+            }
+    }
+    // Create a new one
+    wndOctaveScript* wndScript = new wndOctaveScript(_project, fname,_interfaceData,this);
+    ui->mdiArea->addSubWindow(wndScript);
+    wndScript->showMaximized();
+
+}
+
+
+void mdiOctaveInterface::handle_interpreter_complete(const QString& command)
+{
+    ui->LocalVars->setVisible(false);
+    updateLocalVar(true);
+    // Do we need to update the table?
+    if (_workspace==nullptr)
+        return;
+
+    //ui->outputCommands->append(_interfaceData->get_last_output());
+    ui->historyCommands->setTextColor( QColor( "white" ));
+    ui->historyCommands->append(command);
+
+
+}
+
+void mdiOctaveInterface::handle_interpreter_error(const QString& command, const QString& error, int line)
+{
+    if (_workspace==nullptr)
+        return;
+
+    ui->historyCommands->setTextColor( QColor( "red" ));
+    ui->historyCommands->append(command);
+    ui->outputCommands->setTextColor(QColor("red"));
+    ui->outputCommands->append(error+ QString(" at line: ")+QString::number(line));
+}
 void mdiOctaveInterface::cleanOutput()
 {
     ui->outputCommands->clear();
@@ -105,11 +201,20 @@ void mdiOctaveInterface::cleanHistory()
 
 void mdiOctaveInterface::update_octave_interface()
 {
-    connect(interfaceData, &octaveInterface::engineDone, this, &mdiOctaveInterface::octaveCompletedTask);
-    connect(interfaceData, &octaveInterface::workspaceUpdated, this, &mdiOctaveInterface::updateVarTable);
+    connect(interfaceData, &octaveInterface::signal_interface_execute_dbcomplete,
+            this, &mdiOctaveInterface::handle_interpreter_complete);
+    connect(interfaceData, &octaveInterface::signal_interface_execute_dberror,
+            this, &mdiOctaveInterface::handle_interpreter_error);
+    connect(interfaceData, &octaveInterface::signal_workspace_updated,
+            this, &mdiOctaveInterface::updateVarTable);
+    connect(interfaceData, &octaveInterface::signal_interface_execute_dbbusy,
+            this, &mdiOctaveInterface::handle_interpreter_busy);
+    connect(interfaceData, &octaveInterface::signal_interface_execute_dbstop,
+            this, &mdiOctaveInterface::handle_interpreter_debug);
+
     _interfaceData = interfaceData;
     if (_interfaceData!=nullptr)
-        _workspace = _interfaceData->get_workspace();
+        _workspace = _interfaceData->workspace_get();
 
     updateVarTable();
 }
@@ -139,7 +244,8 @@ void mdiOctaveInterface::newScript()
     ui->mdiArea->addSubWindow(wndScript);
     wndScript->showMaximized();
 
-	connect(_interfaceData, &octaveInterface::workspaceUpdated, wndScript, &wndOctaveScript::update_tips);
+    connect(_interfaceData, &octaveInterface::signal_workspace_updated,
+            wndScript, &wndOctaveScript::update_tips);
 }
 
 
@@ -165,7 +271,8 @@ void mdiOctaveInterface::openProjectScript(octaveScript* script)
     ui->mdiArea->addSubWindow(wndScript);
     wndScript->showMaximized();
 
-	connect(_interfaceData, &octaveInterface::workspaceUpdated, wndScript, &wndOctaveScript::update_tips);
+    connect(_interfaceData, &octaveInterface::signal_workspace_updated,
+            wndScript, &wndOctaveScript::update_tips);
 }
 
 
@@ -243,7 +350,8 @@ void mdiOctaveInterface::openScript()
             wndOctaveScript* wndScript = new wndOctaveScript(_project, fname,_interfaceData,this);
             ui->mdiArea->addSubWindow(wndScript);
             wndScript->showMaximized();
-            connect(_interfaceData, &octaveInterface::workspaceUpdated, wndScript, &wndOctaveScript::update_tips);
+            connect(_interfaceData, &octaveInterface::signal_workspace_updated,
+                    wndScript, &wndOctaveScript::update_tips);
         }
         else
             wnd->showMaximized();
@@ -293,31 +401,14 @@ void mdiOctaveInterface::newCommandLine()
     QString strCommand = ui->lineEdit->text();
     if (strCommand.isEmpty())
         return;
-#ifdef OCTAVE_THREAD
-    //bool bRes =
-#endif
-    interfaceData->appendCommand(strCommand);
-#ifdef OCTAVE_THREAD
-    if (_elabThread->isPaused()) _elabThread->resume();
-#else
-//    if (!bRes) error(QString("Error while parsing \n")+strCommand);
-#endif
+
+    interfaceData->operation_append_command(strCommand);
+
     ui->lineEdit->setText("");
-
 }
 
 
-void mdiOctaveInterface::octaveCompletedTask(QString task, int errorcode)
-{
-    // Do we need to update the table?
-    if (_workspace==nullptr)
-        return;
 
-    //ui->outputCommands->append(_interfaceData->get_last_output());
-    ui->historyCommands->setTextColor( errorcode==0? QColor( "white" ):QColor("red") );
-    ui->historyCommands->append(task);
-
-}
 
 void mdiOctaveInterface::add_variable_row(int row, const std::string& name, const octave_value& val, bool internal)
 {
@@ -343,20 +434,26 @@ void mdiOctaveInterface::add_variable_row(int row, const std::string& name, cons
 
     ui->workspaceList->setItem(row,2,new QTableWidgetItem(strSize));
 
-    // Column 3: value type
+    // Column 3: short string with value
+    std::stringstream os;
+    val.short_disp(os);
+    std::string strval = os.str();
+    ui->workspaceList->setItem(row,3,new QTableWidgetItem(QString::fromStdString(strval)));
+    // Column 4: value type
 
-    QString strVal = QString::fromStdString(val.class_name());
+    QString strValType = QString::fromStdString(val.class_name());
 
     if (val.is_complex_scalar()||val.is_complex_matrix())
-        strVal = "complex";
-    ui->workspaceList->setItem(row,3,new QTableWidgetItem(strVal));
+        strValType = "complex";
+    ui->workspaceList->setItem(row,4,new QTableWidgetItem(strValType));
+
 }
 
 void mdiOctaveInterface::clear_and_init_var_table()
 {
 	ui->workspaceList->clear();
-	ui->workspaceList->setColumnCount(4);
-	ui->workspaceList->setHorizontalHeaderLabels(QStringList({"","name","size","type"}));
+    ui->workspaceList->setColumnCount(5);
+    ui->workspaceList->setHorizontalHeaderLabels(QStringList({"","name","size","value","type"}));
 	ui->workspaceList->setRowCount(0);
 }
 
@@ -370,7 +467,7 @@ void  mdiOctaveInterface::updateVarTable()
 	for (const auto& sel : selected)
 		selectedVars.append(ui->workspaceList->item(sel.row(),1)->text());
 */
-	QStringList vars = _interfaceData->get_workspace()->get_all_vars();
+    QStringList vars = _interfaceData->workspace_get()->get_all_vars();
 
 	// Remove unnecessary rows
 	int n=0;
@@ -426,7 +523,10 @@ void mdiOctaveInterface::viewDataInTable()
         if (!bfound)
         {
             wnddatatable* wnd = new wnddatatable(_interfaceData, vname, this);
-            connect(interfaceData, &octaveInterface::updatedVariables, wnd, &wnddatatable::workSpaceModified);
+
+            connect(interfaceData, &octaveInterface::signal_updated_variables,
+                    wnd, &wnddatatable::workSpaceModified);
+
             ui->mdiArea->addSubWindow(wnd);
             wnd->showMaximized();
         }
@@ -1329,16 +1429,26 @@ void mdiOctaveInterface::updatedSingleVar(const std::string& varname)
         else
             ui->workspaceList->item(n,2)->setText(strSize);
 
-        // Column 3
-        QString strVal = QString::fromStdString(var.class_name());
-
-        if (var.is_complex_scalar()||var.is_complex_matrix())
-            strVal = "complex";
+        // Columnn 3
+        std::stringstream os;
+        var.short_disp(os);
+        QString strValue = QString::fromStdString(os.str());
 
         if (ui->workspaceList->item(n,3)==nullptr)
-            ui->workspaceList->setItem(n,3,new QTableWidgetItem(strVal));
+            ui->workspaceList->setItem(n,3,new QTableWidgetItem(strValue));
         else
-            ui->workspaceList->item(n,3)->setText(strVal);
+            ui->workspaceList->item(n,3)->setText(strValue);
+
+        // Column 4
+        QString strValType = QString::fromStdString(var.class_name());
+
+        if (var.is_complex_scalar()||var.is_complex_matrix())
+            strValType = "complex";
+
+        if (ui->workspaceList->item(n,4)==nullptr)
+            ui->workspaceList->setItem(n,4,new QTableWidgetItem(strValType));
+        else
+            ui->workspaceList->item(n,4)->setText(strValType);
 
         for (const auto& child: _plot2d_children)
 		{
@@ -1459,8 +1569,8 @@ void mdiOctaveInterface::variableQwtPlot()
 {
 	dlgQWTPlot*  wnd2d = new dlgQWTPlot(this,this, _workspace, PTQWT_PLOT);
 
-	connect(_interfaceData, &octaveInterface::workspaceUpdated, wnd2d, &dlgQWTPlot::update_workspace);
-	connect(_interfaceData, &octaveInterface::updatedVariables, wnd2d, &dlgQWTPlot::update_data);
+    connect(_interfaceData, &octaveInterface::signal_workspace_updated, wnd2d, &dlgQWTPlot::update_workspace);
+    connect(_interfaceData, &octaveInterface::signal_updated_variables, wnd2d, &dlgQWTPlot::update_data);
 
 	ui->mdiArea->addSubWindow(wnd2d);
 	wnd2d->showMaximized();
@@ -1495,8 +1605,8 @@ void mdiOctaveInterface::variableQwtPlotAllInOne()
 {
 	dlgQWTPlot*  wnd2d = new dlgQWTPlot(this,this, _workspace, PTQWT_PLOT);
 
-	connect(_interfaceData, &octaveInterface::workspaceUpdated, wnd2d, &dlgQWTPlot::update_workspace);
-	connect(_interfaceData, &octaveInterface::updatedVariables, wnd2d, &dlgQWTPlot::update_data);
+    connect(_interfaceData, &octaveInterface::signal_workspace_updated, wnd2d, &dlgQWTPlot::update_workspace);
+    connect(_interfaceData, &octaveInterface::signal_updated_variables, wnd2d, &dlgQWTPlot::update_data);
 
 	ui->mdiArea->addSubWindow(wnd2d);
 	wnd2d->showMaximized();
@@ -1532,8 +1642,8 @@ void mdiOctaveInterface::variableQwtPlotXData()
 {
 	dlgQWTPlot*  wnd2d = new dlgQWTPlot(this, this,_workspace, PTQWT_PLOT);
 
-	connect(_interfaceData, &octaveInterface::workspaceUpdated, wnd2d, &dlgQWTPlot::update_workspace);
-	connect(_interfaceData, &octaveInterface::updatedVariables, wnd2d, &dlgQWTPlot::update_data);
+    connect(_interfaceData, &octaveInterface::signal_workspace_updated, wnd2d, &dlgQWTPlot::update_workspace);
+    connect(_interfaceData, &octaveInterface::signal_updated_variables, wnd2d, &dlgQWTPlot::update_data);
 
 	ui->mdiArea->addSubWindow(wnd2d);
 	wnd2d->showMaximized();
@@ -1547,13 +1657,7 @@ void mdiOctaveInterface::variableQwtPlotXData()
 		// Get var name
 		QString varname = ui->workspaceList->item(row,1)->text();
 		vars.append(varname);
-		//wnd2d->add_plot(varname,"");
-		//QString last_error = wnd2d->last_error();
-		//if (!last_error.isEmpty())
-		//{
-		//	QMessageBox::critical(this,"Error creating plot",last_error);
-		//return;
-		//}
+
 	}
 
 	if (vars.size()==1)
@@ -1660,8 +1764,8 @@ void mdiOctaveInterface::variableQwtDensityPlot()
 {
 	dlgQWTPlot*  wnd2d = new dlgQWTPlot(this, this,_workspace, PTQWT_DENSITY);
 
-	connect(_interfaceData, &octaveInterface::workspaceUpdated, wnd2d, &dlgQWTPlot::update_workspace);
-	connect(_interfaceData, &octaveInterface::updatedVariables, wnd2d, &dlgQWTPlot::update_data);
+    connect(_interfaceData, &octaveInterface::signal_workspace_updated, wnd2d, &dlgQWTPlot::update_workspace);
+    connect(_interfaceData, &octaveInterface::signal_updated_variables, wnd2d, &dlgQWTPlot::update_data);
 
 	ui->mdiArea->addSubWindow(wnd2d);
 	wnd2d->showMaximized();
@@ -1763,3 +1867,5 @@ void mdiOctaveInterface::updateScriptsProject(radarProject* proj)
         wnd->updateProject(proj);
     }
 }
+
+

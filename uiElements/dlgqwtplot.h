@@ -10,6 +10,7 @@
 #include <QwtPlotGrid>
 #include <QwtSymbol>
 #include <QwtLegend>
+#include <QKeyEvent>
 
 namespace Ui {
 class dlgQWTPlot;
@@ -233,6 +234,12 @@ public slots:
 	void cbContourChanged(Qt::CheckState state);
 	void cbColorMapChanged(int index);
 	void userZoom(const QRectF&);
+    void keyPressEvent(QKeyEvent *e) {
+        if(e->key() != Qt::Key_Escape)
+            QDialog::keyPressEvent(e);
+        else {/* minimize */}
+    }
+
 };
 
 

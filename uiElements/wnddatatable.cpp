@@ -58,7 +58,7 @@ void wnddatatable::exportToCSV()
 }
 void wnddatatable::exportToMat()
 {
-    if ((dataInterface == nullptr)||(dataInterface->get_workspace()==nullptr))
+    if ((dataInterface == nullptr)||(dataInterface->workspace_get()==nullptr))
     {
         QMessageBox::warning(this, "Warning", "No available workspace");
         return;
@@ -77,7 +77,7 @@ void wnddatatable::exportToMat()
 
     ariasdk_data_path = QFileInfo(dataFile).absolutePath()+QDir::separator();
 
-    dataInterface->get_workspace()->save_to_file(dataFile.toStdString());
+    dataInterface->workspace_get()->save_to_file(dataFile.toStdString());
 
 }
 
@@ -96,7 +96,7 @@ void wnddatatable::updateTable()
         return;
     }
 
-    if ((!dataInterface->get_workspace()->is_internal(varName))&&(!dataInterface->get_workspace()->is_octave(varName)))
+    if ((!dataInterface->workspace_get()->is_internal(varName))&&(!dataInterface->workspace_get()->is_octave(varName)))
     {
         ui->dataTable->clear();
         QPalette palette = ui->label->palette();
@@ -108,7 +108,7 @@ void wnddatatable::updateTable()
         return;
     }
     ui->leWarning->setVisible(false);
-    octave_value& val = dataInterface->get_workspace()->var_value(varName);
+    octave_value& val = dataInterface->workspace_get()->var_value(varName);
 
     if ((val.ndims()>2)||(val.ndims()==0))
     {
@@ -139,8 +139,8 @@ void wnddatatable::updateTable()
                 Complex cval = cdata(r,c);
                 QString sign = cval.imag() > 0 ? "+i" : "-i";
                 ui->dataTable->setItem(r,c,new QTableWidgetItem(
-                                    QString::number(cval.real(),'e',5)+sign+
-                                    QString::number(fabs(cval.imag()),'e',5)));
+                                    QString::number(cval.real())+sign+
+                                    QString::number(fabs(cval.imag()))));
             }
 
     }
@@ -164,7 +164,7 @@ void wnddatatable::updateTable()
             for (int c=0; c < ncols; c++)
             {
                 double dval = ddata(r,c);
-                ui->dataTable->setItem(r,c,new QTableWidgetItem(QString::number(dval,'e',5)));
+                ui->dataTable->setItem(r,c,new QTableWidgetItem(QString::number(dval)));
             }
     }
 

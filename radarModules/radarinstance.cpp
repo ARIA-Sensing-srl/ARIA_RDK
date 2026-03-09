@@ -137,6 +137,9 @@ void    radarInstance::set_module(radarModule *ref)
 //-----------------------------------------------
 radarInstance::~radarInstance()
 {
+    if ((_workspace!=nullptr)&&(_workspace->data_interface()!=nullptr))
+        _workspace->data_interface()->operation_device_is_deleting(this);
+
     clearSerialPortTimer();
     clear_antenna_table();
     clear_param_table();
@@ -1042,6 +1045,7 @@ bool radarInstance::load_xml()
                 {   // Create a new placeholder script
                     octaveScript* newScript = new octaveScript (get_root()->get_folder(cstr_scripts)->get_full_path()
                                                                +QFileInfo(script_file).fileName(),get_root()->get_folder(QString(cstr_scripts)));
+                    newScript->attach_to_dataengine(get_root()->get_workspace()->data_interface());
                     get_root()->add_script(newScript);
                     _init_scripts.append(newScript);
                 }
@@ -1075,6 +1079,7 @@ bool radarInstance::load_xml()
                 {   // Create a new placeholder script
                     octaveScript* newScript = new octaveScript (get_root()->get_folder(cstr_scripts)->get_full_path()
                                                                +QFileInfo(script_file).fileName(),get_root()->get_folder(QString(cstr_scripts)));
+                    newScript->attach_to_dataengine(get_root()->get_workspace()->data_interface());
                     get_root()->add_script(newScript);
                     _post_acquisition_scripts.append(newScript);
                 }
@@ -1237,57 +1242,11 @@ bool radarInstance::init_pre()
     if (_workspace->data_interface()==nullptr) return false;
 
     clear_params_update_lists();
-
-    //1. Feed params from device to workspace according to policy
-    for (int param_index: _init_commands)
-    {
-        radarParamPointer par = _params[param_index];
-        if (par==nullptr) continue;
-        QVector<radarParamPointer> params = get_param_group(par);
-
-        RADARPARAMIOTYPE rpt_io = params[0]->get_io_type();
-
-        if ((rpt_io == RPT_IO_OUTPUT)||((rpt_io == RPT_IO_IO)&&(params[0]->has_inquiry_value()))||((rpt_io == RPT_IO_INPUT) && (params[0]->get_type()==RPT_VOID)))
-        {
-            if (!_params_to_inquiry.contains(params[0]))
-            {
-                _n_params_to_receive+=params.length();
-                _params_to_inquiry.append(params[0]);
-            }
-        }
-    }
     _radar_operation = RADAROP_INIT_PARAMS;
 
-    if (!_params_to_inquiry.isEmpty())
-    {
-            inquiry_parameter(_params_to_inquiry[0]);
+    emit all_params_updated();
+    emit_operation_done();
 
-#ifdef UPDATE_INSIDE
-            _workspace->set_variable(get_mapped_name(param).toStdString(),   param->get_value());
-#endif
-#ifdef INTERFACE_STRUCT
-            // in the struct maintain the parameter name
-            _radar_cell.setfield(param->get_name().toStdString(),param->get_value());
-#endif
-
-    }
-
-#ifdef INTERFACE_STRUCT
-    _workspace->set_variable(get_device_name().toStdString(), _radar_cell);
-#endif
-#ifdef UPDATE_INSIDE
-    // Update workspace
-    _workspace->workspace_to_interpreter();
-#endif
-
-    if (_params_to_inquiry.empty())
-    {
-#ifdef UPDATE_INSIDE
-        _workspace->workspace_to_interpreter();
-#endif
-        emit all_params_updated();
-        emit_operation_done();
-    }
 
     return true;
 }
@@ -1301,40 +1260,8 @@ bool radarInstance::init_scripts()
 
     _radar_operation = RADAROP_INIT_SCRIPTS;
 
-    //1. Feed params from device to workspace according to policy
-    for (int param_index: _init_commands)
-    {
-        radarParamPointer par = _params[param_index];
-        if (par==nullptr) continue;
+    _workspace->data_interface()->operation_append_script_list(_init_scripts);
 
-        RADARPARAMIOTYPE rpt_io = par->get_io_type();
-        QVector<radarParamPointer> params = get_param_group(par);
-        if ((rpt_io != RPT_IO_INPUT)&(par->get_type()!=RPT_VOID))
-        {
-            if (!_params_to_modify.contains(params[0]))
-            {
-                _n_params_to_receive+=params.length();
-                _params_to_modify.append(params[0]);
-            }
-        }
-
-    }
-
-    for (auto& script: _init_scripts)
-        if (script != nullptr)
-            if (!_workspace->data_interface()->run(script)) return false;
-
-    if (_params_to_modify.empty()||_init_scripts.empty())
-    {
-        clear_params_update_lists();
-        emit all_params_updated();
-        emit_operation_done();
-    }
-    if (!_params_to_modify.empty())
-    {
-
-		transmit_param_blocking(get_param_group(_params_to_modify[0]), false);
-    }
     return true;
 }
 //--------------------------------------------------
@@ -1367,53 +1294,10 @@ bool radarInstance::postacquisition_pre()
 
     if (_workspace->data_interface()==nullptr) return false;
 
-    clear_params_update_lists();
-
-    //1. Feed params from device to workspace according to policy
-    for (int param_index: _postacquisition_commands)
-    {
-        radarParamPointer par = _params[param_index];
-        if (par==nullptr) continue;
-
-        QVector<radarParamPointer> params = get_param_group(par);
-        RADARPARAMIOTYPE rpt_io = params[0]->get_io_type();
-        if ((rpt_io == RPT_IO_OUTPUT)||((rpt_io == RPT_IO_IO)&&(params[0]->has_inquiry_value())))
-        {
-            if (!_params_to_inquiry.contains(params[0]))
-            {
-                _n_params_to_receive+=params.length();
-                _params_to_inquiry.append(params[0]);
-            }
-        }
-
-    }
     _radar_operation = RADAROP_POSTACQ_PARAMS;
 
-    if (!_params_to_inquiry.isEmpty())
-    {
-        inquiry_parameter(_params_to_inquiry[0]);
-#ifdef UPDATE_INSIDE
-        _workspace->set_variable(get_mapped_name(param).toStdString(),   param->get_value());
-#endif
-#ifdef INTERFACE_STRUCT
-        // in the struct maintain the parameter name
-        _radar_cell.setfield(param->get_name().toStdString(),param->get_value());
-#endif
-    }
-
-#ifdef INTERFACE_STRUCT
-    _workspace->set_variable(get_device_name().toStdString(), _radar_cell);
-#endif
-
-    if (_params_to_inquiry.empty())
-    {
-        emit all_params_updated();
-        emit_operation_done();
-    }
-#ifdef UPDATE_INSIDE
-    // Update workspace
-    _workspace->workspace_to_interpreter();
-#endif
+    emit all_params_updated();
+    emit_operation_done();
 
     return true;
 }
@@ -1427,43 +1311,20 @@ bool radarInstance::postacquisition_scripts()
 
     _radar_operation = RADAROP_POSTACQ_SCRIPTS;
 
-    //1. Feed params from device to workspace according to policy
-    for (int param_index: _postacquisition_commands)
-    {
-        radarParamPointer par = _params[param_index];
-        if (par==nullptr) continue;
+    _workspace->data_interface()->operation_append_script_list(_post_acquisition_scripts,this);
 
-        RADARPARAMIOTYPE rpt_io = par->get_io_type();
-
-        if ((rpt_io != RPT_IO_INPUT)&&(par->get_type()!=RPT_VOID))
-        {
-            QVector<radarParamPointer> params = get_param_group(par);
-            if (!_params_to_modify.contains(params[0]))
-            {
-                _n_params_to_receive+=params.length();
-                _params_to_modify.append(params[0]);
-            }
-        }
-    }
-
-    for (auto& script: _post_acquisition_scripts)
-        if (script != nullptr)
-            if (!_workspace->data_interface()->run(script)) return false;
-
-    if (_params_to_modify.empty()||_post_acquisition_scripts.isEmpty())
-    {
-        clear_params_update_lists();
-        emit all_params_updated();
-        emit_operation_done();
-    }
-
-    if (!_params_to_modify.empty())
-    {
-		transmit_param_blocking(get_param_group(_params_to_modify[0]), false);
-    }
     return true;
 }
-
+//--------------------------------------------------
+/**
+ * @brief radarInstance::octave_engine_scripts_done
+ */
+void radarInstance::octave_engine_scripts_done()
+{
+    clear_params_update_lists();
+    emit all_params_updated();
+    emit_operation_done();
+}
 
 //--------------------------------------------------
 void radarInstance::run()
@@ -1538,7 +1399,9 @@ void    radarInstance::immediate_update_variable(const std::string& varname)
         return;
 
     if (_workspace->data_interface()==nullptr) return;
-    octave_value var_value = _workspace->data_interface()->get_octave_engine()->varval(varname);
+    _workspace->data_interface()->operation_wait_and_lock();
+    octave_value var_value = _workspace->data_interface()->engine_get_octave_engine()->varval(varname);
+    _workspace->data_interface()->operation_unlock();
 
     if (varname.empty()) return;
 
@@ -1553,7 +1416,7 @@ void    radarInstance::immediate_update_variable(const std::string& varname)
                     //span list, cur param is not listed
                     for (auto& updateOnlyParam : lst){
                         if (updateOnlyParam!=nullptr) {
-                            octave_value var_value_updateOnly = _workspace->data_interface()->get_octave_engine()->varval(get_mapped_name(updateOnlyParam).toStdString());
+                            octave_value var_value_updateOnly = _workspace->data_interface()->engine_get_octave_engine()->varval(get_mapped_name(updateOnlyParam).toStdString());
                             immediate_set_param_value(updateOnlyParam, var_value_updateOnly, true);
                         }
                     }

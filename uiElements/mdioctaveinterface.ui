@@ -100,7 +100,7 @@
          </layout>
         </widget>
        </item>
-       <item row="2" column="0">
+       <item row="1" column="0">
         <widget class="QSplitter" name="splitter_3">
          <property name="orientation">
           <enum>Qt::Orientation::Horizontal</enum>
@@ -142,6 +142,30 @@
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
+         </widget>
+         <widget class="QGroupBox" name="LocalVars">
+          <property name="title">
+           <string>Local Variables</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout_5">
+           <item row="0" column="0">
+            <widget class="QTableWidget" name="tbLocalVars">
+             <property name="editTriggers">
+              <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+             </property>
+             <column>
+              <property name="text">
+               <string>Name</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Value</string>
+              </property>
+             </column>
+            </widget>
+           </item>
+          </layout>
          </widget>
         </widget>
        </item>

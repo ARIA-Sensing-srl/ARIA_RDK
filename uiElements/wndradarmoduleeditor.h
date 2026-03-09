@@ -15,6 +15,7 @@
 #include <QComboBox>
 #include <antenna.h>
 #include <interfacecommand.h>
+#include <QKeyEvent>
 
 namespace Ui {
 class wndRadarModuleEditor;
@@ -169,6 +170,12 @@ public slots:
 
     void scanRadarDevices();
     void createDevice();
+
+    void keyPressEvent(QKeyEvent *e) {
+        if(e->key() != Qt::Key_Escape)
+            QDialog::keyPressEvent(e);
+        else {/* minimize */}
+    }
 signals:
     void radar_saved(radarModule* );
 

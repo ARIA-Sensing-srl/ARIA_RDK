@@ -21,5 +21,17 @@
         <file>close-round-line-icon.png</file>
         <file>link-hyperlink-icon.png</file>
         <file>stop-road-sign-icon.png</file>
+        <file>stop-blocked-icon.png</file>
+        <file>save-icon.png</file>
+        <file>save-as-icon.png</file>
+        <file>red-pause-button-icon.png</file>
+        <file>recycle-bin-line-icon.png</file>
+        <file>play-next-button-green-icon.png</file>
+        <file>open-file-folder-icon.png</file>
+        <file>next-button-green-icon.png</file>
+        <file>green-play-button-icon.png</file>
+        <file>file-line-icon.png</file>
+        <file>download-icon.png</file>
+        <file>data-transfer-icon.png</file>
     </qresource>
 </RCC>

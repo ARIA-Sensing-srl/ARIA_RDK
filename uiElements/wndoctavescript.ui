@@ -153,26 +153,6 @@
        </widget>
       </item>
       <item>
-       <widget class="QToolButton" name="tbPause">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-        <property name="toolTip">
-         <string>Pause the elaboration engine (Ctrl+P)</string>
-        </property>
-        <property name="text">
-         <string>...</string>
-        </property>
-        <property name="icon">
-         <iconset resource="../icons/aria_rdk.qrc">
-          <normaloff>:/icons/red-pause-button-icon.png</normaloff>:/icons/red-pause-button-icon.png</iconset>
-        </property>
-        <property name="shortcut">
-         <string>Ctrl+P</string>
-        </property>
-       </widget>
-      </item>
-      <item>
        <widget class="QToolButton" name="tbStop">
         <property name="enabled">
          <bool>false</bool>

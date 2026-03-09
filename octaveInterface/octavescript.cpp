@@ -9,23 +9,23 @@
 #include "interpreter.h"
 
 octaveScript::octaveScript(QString filename, projectItem* parent) : projectItem("newScript",DT_SCRIPT, parent),
-    _lines(),
+    _text(),
     _script_file(),
     _octave_interface(nullptr),
-    _breakpoint_lines(),
-    b_need_parsing(true)
+    b_need_parsing(true),
+    _debug_line(-1)
 {
 
     set_filename(filename,false);
 }
 //------------------------------------
 octaveScript::octaveScript() : projectItem("newScript",DT_SCRIPT),
-    _lines(),
+    _text(),
     _script_file(),
     _octave_interface(nullptr),
     _file_existing(false),
-    _breakpoint_lines(),
-    b_need_parsing(true)
+    b_need_parsing(true),
+    _debug_line(-1)
 {
 
 }
@@ -39,16 +39,29 @@ octaveScript::~octaveScript()
 {
     if (_script_file.isOpen())
         _script_file.close();
+
+    // Check if we are running this file. In case, terminate the execution
+    if (_octave_interface!=nullptr)
+        if (_octave_interface->engine_get_octave_engine()!=nullptr)
+        {
+            if ((_octave_interface->engine_get_running_script()!=nullptr)&&
+                (_octave_interface->engine_get_running_script()==this))
+            {
+                do_request_stop();
+                // Set the current script as null
+                _octave_interface->engine_reset_script(this);
+            }
+        }
 }
 //------------------------------------
 const octaveScript& octaveScript::operator = (const octaveScript& script)
 {
     projectItem::operator=(script);
-    _lines = script._lines;
+    _text = script._text;
     _script_file.setFileName(script._script_file.fileName());
 
     _octave_interface = script._octave_interface;
-    _breakpoint_lines = script._breakpoint_lines;
+    _debug_line = script._debug_line;
     return *this;
 }
 
@@ -96,24 +109,9 @@ octaveScript*  octaveScript::load_xml(QDomDocument& owner, QDomElement& root)
     return out;
 }
 //------------------------------------
-void octaveScript::interpret_lines()
-{
-    _begin_line.resize(_lines.count());
-    _end_line.resize(_lines.count());
-
-    int n=0;
-    while (n < _lines.count())
-    {
-        int ne = end_line(n);
-        for (int k=n ; k < ne;k++)
-        {_begin_line[k] = n; _end_line[k]=ne-1;}
-        n=ne+1;
-    }
-}
-//------------------------------------
 void  octaveScript::load()
 {
-    _lines.clear();
+    _text.clear();
 
     if (_script_file.exists())
     {
@@ -124,80 +122,35 @@ void  octaveScript::load()
     }
     else
         _file_existing = false;
-}
-//------------------------------------
-QString         octaveScript::remove_comment_section(int line)
-{
-    QString out;
-    if ((line<0)||(line>=_lines.count())) return out;
 
-    out = _lines[line].section('%',0,0);
-
-    return out.simplified();
-}
-//------------------------------------
-bool            octaveScript::is_pure_comment(int line)
-{
-    if ((line<0)||(line>=_lines.count())) return true;
-    if (_lines[line].simplified().isEmpty()) return true;
-    return _lines[line].simplified().startsWith('%');
-}
-//------------------------------------
-bool            octaveScript::has_continuing_line(int line)
-{
-    if ((line<0)||(line>=_lines.count())) return false;
-    if (is_pure_comment(line)) return false;
-    return remove_comment_section(line).endsWith("...");
-}
-//------------------------------------
-int     octaveScript::end_line(int line)
-{
-    if ((line<0)||(line>=_lines.count())) return line;
-    while (line <= _lines.count())
-    {
-        if (!has_continuing_line(line))
-            break;
-        line++;
-    }
-    return line;
-}
-//------------------------------------
-int octaveScript::begin_line(int line)
-{
-    if ((line<0)||(line>=_lines.count())) return line;
-    line--;
-    while (line >=0 )
-    {
-        if (!has_continuing_line(line))
-            break;
-        line--;
-    }
-    return line+1;
 }
 //------------------------------------
 QString octaveScript::get_text()
 {
-    return _lines.join('\n');
+    return _text;
 }
 //------------------------------------
 void octaveScript::set_text(const QString& input_text)
 {
+    QString prev(_text);
 
-    _lines = input_text.split('\n');
-    //save();
+    _text = input_text;
+    if (prev!=_text)
+    {
+        b_need_parsing = true;
+        octave::interpreter *interp = _octave_interface == nullptr ? nullptr : _octave_interface->engine_get_octave_engine();
+        if (interp!=nullptr)
+        {
+            // If the text has been changed, we need to tell Octave that we need to parse again
+            // the source file.
+            octave::tree_evaluator& tw = interp->get_evaluator ();
+
+            octave_user_code* code = tw.get_user_code(QFileInfo(get_fullfilename()).baseName().toStdString());
+            if (code!=nullptr) code->mark_fcn_file_up_to_date(static_cast<OCTAVE_TIME_T> (0));
+        }
+    }
 }
-//------------------------------------
-std::string     octaveScript::get_std_line(int n)
-{
-    if ((n<0)||(n>=_lines.count())) return std::string("");
-    return _lines[n].toStdString();
-}
-//------------------------------------
-QString         octaveScript::get_line(int n)
-{
-    if ((n<0)||(n>=_lines.count())) return QString("");
-    return _lines[n];
-}
+
 //------------------------------------
 void octaveScript::setValid(bool bValid)
 {
@@ -212,13 +165,13 @@ void octaveScript::setValid(bool bValid)
 //------------------------------------
 void    octaveScript::save()
 {
-    b_need_parsing = true;
+    //b_need_parsing = true;
 
     if (!_script_file.fileName().isEmpty())
     {
         if (!_script_file.open(QIODevice::WriteOnly | QIODevice::Text)) return;
         QTextStream out(&_script_file);
-        out << _lines.join("\n");
+        out << _text;
         _script_file.close();
 
         setValid();
@@ -228,6 +181,11 @@ void    octaveScript::save()
 void    octaveScript::attach_to_dataengine(octaveInterface* octint)
 {
     _octave_interface= octint;
+
+    connect(octint, &octaveInterface::signal_interface_execute_dbrun,     this, &octaveScript::do_interpreter_dbrun);
+    connect(octint, &octaveInterface::signal_interface_execute_dbstop,    this, &octaveScript::do_interpreter_dbstop);
+    connect(octint, &octaveInterface::signal_interface_execute_dbcomplete,this, &octaveScript::do_interpreter_dbcomplete);
+    connect(octint, &octaveInterface::signal_interface_execute_dberror,   this, &octaveScript::do_interpreter_error);
 }
 //------------------------------------
 octaveInterface*    octaveScript::get_octave_interface()
@@ -244,100 +202,364 @@ bool    octaveScript::operator == (octaveScript script)
 // Breakpoint management
 //-----------------------------------------------------
 //-----------------------------------------------------
-
-void octaveScript::add_breakpoint (int line, const QString& cond)
+/**
+ * @brief octaveScript::breakpoint_toggle
+ * @param line (0 based)
+ * @param cond
+ * @return
+ */
+int  octaveScript::breakpoint_toggle(int line, const QString& cond)
 {
-    octave::interpreter *interp = _octave_interface == nullptr ? nullptr : _octave_interface->get_octave_engine();
-    if (interp==nullptr) return;
+    octave::interpreter *interp = _octave_interface == nullptr ? nullptr : _octave_interface->engine_get_octave_engine();
+    if (interp==nullptr) return -1;
 
     octave::tree_evaluator& tw = interp->get_evaluator ();
     octave::bp_table& bptab = tw.get_bp_table ();
 
-    int lineeq = bptab.add_breakpoint_in_file(get_fullfilename().toStdString (), line, cond.toStdString());
-    _breakpoint_lines[line] = lineeq;
 
+    std::string fname = get_fullfilename().toStdString();
+    octave::bp_table::fname_bp_map previous_bp = bptab.get_breakpoint_list(octave_value_list(fname));
+
+
+    // Get the proper breakpoint line
+    int lineeq = bptab.add_breakpoint_in_file( fname, line+1, cond.toStdString());
+
+    bool bp_was_there = false;    
+
+    for (auto& bp_list : previous_bp)
+        if (bp_list.first == fname)
+        {
+            for (auto bp =  bp_list.second.begin(); bp != bp_list.second.end(); bp++)
+            {
+
+                if ((bp->line)==lineeq)
+                {
+                    bp_was_there = true;
+                    break;
+                }
+            }
+            if (bp_was_there) break;
+        }
+    // If the breakpoint was already there, remove it from the file.
+    if (bp_was_there) bptab.remove_breakpoint_from_file(fname, lineeq);
+
+    return lineeq-1;
+}
+//--------------------------------------
+/**
+ * @brief octaveScript::breakpoint_get_line
+ * Get the actual line for a breakpoint. This means the breakpoint is going to be placed onto the first valid
+ * line at or after the intended position
+  * @param line (0 based)
+ * @return the line where the breakpoint
+ */
+
+int octaveScript::breakpoint_get_line(int line)
+{
+    std::string fname = get_fullfilename().toStdString();
+
+    octave::interpreter *interp = _octave_interface == nullptr ? nullptr : _octave_interface->engine_get_octave_engine();
+    if (interp==nullptr) return -1;
+
+    octave::tree_evaluator& tw = interp->get_evaluator ();
+
+    octave::bp_table& bptab = tw.get_bp_table ();
+
+
+    octave::bp_table::fname_bp_map previous_bp = bptab.get_breakpoint_list(octave_value_list(fname));
+
+
+    // Get the proper breakpoint line
+    int lineeq = bptab.add_breakpoint_in_file( fname, line+1, std::string(""));
+
+    bool bp_was_there = false;
+
+    for (auto& bp_list : previous_bp)
+        if (bp_list.first == fname)
+        {
+            for (auto bp =  bp_list.second.begin(); bp != bp_list.second.end(); bp++)
+            {
+
+                if ((bp->line)==lineeq)
+                {
+                    bp_was_there = true; break;
+                }
+            }
+            if (bp_was_there) break;
+        }
+
+    // If the breakpoint wasn't already present, it is removed from the file
+    if (!bp_was_there) bptab.remove_breakpoint_from_file(fname, lineeq);
+
+    return lineeq-1;
 
 }
-
-
-void octaveScript::remove_breakpoint (int line)
+//--------------------------------------
+/**
+ * @brief octaveScript::breakpoint_add
+ * @param line
+ * @param cond
+ * @return
+ */
+int octaveScript::breakpoint_add (int line, const QString& cond)
 {
-    octave::interpreter *interp = _octave_interface == nullptr ? nullptr : _octave_interface->get_octave_engine();
-    if (interp==nullptr) return;
-    if (_breakpoint_lines.find(line)==_breakpoint_lines.end()) return;
+
+    octave::interpreter *interp = _octave_interface == nullptr ? nullptr : _octave_interface->engine_get_octave_engine();
+    if (interp==nullptr) return -1;
+
+    octave::tree_evaluator& tw = interp->get_evaluator ();
+    octave::bp_table& bptab = tw.get_bp_table ();
+    std::string fname = get_fullfilename().toStdString();
+
+    // Get the proper breakpoint line
+    _octave_interface->operation_wait_and_lock();
+    int lineeq = bptab.add_breakpoint_in_file( fname, line+1, cond.toStdString());
+    _octave_interface->operation_unlock();
+
+
+
+    return lineeq-1;
+}
+
+//--------------------------------------
+/**
+ * @brief octaveScript::breakpoint_remove
+ * Remove the breakpoint at the first available line
+ * @param line (1 based)
+ * @return
+ */
+
+int octaveScript::breakpoint_remove (int line)
+{
+    octave::interpreter *interp = _octave_interface == nullptr ? nullptr : _octave_interface->engine_get_octave_engine();
+    if (interp==nullptr) return -1;
 
     octave::tree_evaluator& tw = interp->get_evaluator ();
     octave::bp_table& bptab = tw.get_bp_table ();
 
-    bptab.remove_breakpoint_from_file (get_fullfilename().toStdString (), line);
-    _breakpoint_lines.remove(line);
+    // Let's see if we have a precise location.
+    int lineeq = -1;
+    _octave_interface->operation_wait_and_lock();
+    bptab.remove_breakpoint_from_file (get_fullfilename().toStdString (), line+1);
+    _octave_interface->operation_unlock();
+    return lineeq-1;
 }
+//--------------------------------------
+/**
+ * @brief octaveScript::breakpoint_remove_all
+ */
 
-void octaveScript::remove_all_breakpoints()
+void octaveScript::breakpoint_remove_all()
 {
-    octave::interpreter *interp = _octave_interface == nullptr ? nullptr : _octave_interface->get_octave_engine();
+    octave::interpreter *interp = _octave_interface == nullptr ? nullptr : _octave_interface->engine_get_octave_engine();
     if (interp==nullptr) return;
     octave::tree_evaluator& tw = interp->get_evaluator ();
     octave::bp_table& bptab = tw.get_bp_table ();
 
     bptab.remove_all_breakpoints_from_file(get_fullfilename().toStdString (),
                                            true);
+}
 
-    _breakpoint_lines.clear();
+//--------------------------------------
+/**
+ * @brief octaveScript::breakpoint_at_line
+ * Check if we have a breakpoint
+ * @param line (0 based)
+ * @param lineeq ( based)
+ * @return
+ */
+
+bool octaveScript::breakpoint_at_line(int line, int& lineeq)
+{
+
+    octave::interpreter *interp = _octave_interface == nullptr ? nullptr : _octave_interface->engine_get_octave_engine();
+    if (interp==nullptr) return false;
+    line++;
+
+    std::string fname = get_fullfilename().toStdString();
+    octave::tree_evaluator& tw = interp->get_evaluator ();
+    octave::bp_table& bptab = tw.get_bp_table ();
+    octave::bp_table::fname_bp_map previous_bp = bptab.get_breakpoint_list(octave_value_list(fname));
+
+    // Try adding the breakpoint to see which line this is falling into.    
+
+    // Get the proper breakpoint line
+    _octave_interface->operation_wait_and_lock();
+    lineeq = bptab.add_breakpoint_in_file( fname, line, "");
+    _octave_interface->operation_unlock();
+    bool bp_was_there = false;
+
+    for (auto& bp_list : previous_bp)
+        if (bp_list.first == fname)
+        {
+            for (auto bp =  bp_list.second.begin(); bp != bp_list.second.end(); bp++)
+            {
+                if ((bp->line)==lineeq)
+                {
+                    bp_was_there= true; break;
+                }
+            }
+
+            if (bp_was_there) break;
+        }
+    _octave_interface->operation_wait_and_lock();
+    if (!bp_was_there) bptab.remove_breakpoint_from_file(fname,lineeq);
+    _octave_interface->operation_unlock();
+    lineeq--;
+    return bp_was_there;
 }
 
 
-bool octaveScript::has_breakpoint_at_line(int line)
+//------------------------------------
+/**
+ * @brief octaveScript::breakpoints_has_any
+ * @return
+ */
+bool octaveScript::breakpoints_has_any()
 {
-    octave::interpreter *interp = _octave_interface == nullptr ? nullptr : _octave_interface->get_octave_engine();
+    octave::interpreter *interp = _octave_interface == nullptr ? nullptr : _octave_interface->engine_get_octave_engine();
     if (interp==nullptr) return false;
 
-    return (_breakpoint_lines.find(line)!=_breakpoint_lines.end());
+    octave::tree_evaluator& tw = interp->get_evaluator ();
+    octave::bp_table& bptab = tw.get_bp_table ();
+
+    // Try adding the breakpoint to see which line this is falling into.
+    std::string fname = get_fullfilename().toStdString();
+    octave_value_list bp_list;
+    bp_list.append(charNDArray(fname));
+    _octave_interface->operation_wait_and_lock();
+    octave::bp_table::fname_bp_map bpmap = bptab.get_breakpoint_list(bp_list);
+    _octave_interface->operation_unlock();
+
+    for (auto& bp_list : bpmap)
+        if (bp_list.first == fname)
+        {
+            if (bp_list.second.size() > 0) return true;
+        }
+    return false;
 }
 
-
-//------------------------------------
-bool octaveScript::has_breakpoints()
-{
-    return !(_breakpoint_lines.empty());
-}
-
+//------------------------------------------------------------------------
+//------------------------------------------------------------------------
 // These are the slot for the signals coming from the octaveInterface
-
-void octaveScript::interpreter_dbstop(const QString& fname, int line)
+//------------------------------------------------------------------------
+//------------------------------------------------------------------------
+/**
+ * @brief octaveScript::do_interpreter_dbstop
+ * Handle the signal coming from the octaveInterface. The octave engine is
+ * stopped at some breakpoint. Discard if it is another script's breakpoint
+ * @param fname
+ * @param line
+ */
+void octaveScript::do_interpreter_dbstop(const QString& fname, int line)
 {
-    if (fname != _script_file.fileName()) return;
-    emit db_stop(this,line);
+
+    _debug_line = line;
+    //_octave_interface->engine_get_octave_engine()->stop();
+    emit script_stop(fname, line);
 
 }
-void octaveScript::interpreter_dbrun(const QString& fname, int line)
+//------------------------------------------------------------------------
+/**
+ * @brief octaveScript::do_interpreter_dbrun
+ * The octave Interface signaled that the engine in running a certain script/command
+ * @param fname
+ */
+void octaveScript::do_interpreter_dbrun(const QString& fname)
 {
-    if (fname != _script_file.fileName()) return;
-    emit db_run(this);
+    _debug_line = -1;
+    emit script_run(fname);
 }
-
-void octaveScript::interpreter_dbcomplete(const QString& fname, int line)
+//------------------------------------------------------------------------
+/**
+ * @brief octaveScript::do_interpreter_dbcomplete
+ * @param fname
+ */
+void octaveScript::do_interpreter_dbcomplete(const QString& fname)
 {
-    if (fname != _script_file.fileName()) return;
-    emit db_complete(this);
+    _debug_line = -1;
+    emit script_run_complete(fname);
 }
+//------------------------------------------------------------------------
+/**
+ * @brief octaveScript::do_interpreter_error
+ * @param fname
+ * @param error
+ * @param line
+ */
 
-//------------------------------------
-void octaveScript::request_pause()
+void octaveScript::do_interpreter_error(const QString& fname, const QString& error, int line)
 {
+    _debug_line = -1;
+    emit script_error(fname, error,line);
+}
+//------------------------------------------------------------------------
+//------------------------------------------------------------------------
+// Slots for management of the GUI requests
+void octaveScript::do_request_pause()
+{
+    /* TBD
     // We cannot pause the engine if it is not running THIS script
+    if (_octave_interface==nullptr) return;
+
+    if (_octave_interface->engine_get_running_script()!=this) return;
+
+    if (_octave_interface->engine_get_status()!=IS_RUNNING) return;
+
+    _octave_interface->engine_pause();
+    */
+
 }
 
 //------------------------------------
-void octaveScript::request_run()
+void octaveScript::do_request_run()
 {
-    octave::interpreter* engine = _octave_interface==nullptr ? nullptr : _octave_interface->get_octave_engine();
+    octave::interpreter* engine = _octave_interface==nullptr ? nullptr : _octave_interface->engine_get_octave_engine();
     if (engine==nullptr) return;
 
-    _octave_interface->run(this);
+    _octave_interface->execute_run(this);
+}
 
+//------------------------------------
+void octaveScript::do_request_step_in()
+{
+    if (_octave_interface==nullptr)
+        return;
+
+    if (_octave_interface->engine_get_octave_engine()==nullptr)
+        return;
+
+    _octave_interface->execute_step_in(this);
 
 }
+
+
+void octaveScript::do_request_step_out()
+{
+
+}
+
+void octaveScript::do_request_continue()
+{
+    if (_debug_line<0) return;
+    if (_octave_interface==nullptr) return;
+    if (_octave_interface->engine_get_octave_engine()==nullptr) return;
+    _octave_interface->execute_continue(this);
+
+}
+
+void octaveScript::do_request_stop()
+{
+    if (_octave_interface==nullptr)
+        return;
+
+    if (_octave_interface->engine_get_octave_engine()==nullptr)
+        return;
+
+    _octave_interface->execute_stop(this);
+
+}
+
 
 
 

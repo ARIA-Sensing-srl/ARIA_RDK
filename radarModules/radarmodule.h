@@ -81,8 +81,8 @@ protected:
     bool                        load_xml();
     bool                        save_xml(QDomDocument& document);
 
-    QVector<octaveScript_ptr>       _init_scripts;
-    QVector<octaveScript_ptr>       _post_acquisition_scripts;
+    QVector<octaveScript_ptr>   _init_scripts;
+    QVector<octaveScript_ptr>   _post_acquisition_scripts;
 
     void                        copy_scripts(QVector<octaveScript_ptr>& dest, const QVector<octaveScript_ptr>& source);
 

@@ -11,7 +11,7 @@
 #include <QDialog>
 #include <radarinstance.h>
 #include "../scheduler/opscheduler.h"
-
+#include <QKeyEvent>
 namespace Ui {
 class wndRadarInstanceEditor;
 }
@@ -99,6 +99,12 @@ public slots:
     void                        preacquisition_done_all();
     void                        preacquisition_error(radarInstance* device);
     void                        scheduler_timing_error();
+    void keyPressEvent(QKeyEvent *e) {
+        if(e->key() != Qt::Key_Escape)
+            QDialog::keyPressEvent(e);
+        else {/* minimize */}
+    }
+
 
 };
 

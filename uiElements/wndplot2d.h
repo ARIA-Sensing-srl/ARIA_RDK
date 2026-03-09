@@ -11,6 +11,7 @@
 #include "plotdescriptor.h"
 #include "octavews.h"
 #include "qgridlayout.h"
+#include <QKeyEvent>
 
 
 namespace Ui {
@@ -95,6 +96,12 @@ private:
     JKQTPDatastore* get_ds();
     class           mdiOctaveInterface* _owner_mdiOctave;
     class           MainWindow*         _owner_mainWnd;
+    void keyPressEvent(QKeyEvent *e) {
+        if(e->key() != Qt::Key_Escape)
+            QDialog::keyPressEvent(e);
+        else {/* minimize */}
+    }
+
 
 };
 

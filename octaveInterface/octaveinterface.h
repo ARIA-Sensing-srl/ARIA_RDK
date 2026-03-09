@@ -15,150 +15,149 @@
 #include <octave.h>
 #include <ovl.h>
 #include <octavews.h>
+#include <event-manager.h>
+#include <octavethreadhandler.h>
+
 
 #undef OCTAVE_THREAD
 
-enum InterpStatus
-{
-    IS_IDLE,
-    IS_RUNNING,
-    IS_DBPAUSE
-};
+enum octintOperationType{OIP_STRING, OIP_SCRIPT};
+
+typedef struct {
+    octintOperationType       _op_type;
+    class radarInstance*      _op_owner;    // When adding a list of commands, we add the owner so that we can notify it
+                                            // when we are done with the entire sequence
+    union
+    {
+        octaveScript* script;
+        QString*      command;
+    } _operation;
+} octintOperation;
+
+
+class octaveScript;
 
 class octaveInterface : public QObject
 {
     Q_OBJECT
 private:
-    QStringList             commandList;
-    QString                 commandCurrent;
-    QString                 last_output;
-    bool                    bStopThread;
-    QMutex                  sync;
-    octave::interpreter     *_octave_engine;                        // This is the MAIN _octave_engine (only one _octave_engine)
-    octavews                *_workspace;
-    //std::set<std::string>   _vars_immediate_update;
-    std::pair<std::string, std::string> _var_immediate_update;      // This is the variable / filename associated with the pipe
-    //------------------------------------------------------------------------
-    std::shared_ptr<class octaveScript> _current_script;
+    QList<octintOperation>              _op_list;           // This is the list of operation to be executed (we may mix commands and scripts)
+    octintOperation                     _op_current;
+    QString                             _last_output;
+    octavews                            *_workspace;
+
+    std::pair<std::string, std::string> _var_immediate_update;  // This is the variable / filename associated with the pipe
     std::string                         _immediate_filename;
 	QString								_last_error;
 	QString								_last_warning;
 
-    enum InterpStatus   _interp_status;
-    octaveScript*       _running_script;
+    octaveThreadHandler*                _octave_thread_handler;
+    QThread*                            _octave_thread;
+    octave::interpreter*                _octave_engine;
+    mutable QMutex                      _sync;
+
+    void                                create_thread_connections();
+    class radarInstance*                _current_device_owner;
 public:
-	static octaveInterface*	_octave_interface_instance;
+    static octaveInterface*             _octave_interface_instance; // We have ONE interface instance in the RDK.
 
     octaveInterface();
     ~octaveInterface();
-    // Commands from in-line command editor
-    bool                    appendCommand(const QString &strCommand);
-    bool                    executeNextCommandInQueue();
-    const QString &         getCurrentCommand();
-    bool                    retrieveCommand(QString &commandToExecute);
-    void                    completeCommand();
-    void                    clearCommandList();
-    const QString &         get_last_output() {return last_output;}
-    // Command execution status
-    bool                    isReady();
-    void                    stopThread(bool bStop=true);
+    //----------------------------------------------------------------------------
+    // Operations
+    bool                            operation_append_command(const QString &strCommand);
+    bool                            operation_append_script(octaveScript* script);
+    bool                            operation_append_script_list(const QVector<octaveScript*> script_list, class radarInstance* owner=nullptr);
+    bool                            operation_execute_next_in_queue();
+    const QString &                 operation_get__last_output() {return _last_output;}
+    void                            operation_device_is_deleting(class radarInstance* device);
+    void                            operation_wait_and_lock();
+    void                            operation_unlock();
+    //----------------------------------------------------------------------------
     // Main octave engine
-    inline octave::interpreter*    get_octave_engine() {return _octave_engine;}
-    bool                    run(octaveScript* script);
-    bool                    step(octaveScript* script);
-    void                    set_pwd(const QString& path);
+    octave::interpreter*            engine_get_octave_engine();
+    bool                            engine_is_ready();
+    void                            engine_set_pwd(const QString& path);
+    int                             engine_find_func(QString funcName);
+    octaveScript*                   engine_get_running_script();
+    int                             engine_get_debug_line();
+    const QString&                  engine_get_debug_script();
+    void                            engine_pause();
+    octaveThreadHandler::oth_status engine_get_status();
+    void                            engine_reset_script(octaveScript* script);
 
-    InterpStatus            getStatus() {return _interp_status;}
-/*----------------------------------------*/
-	void					set_last_error_message(QString error = "");
- /*--------------------------------------------
-  * Workspace commands
-  * ------------------------------------------*/
-    void            clearWorkspace();
-	//bool            appendVariable();
-    QString         appendVariable(QString name, const octave_value& val, bool internal, bool toOctave=false, QStringList indep=QStringList(), QStringList dep=QStringList());
+    //----------------------------------------------------------------------------
+    // Execution of scripts
+    void                            execute_pause(octaveScript* script);
+    void                            execute_continue(octaveScript* script);
+    void                            execute_run(octaveScript* script);
+    void                            execute_step_in(octaveScript* script);
+    void                            execute_stop(octaveScript* script);
+    void                            execute_step_out(octaveScript* script);
+    void                            execute_feval(QString command, octave_value_list& in, int n_outputs);
+    void                            execute_feval(QString command, const string_vector& input, const string_vector& output); // NB we may have empty in some output var
+    void                            execute_eval_command(QString command);
+    //----------------------------------------------------------------------------
+    // General
+    void                            set_last_error_message(QString error = "");
+    //----------------------------------------------------------------------------
+    //* Workspace commands
+    //----------------------------------------------------------------------------
+    void                            workspace_clear();
+    void                            workspace_append_var(QString name, const octave_value& val, bool internal= false);
+    void                            workspace_refresh();
+    octavews*                       workspace_get() {return _workspace;}
+    bool                            workspace_save_to_file(QString filename);
+    void                            workspace_update_interpreter_internal_vars();
+    //----------------------------------------------------------------------------
+    //* Immediate update of radar variables
+    //----------------------------------------------------------------------------
+    void                            immediate_update_of_radar_var(const std::string& str, const std::string& filename);
+    void                            immediate_inquiry_of_radar_var(const std::string& str, const std::string& filename);
+    void                            immediate_command(const std::string& str, const std::string& filename);
+    void                            immediate_remove_interface_file();
 
-    void            refreshWorkspace();
-    octave_value_list
-                    execute_feval(QString command, octave_value_list& in, int n_outputs);
-    int             findFunc(QString funcName,bool wait);
-
-    void            append_variable(QString name, const octave_value& val, bool internal= false);
-    void            refresh_workspace();
-    octavews*       get_workspace() {return _workspace;}
-    void            update_interpreter_internal_vars();
-    void            execute_feval(QString command, const string_vector& input, const string_vector& output); // NB we may have empty in some output var
-    bool            save_workspace_to_file(QString filename);
-    void            immediate_update_of_radar_var(const std::string& str, const std::string& filename);
-    void            immediate_inquiry_of_radar_var(const std::string& str, const std::string& filename);
-    void            immediate_command(const std::string& str, const std::string& filename);
-    void            remove_interface_file();
-    octaveScript*   get_running_script() {return _running_script;}
-signals:
-    void            workerError(QString error);
-    void            workspaceUpdated();
-    void            workspaceDeleted();
-    void            workspaceCleared();
-    void            workspaceVarAdded();
-    void            workspaceVarModified();
-    void            workspaceVarDeleted();
-    void            errorWhileRunning();
-
-#ifndef OCTAVE_THREAD
-    void            engineRunning();
-    void            engineDone(const QString& command, int errorcode);
-    void            engineBusy();
-    void            enginePaused();
-#endif
-    void            updatedVariable(const std::string& var);
-    void            updatedVariables(const std::set<std::string>& vars);
-    void            immediateUpdateVariable(const std::string& var);
-    void            inquiryVariable(const std::string& var);
-    void            sendCommand(const std::string& var);
-
-};
-
-
-#ifdef OCTAVE_THREAD
-class qDataThread : public QObject
-{
-private:
-
-    QMutex          sync;
-    QWaitCondition  pauseCond;
-    bool            bPause;
-    octaveInterface    *data;
-    Q_OBJECT
-public:
 
 public slots:
-    void processDataThread();
-    void finishedDataThread();
+    void            handle_octave_thread_dbstop(const QString& fname, int line);
+    void            handle_octave_thread_dbstep_done(const QString& fname, int line);
+    void            handle_octave_thread_dbrun(const QString& fname);
+    void            handle_octave_thread_dbcomplete(const QString& fname);
+    void            handle_octave_thread_dberror(const QString& command, const QString& error,int line);
 signals:
-    void error(QString err);
-    void finished();
-    void workspaceUpdated();
-    void commandCompleted(QString command, int errorcode);
-    void commandStarting(QString command);
-    void fifoEmpty();
+    void            signal_workspace_updated();
+    void            signal_workspace_deleted();
+    void            signal_workspace_cleared();
+    void            signal_workspace_var_added();
+    void            signal_workspace_var_modified();
+    void            signal_workspace_var_deleted();
+    void            signal_execution_error();
+    void            signal_updated_variable(const std::string& var);
+    void            signal_updated_variables(const std::set<std::string>& vars);
+    void            signal_immediate_update_radar_variable(const std::string& var);
+    void            signal_immediate_inquiry_radar_variable(const std::string& var);
+    void            signal_immediate_send_radar_command(const std::string& var);
 
-public:
-    explicit qDataThread(QObject * parent = 0);
-    ~qDataThread();
+    // Signals for the thread handler
+    void            signal_execute_continue(octaveScript* script);
+    void            signal_execute_run(octaveScript* script);
+    void            signal_execute_step_in(octaveScript* script);
+    void            signal_execute_step_out(octaveScript* script);
+    void            signal_execute_stop(octaveScript* script);
+    void            signal_execute_feval_ovl(QString command, octave_value_list& in, int n_outputs);
+    void            signal_execute_feval(QString command, const string_vector& input, const string_vector& output); // NB we may have empty in some output var
+    void            signal_execute_command(const QString& command);
+    void            signal_engine_init();
 
-    octaveInterface* getData() {return data;}
-
-    void resume();
-    void pause();
-    bool isPaused() {return bPause;}
-    bool isReady()  {return data==NULL?true:data->isReady();}
-
-    void runFile(QString fileName, const octave_value_list& args = octave_value_list (),
-                 int nargout = 0);
+    void            signal_operation_all_ops_done(); // The queue is empty
 
 
-    int findVar(const char* varname);
-    int findFunc(QString funcName,bool wait=false);
+    // Breakpoint management (for higher level management)
+    void            signal_interface_execute_dbstop(const QString& fname, int line);
+    void            signal_interface_execute_dbrun(const QString& fname);
+    void            signal_interface_execute_dbcomplete(const QString& fname);
+    void            signal_interface_execute_dberror(const QString& fname, const QString& error, int line);
+    void            signal_interface_execute_dbbusy(const QString& commandname);
 };
-#endif
+
 #endif // OCTAVEINTERFACE_H

@@ -46,10 +46,14 @@ void    radarProject::set_workspace(octavews* ws)
     connect(interface, &octaveInterface::updatedVariable,  this, &radarProject::immediate_variable_updated);
     connect(interface, &octaveInterface::updatedVariables, this, &radarProject::variables_updated);
 #else
-    connect(interface, &octaveInterface::immediateUpdateVariable,   this, &radarProject::immediate_variable_updated);
-    connect(interface, &octaveInterface::inquiryVariable,           this, &radarProject::immediate_inquiry);
-    connect(interface, &octaveInterface::sendCommand,               this, &radarProject::immediate_command);
-    connect(interface, &octaveInterface::errorWhileRunning,         this, &radarProject::errorWhileRunning);
+    connect(interface, &octaveInterface::signal_immediate_update_radar_variable,
+            this, &radarProject::immediate_variable_updated);
+    connect(interface, &octaveInterface::signal_immediate_inquiry_radar_variable,
+            this, &radarProject::immediate_inquiry);
+    connect(interface, &octaveInterface::signal_immediate_send_radar_command,
+            this, &radarProject::immediate_command);
+    connect(interface, &octaveInterface::signal_execution_error,
+            this, &radarProject::errorWhileRunning);
 #endif
 
     QVector<radarInstance*> devices = get_available_radars();
@@ -943,6 +947,7 @@ octaveScript*    radarProject::add_script(QString &filename, projectItem* pitem)
         QFile(filename).copy(new_file);
 
     octaveScript* new_script = new octaveScript(new_file,script_folder);
+    new_script->attach_to_dataengine(_workspace==nullptr? nullptr : _workspace->data_interface());
     //Use only fileName since path is defined by the project tree
     new_script->set_filename(filename,false);
 

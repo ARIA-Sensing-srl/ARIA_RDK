@@ -12,6 +12,7 @@
 #include <map>
 #include <set>
 #include <QObject>
+#include <QMutex>
 
 
 bool ov_equal(const octave_value& a,const octave_value &b);
@@ -29,6 +30,7 @@ private:
     std::set<std::string>        _updated_vars;
     bool                         _b_deleting; // Used to avoid circular deleting
     class octaveInterface*       _data_interface;
+    mutable QMutex               _sync;
 public:
     octavews(octave::interpreter* interpreter = nullptr);
     ~octavews();

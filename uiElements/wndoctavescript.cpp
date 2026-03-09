@@ -17,6 +17,9 @@
 #include "Qsci/qscilexercpp.h"
 #include "Qsci/qsciscintilla.h"
 #include <ovl.h>
+#include <parse.h>
+#include "builtin-defun-decls.h"
+
 int wndOctaveScript::nNoname = 0;
 
 extern QDir             ariasdk_modules_path;
@@ -25,7 +28,15 @@ extern QDir             ariasdk_scripts_path;
 extern QDir             ariasdk_antennas_path;
 extern QDir             ariasdk_antennaff_path;
 extern QFont            ariasdk_script_font;
-
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::wndOctaveScript
+ * @param proj
+ * @param filename
+ * @param dataEngine
+ * @param parent
+ * @param basedir
+ */
 wndOctaveScript::wndOctaveScript(radarProject* proj, QString filename, octaveInterface* dataEngine,QWidget *parent, QString basedir) :
     QDialog(parent),
     _data_interface(dataEngine),
@@ -42,7 +53,9 @@ wndOctaveScript::wndOctaveScript(radarProject* proj, QString filename, octaveInt
 
 	_lexer(nullptr),
 	_api(nullptr),
+
 #endif
+    _n_rows(0),
     ui(new Ui::wndOctaveScript)
 {
     ui->setupUi(this);
@@ -67,9 +80,8 @@ wndOctaveScript::wndOctaveScript(radarProject* proj, QString filename, octaveInt
     // Create a new script object in case of a new file
     if (filename.isEmpty())
     {
-        _script = new octaveScript(filename);
+        create_new_script();
         _bInternal = true;
-        _script->attach_to_dataengine(dataEngine);
 
         filename = "newscript";
         QFile fi(filename+QString(".m"));
@@ -108,13 +120,15 @@ wndOctaveScript::wndOctaveScript(radarProject* proj, QString filename, octaveInt
         // to the project
         if (_script==nullptr)
         {
-            _script = new octaveScript();
-            _script->attach_to_dataengine(_data_interface);
+            create_new_script();
             _script->set_filename(filename,false);
             _bInternal = true;
         }
+        else
+            link_script_signals(_script);
     }
     ui->textScript->setText(_script->get_text());
+
 
 
 #ifdef USE_NATIVE_LEXER
@@ -131,8 +145,16 @@ wndOctaveScript::wndOctaveScript(radarProject* proj, QString filename, octaveInt
     _lexer->setFont(ariasdk_script_font);
 
     setInterpreterConnections();
+    updateTitle();
 }
-
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::wndOctaveScript
+ * @param script
+ * @param dataEngine
+ * @param parent
+ * @param basedir
+ */
 wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* dataEngine,QWidget *parent, QString basedir) : QDialog(parent),
     _data_interface(dataEngine),
     _script(script),
@@ -147,6 +169,7 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
 	_lexer(nullptr),
 	_api(nullptr),
 #endif
+    _n_rows(0),
     ui(new Ui::wndOctaveScript)
 {
     ui->setupUi(this);
@@ -181,6 +204,7 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
         _script->set_filename(filename,true);
         _b_need_save_as = true;
         _bInternal = true;
+        link_script_signals(_script);
     }
     else
     {
@@ -189,6 +213,7 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
         _bInternal = false;
         _script->load();
         ui->textScript->setText(_script->get_text());
+        link_script_signals(_script);
     }
 
 	ui->textScript->update();
@@ -202,57 +227,147 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
     _lexer->setFont(ariasdk_script_font);
 
     setInterpreterConnections();
-}
 
+    updateTitle();
+}
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::~wndOctaveScript
+ */
+
+wndOctaveScript::~wndOctaveScript()
+{
+
+#ifdef USE_NATIVE_LEXER
+    if (hl!=nullptr) delete hl;
+#else
+    if (_lexer!=nullptr) delete _lexer;
+
+#endif
+    if (_bInternal)
+        delete(_script);
+    _script = nullptr;
+    delete ui;
+}
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::setInterpreterConnections
+ * Create connection between the workspace update event
+ * and this editor
+ */
 
 void wndOctaveScript::setInterpreterConnections()
 {
     if (_data_interface==nullptr) return;
-    if (_data_interface->get_octave_engine()==nullptr) return;
+    if (_data_interface->engine_get_octave_engine()==nullptr) return;
     // This connections are used to enable / disable actions
-    connect(_data_interface, &octaveInterface::engineRunning, this, &wndOctaveScript::engineRunning);
-    connect(_data_interface, &octaveInterface::engineDone, this, &wndOctaveScript::engineDone);
+    connect(_data_interface, &octaveInterface::signal_workspace_updated,    this, &wndOctaveScript::update_tips);
+
 
 }
 
-void wndOctaveScript::engineRunning()
+
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::scriptRunning
+ * Update the actions according to a script that is running
+ */
+void wndOctaveScript::scriptIdle(const QString& filename)
 {
+    // The engine is idle after filename.
+    ui->textScript->markerDeleteAll(marker::debugger_position);
+    ui->tbRun->setEnabled(true);
+    ui->tbStep->setEnabled(true);
+    ui->tbStop->setEnabled(true);
+}
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::scriptRunning
+ * Some script is running. We need to disable run/stop/step
+ * Update the actions according to a script that is running
+ */
+void wndOctaveScript::scriptRunning(const QString& filename)
+{
+    ui->textScript->markerDeleteAll(marker::debugger_position);
+
     ui->tbRun->setEnabled(false);
     ui->tbStep->setEnabled(false);
-    ui->tbPause->setEnabled(true);
+    ui->tbStop->setEnabled(false);
+
+}
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::scriptDone
+ */
+void    wndOctaveScript::scriptDone(const QString& filename)
+{
+    ui->textScript->markerDeleteAll(marker::debugger_position);
+
+    ui->tbRun->setEnabled(true);
+    ui->tbStep->setEnabled(true);
     ui->tbStop->setEnabled(true);
-
-
 }
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::scriptError
+ * @param error
+ * @param line
+ */
 
-void    wndOctaveScript::engineDone(const QString& command, int errorcode)
-{
-    enginePaused();
-}
-
-
-void    wndOctaveScript::engineBusy()
-{
-    engineRunning();
-}
-
-void    wndOctaveScript::enginePaused()
+void    wndOctaveScript::scriptError(const QString& filename, const QString& error,int line)
 {
     ui->tbRun->setEnabled(true);
     ui->tbStep->setEnabled(true);
-    ui->tbPause->setEnabled(false);
-    ui->tbStop->setEnabled(false);
+    ui->tbStop->setEnabled(true);
+}
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::scriptPaused
+ * @param line
+ */
+
+void    wndOctaveScript::scriptPaused(const QString& filename,int line)
+{
+    QString fthis = _script == nullptr ? "" : _script->get_fullfilename();
+
+    ui->textScript->markerDeleteAll(marker::debugger_position);
+    if (fthis==filename)
+    {
+        ui->tbRun->setEnabled(true);
+        ui->tbStep->setEnabled(true);
+        ui->tbStop->setEnabled(line>=0);
+
+
+        if (line >= 0)
+            ui->textScript->markerAdd(line, marker::debugger_position);
+    }
+    else
+    {
+        ui->tbRun->setEnabled(false);
+        ui->tbStep->setEnabled(false);
+        // Allows to stop the Engine from any other window
+        ui->tbStop->setEnabled(line>=0);
+    }
 }
 
-
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::setupScintilla
+ */
 void wndOctaveScript::setupScintilla()
 {
-    ui->textScript->setMargins(2); // 0 is for breakpoints position, 1 is for execution position
+    QIcon bpIcon(":/icons/stop-blocked-icon.png");
+
+    ui->textScript->setMargins(2); // 0 is for breakpoints position, 1 is for execution position, 2 is line number
     ui->textScript->setMarginType (1, QsciScintilla::SymbolMargin);
+    ui->textScript->setMarginType (0, QsciScintilla::SymbolMargin);
     ui->textScript->setMarginSensitivity (1, true);
+    ui->textScript->setMarginSensitivity (0, true);
+
+
     ui->textScript->markerDefine (QsciScintilla::RightTriangle, marker::bookmark);
     ui->textScript->setMarkerBackgroundColor (QColor (0, 0, 232), marker::bookmark);
-    ui->textScript->markerDefine (QsciScintilla::Circle, marker::breakpoint);
+    ui->textScript->markerDefine (bpIcon.pixmap(16,16), marker::breakpoint);
     ui->textScript->setMarkerBackgroundColor (QColor (192, 0, 0), marker::breakpoint);
     ui->textScript->markerDefine (QsciScintilla::Circle, marker::cond_break);
     ui->textScript->setMarkerBackgroundColor (QColor (255, 127, 0), marker::cond_break);
@@ -265,14 +380,14 @@ void wndOctaveScript::setupScintilla()
     ui->textScript->setMarkerBackgroundColor (QColor (192, 192, 192),
                                           marker::unsure_debugger_position);
 
-
-
     connect(ui->textScript, &QsciScintilla::textChanged, this, &wndOctaveScript::modified);
     connect(ui->textScript, &QsciScintilla::marginClicked, this, &wndOctaveScript::marginClicked);
 
     // line numbers
-    ui->textScript->setMarginsForegroundColor (QColor (96, 96, 96));
-    ui->textScript->setMarginsBackgroundColor (QColor (232, 232, 220));
+    //ui->textScript->setMarginsForegroundColor (QColor (96, 96, 96));
+    //ui->textScript->setMarginsBackgroundColor (QColor (232, 232, 220));
+    ui->textScript->setMarginType (0, QsciScintilla::SymbolMargin);
+    ui->textScript->setMarginType (1, QsciScintilla::SymbolMargin);
     ui->textScript->setMarginType (2, QsciScintilla::TextMargin);
 
     // other features
@@ -284,14 +399,25 @@ void wndOctaveScript::setupScintilla()
     ui->textScript->setUtf8 (true);
     // auto completion
     ui->textScript->SendScintilla (QsciScintillaBase::SCI_AUTOCSETCANCELATSTART, false);
+    // Margin lines
+    QFont font;
+    font.setFamily("Courier");
+    font.setFixedPitch(true);
+    font.setPointSize(8);
+    ui->textScript->setMarginsFont(font);
+    QFontMetrics fmetric(font);
+    ui->textScript->setMarginWidth(0, fmetric.maxWidth()+ 18);
+    ui->textScript->setMarginLineNumbers(0, true);
+    ui->textScript->setMarginsBackgroundColor(Qt::lightGray);
+    ui->textScript->setCaretLineVisible(true);
+    ui->textScript->setCaretLineBackgroundColor(QColor("#3c3c3c"));
 
-    connect (this, &wndOctaveScript::maybe_remove_next,
-            this, &wndOctaveScript::handle_remove_next);
-
-    connect (this, &wndOctaveScript::request_add_breakpoint,
-            this, &wndOctaveScript::handle_request_add_breakpoint);
 }
-
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::setDefaultColor
+ * @param lexer
+ */
 
 void wndOctaveScript::setDefaultColor(QsciLexer* lexer)
 {
@@ -305,6 +431,11 @@ void wndOctaveScript::setDefaultColor(QsciLexer* lexer)
 }
 
 
+
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::createShortcutActions
+ */
 void wndOctaveScript::createShortcutActions()
 {
     connect(ui->tbRun,      &QToolButton::clicked, this, &wndOctaveScript::run_file);
@@ -312,119 +443,161 @@ void wndOctaveScript::createShortcutActions()
     connect(ui->tbSaveAs,   &QToolButton::clicked, this, &wndOctaveScript::save_file_as);
     connect(ui->tbOpen,     &QToolButton::clicked, this, &wndOctaveScript::open_file);
     connect(ui->tbNew,      &QToolButton::clicked, this, &wndOctaveScript::new_file);
-    connect(ui->tbPause,   &QToolButton::clicked, this, &wndOctaveScript::request_pause_engine);
-    connect(ui->tbStop,   &QToolButton::clicked, this, &wndOctaveScript::request_stop_engine);
-    connect(ui->tbStep,   &QToolButton::clicked, this, &wndOctaveScript::request_step_run);
+    connect(ui->tbStop,     &QToolButton::clicked, this, &wndOctaveScript::request_stop_engine);
+    connect(ui->tbStep,     &QToolButton::clicked, this, &wndOctaveScript::request_step);
+    connect(ui->tbToggleBreakpoint,
+            &QToolButton::clicked, this, &wndOctaveScript::request_toggle_breakpoint);
+
+    // At start-up, we need to check if the engine was running. So let's update the "enable" status of each action
+    // according to the status of the _octave_engine
+    const QString& fname = _script==nullptr? "" : _script->get_fullfilename();
+
+    if (_data_interface==nullptr) return;
+    switch (_data_interface->engine_get_status())
+    {
+    case (octaveThreadHandler::OTH_IDLE):
+        scriptIdle(fname);
+        break;
+    case (octaveThreadHandler::OTH_DEBUG):
+        if (_data_interface->engine_get_debug_script()!="")
+            scriptPaused(_data_interface->engine_get_debug_script(), _data_interface->engine_get_debug_line());
+        else
+            scriptRunning("");
+        break;
+    case (octaveThreadHandler::OTH_NULL):
+        scriptIdle(fname);
+        break;
+    case (octaveThreadHandler::OTH_RUNNING):
+        if (_data_interface->engine_get_running_script()!=nullptr)
+        {
+            scriptRunning(_data_interface->engine_get_running_script()->get_fullfilename());
+        }
+        else
+            scriptRunning("");
+    }
 }
 
 
-void  wndOctaveScript::request_pause_engine()
-{
 
-}
-
-void wndOctaveScript::request_stop_engine()
-{
-
-}
-
-void wndOctaveScript::request_step_run()
-{
-
-}
-
-
-wndOctaveScript::~wndOctaveScript()
-{
-
-#ifdef USE_NATIVE_LEXER
-    if (hl!=nullptr) delete hl;
-#else
-	if (_lexer!=nullptr) delete _lexer;
-
-#endif
-    if (_bInternal)
-        delete(_script);
-    _script = nullptr;
-    delete ui;
-}
-
-
-
-void wndOctaveScript::update_wnd_title()
-{
-    this->setWindowTitle(_script->get_full_filepath());
-}
-
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::loadFile
+ * @param fname
+ */
 
 void wndOctaveScript::loadFile(QString fname)
 {
-    update_wnd_title();
+    updateTitle();
     connect(&watcher,SIGNAL(fileChanged(QString)), this, SLOT(fileChangedOnDisk(QString)));
 
     _script->set_filename(fname,false);
     ui->textScript->setText(_script->get_text());
 }
-
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::closeFile
+ */
 
 void wndOctaveScript::closeFile()
 {
     if (_script!=nullptr)
-        _script->remove_all_breakpoints();
-
+        _script->breakpoint_remove_all();
 }
+
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::request_stop_engine
+ */
+
+void wndOctaveScript::request_stop_engine()
+{
+    _script->do_request_stop();
+}
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::request_step
+ */
+
+void wndOctaveScript::request_step()
+{
+    _script->do_request_step_in();
+}
+
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::run_file
+ */
 
 void wndOctaveScript::run_file()
 {
+    int db_line = _script->getCurrentDebugPosition();
+    if (db_line>=0)
+    {
+        _script->do_request_continue();
+        return;
+    }
+
     if (_b_modified)
         if (!save_file()) return;
 
-    if (_data_interface==nullptr) return;
-    _script->request_run();
-}
 
+    if (_data_interface==nullptr) return;
+    _script->do_request_run();
+}
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::update_tips
+ */
 
 void wndOctaveScript::update_tips()
 {
 
 #ifndef USE_NATIVE_LEXER
 	_api->clear();
-	if ((_data_interface!=nullptr)&&(_data_interface->get_octave_engine()!=nullptr))
+
+    if ((_data_interface!=nullptr)&&(_data_interface->engine_get_octave_engine()!=nullptr))
 	{
+        _data_interface->operation_wait_and_lock();
 		// Add variables
-		std::list<std::string> varnames = _data_interface->get_octave_engine()->variable_names();
+        std::list<std::string> varnames = _data_interface->engine_get_octave_engine()->variable_names();
 
 		for (std::list<std::string>::iterator iter = varnames.begin(); iter!=varnames.end(); iter++)
 			_api->add(QString::fromStdString(*iter));
 
-		varnames = _data_interface->get_octave_engine()->global_variable_names();
+        varnames = _data_interface->engine_get_octave_engine()->global_variable_names();
 
 		for (std::list<std::string>::iterator iter = varnames.begin(); iter!=varnames.end(); iter++)
 			_api->add(QString::fromStdString(*iter));
 
-		varnames = _data_interface->get_octave_engine()->top_level_variable_names();
+        varnames = _data_interface->engine_get_octave_engine()->top_level_variable_names();
 
 		for (std::list<std::string>::iterator iter = varnames.begin(); iter!=varnames.end(); iter++)
 			_api->add(QString::fromStdString(*iter));
 		// Add functions
 
 
-		std::list<std::string> funcnames= _data_interface->get_octave_engine()->user_function_names();
+        std::list<std::string> funcnames= _data_interface->engine_get_octave_engine()->user_function_names();
 
 		for (std::list<std::string>::iterator iter = funcnames.begin(); iter!=funcnames.end(); iter++)
 		{
 			_api->add(QString::fromStdString(*iter)+"( args )");
 
 		}
+        _data_interface->operation_unlock();
 	}
 	_api->prepare();
 	_lexer->setAPIs(_api);
 #endif
 }
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::showEvent
+ * @param event
+ */
 
 void wndOctaveScript::showEvent(QShowEvent *event)
 {
-	QDialog::showEvent(event);
+    QDialog::showEvent(event);
 #ifndef  USE_NATIVE_LEXER
 	ui->textScript->setCaretForegroundColor(Qt::lightGray);
 	ui->textScript->setCaretWidth(5);
@@ -448,24 +621,36 @@ void wndOctaveScript::showEvent(QShowEvent *event)
 #endif
 
 }
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::fileChangedOnDisk
+ * @param str
+ */
 
 void wndOctaveScript::fileChangedOnDisk(QString str)
 {
 //    if (QMessageBox()
 }
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::save_file
+ * @return
+ */
 
 
 bool wndOctaveScript::save_file()
 {
     if (_b_need_save_as) { return save_file_as(); }
+    QStringList lines;
 
 #ifdef USE_NATIVE_LEXER
-	_script->set_text(ui->textScript->toPlainText());
+    _script->set_text(ui->textScript->toPlainText().split("\n"));
 #else
     _script->set_text(ui->textScript->text());
 #endif
 
     _script->save();
+    breakpoint_update_all();
 
 	_b_modified = false;
 	if (windowTitle().endsWith("*"))
@@ -473,7 +658,43 @@ bool wndOctaveScript::save_file()
 
     return true;
 }
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::create_new_script
+ */
 
+void wndOctaveScript::create_new_script()
+{
+    if (_script!=nullptr)
+        link_script_signals(nullptr);
+    // Should we delete it?
+    _script = new octaveScript();
+    link_script_signals(_script);
+    _script->attach_to_dataengine(_data_interface);
+
+
+}
+
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::link_script_signals
+ * Link the underlying script object
+ * @param script
+ */
+
+void wndOctaveScript::link_script_signals(octaveScript* script)
+{
+    connect(script, &octaveScript::script_run,          this, &wndOctaveScript::scriptRunning);
+    connect(script, &octaveScript::script_stop,         this, &wndOctaveScript::scriptPaused);
+    connect(script, &octaveScript::script_error,        this, &wndOctaveScript::scriptError);
+    connect(script, &octaveScript::script_run_complete, this, &wndOctaveScript::scriptDone);
+
+}
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::new_file
+ * Create a new script. If we are inside a project, the script is anyway independent.
+ */
 void wndOctaveScript::new_file()
 {
     if (_b_modified)
@@ -491,8 +712,7 @@ void wndOctaveScript::new_file()
     if (!_bInternal)
     {
         // if if was a project script, we need to create a new one detached from the project
-        _script = new octaveScript();
-        _script->attach_to_dataengine(_data_interface);
+        create_new_script();
         _bInternal = true;
     }
 
@@ -514,7 +734,10 @@ void wndOctaveScript::new_file()
     ui->textScript->setText("");
     setModified(false);
 }
-
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::open_file
+ */
 void wndOctaveScript::open_file()
 {
     if (_b_modified)
@@ -562,6 +785,7 @@ void wndOctaveScript::open_file()
    {
        // The new one is a project script. Update the script to the project's one
        _script = possibleOldScript;
+       link_script_signals(_script);
        _script->set_filename(scriptFile,false);
        _bInternal = false;
    }
@@ -570,6 +794,7 @@ void wndOctaveScript::open_file()
    {
        // The new one is a project script. Update the script pointer to the project's one
        _script = possibleOldScript;
+       link_script_signals(_script);
        _script->set_filename(scriptFile,false);
        _bInternal = false;
    }
@@ -577,8 +802,7 @@ void wndOctaveScript::open_file()
    if ((!_bInternal)&&(bNewInternal))
    {
        // The old one is a project script and the new one is not. We need to create a temporary octaveScript object
-       _script = new octaveScript();
-        _script->attach_to_dataengine(_data_interface);
+        create_new_script();
        _script->set_filename(scriptFile,false);
         _bInternal = true;
    }
@@ -588,22 +812,23 @@ void wndOctaveScript::open_file()
        // The new one is not a project script, we need to create a temporary octaveScript object iff prev was null
        if (_script==nullptr)
        {
-            _script = new octaveScript();
-            _script->attach_to_dataengine(_data_interface);
+           create_new_script();
        }
 
         _bInternal = true;
        _script->set_filename(scriptFile,false);
    }
-
    ui->textScript->setText(_script->get_text());
    setModified(false);
 
+
    _b_need_save_as = false;
-
-
 }
-
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::save_file_as
+ * @return
+ */
 bool wndOctaveScript::save_file_as()
 {
     QString fname = _script->get_filename();
@@ -627,7 +852,8 @@ bool wndOctaveScript::save_file_as()
     radarProject* root = _script->get_root();
     // Create a new script
     if (!_bInternal)
-    _script = new octaveScript(*_script);
+        create_new_script();
+
 #ifdef USE_NATIVE_LEXER
     _script->set_text(ui->textScript->toPlainText());
 #else
@@ -635,6 +861,7 @@ bool wndOctaveScript::save_file_as()
 #endif
     _script->set_filename(projectFile);
     _script->save();
+    breakpoint_update_all();
 
     if (!_bInternal)
         if (root != nullptr)
@@ -644,27 +871,52 @@ bool wndOctaveScript::save_file_as()
     setModified(false);
     return true;
 }
-
+//---------------------------------------------
+/**
+ * @brief wndOctaveScript::setModified
+ * @param bmodified
+ */
 void wndOctaveScript::setModified(bool bmodified)
 {
     _b_modified = bmodified;
-    updateTitle();
+    updateTitle();    
 }
+//---------------------------------------------
+/**
+ * @brief wndOctaveScript::updateTitle
+ */
 void wndOctaveScript::updateTitle()
 {
     this->setWindowTitle(QString("Octave Script:")+_script->get_fullfilename()+QString(_b_modified?"*":""));
 }
 
-
 //---------------------------------------------
+/**
+ * @brief wndOctaveScript::modified
+ */
 void wndOctaveScript::modified()
 {
+
     setModified(true);
 }
 
-
+/**
+ * @brief wndOctaveScript::closeEvent
+ * @param event
+ */
 void wndOctaveScript::closeEvent( QCloseEvent* event )
 {
+    if (_script!=nullptr)
+    {
+        if (_data_interface!=nullptr)
+            if ((_data_interface->engine_get_running_script()!=nullptr)&&(_data_interface->engine_get_running_script()==_script))
+            {
+                QMessageBox::warning(this,"Warning","Cannot exit while Octave engine is in debug/running mode. Wait for script completion or terminate the debug");
+                event->ignore();
+                _b_closed = false;
+                return;
+            }
+    }
 	if (_b_modified)
 	{
 		QMessageBox::StandardButton result = QMessageBox::question(this, "Confirm","The current content has changed. Do you want to save?",QMessageBox::Yes|QMessageBox::No|QMessageBox::Cancel);
@@ -737,9 +989,13 @@ void wndOctaveScript::updateProject(radarProject* proj)
         // Previous script was linked to the previous project and not on the new one.
         if (!_bInternal)
         {
+            link_script_signals(nullptr);
             octaveScript* newScript = new octaveScript();
             newScript->set_filename(_script->get_full_filepath(),false);
             newScript->set_text(ui->textScript->text());
+            newScript->attach_to_dataengine(_data_interface);
+            _script = newScript;
+            link_script_signals(_script);
             _bInternal= true;
             return;
        }
@@ -754,17 +1010,63 @@ void wndOctaveScript::updateProject(radarProject* proj)
         if (!_bInternal)
         {
             // In this case, current script was linked to a project but we need to detach.
+            link_script_signals(nullptr);
+
             octaveScript* newScript = new octaveScript();
             newScript->set_filename(_script->get_full_filepath(),false);
             newScript->set_text(ui->textScript->text());
+            newScript->attach_to_dataengine(_data_interface);
             _script = newScript;
+            link_script_signals(_script);
+
             _bInternal= true;
         }
         _project = proj;
     }
 }
 
-// Subsequent section is taken from Octave source code. (Credits go where the credits are due).
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::breakpoint_update_all
+ * Delete all breakpoints in the Octave database and
+ * then re-insert according to the list of bp markers
+ */
+void wndOctaveScript::breakpoint_update_all()
+{
+
+    if (_script==nullptr) return;
+    _script->breakpoint_remove_all();
+    for (int line = 0; line < ui->textScript->lines(); line++)
+    {
+        unsigned int markers_mask = ui->textScript->markersAtLine (line);
+
+        if (markers_mask & (1 << marker::breakpoint))
+        {
+            _script->breakpoint_add(line);
+        }
+    }
+
+}
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::request_toggle_breakpoint
+ * This handles the "set/unset breakpoint" action. It toggles a breakpoint at current cursor position
+ */
+void wndOctaveScript::request_toggle_breakpoint()
+{
+    int editor_linenr, cur;
+    ui->textScript->getCursorPosition (&editor_linenr, &cur);
+    marginClicked(1, editor_linenr, Qt::NoModifier);
+}
+
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::marginClicked
+ * React to the margin clicked. As of now, it toggles the breakpoint
+ * @param margin
+ * @param line
+ * @param state
+ */
 
 void wndOctaveScript::marginClicked(int margin, int line, Qt::KeyboardModifiers state)
 {
@@ -791,47 +1093,52 @@ void wndOctaveScript::marginClicked(int margin, int line, Qt::KeyboardModifiers 
         }
         else
         {
-            if (_script->has_breakpoint_at_line(line))
-                handle_request_remove_breakpoint (line + 1);
-            else
-            {
-                if (_b_modified)
-                    if (!save_file()) return;
-
-                handle_request_add_breakpoint (line + 1, "");
-            }
+            toggle_breakpoint(line);
         }
     }
 
 }
-
-void wndOctaveScript::handle_request_remove_breakpoint(int line)
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::toggle_breakpoint
+ * Toggle a breakpoint at the requested line. If the line is not an active line (e.g. it is empty or it is a comment)
+ * the marker is moved to the first available statement
+ * @param line
+ */
+void wndOctaveScript::toggle_breakpoint (int line)
 {
+    // To get the actual line number, we need to have a file-saved script.
+    if (_b_modified)
+    {
+        if (QMessageBox::question(this,"Confirm save?","To enable breakpoint, the file must be saved. \n Do you want to save and continue?")==QMessageBox::No)
+            return;
 
+        if (!save_file()) return;
+    }
+    // Get the actual line
+    line = _script->breakpoint_get_line(line);
 
-}
-void wndOctaveScript::handle_request_add_breakpoint(int line, const QString& condition)
-{
-    add_breakpoint_event (line, condition);
-}
+    unsigned int markers_mask = ui->textScript->markersAtLine (line);
 
-void wndOctaveScript::toggle_breakpoint (const QWidget *ID)
-{
-    if (ID != this)
-        return;
-
-    int editor_linenr, cur;
-    ui->textScript->getCursorPosition (&editor_linenr, &cur);
-
-    if (ui->textScript->markersAtLine (editor_linenr) & (1 << marker::breakpoint))
-        request_remove_breakpoint_via_editor_linenr (editor_linenr);
+    if (markers_mask & (1 << marker::breakpoint))
+    {
+        ui->textScript->markerDelete (line, marker::breakpoint);
+        _script->breakpoint_remove(line);
+    }
     else
     {
-        if (!_b_modified)
-            handle_request_add_breakpoint (editor_linenr + 1, "");
+        ui->textScript->markerAdd (line, marker::breakpoint);
+        _script->breakpoint_add(line);
     }
-}
 
+}
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::next_breakpoint
+ * Move the cursor to the next marker
+ * @param ID - unused as of now
+ *
+ */
 
 void wndOctaveScript::next_breakpoint (const QWidget *ID)
 {
@@ -853,6 +1160,12 @@ void wndOctaveScript::next_breakpoint (const QWidget *ID)
     ui->textScript->setCursorPosition (nextline, 0);
 
 }
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::remove_all_breakpoints
+ * It handle the action of
+ * @param ID
+ */
 void wndOctaveScript::remove_all_breakpoints (const QWidget *ID)
 {
     if (ID != this)
@@ -861,21 +1174,17 @@ void wndOctaveScript::remove_all_breakpoints (const QWidget *ID)
     if (_script==nullptr)
         return;
 
-    _script->remove_all_breakpoints();
-
-/*    Q_EMIT interpreter_event
-        ([this] (octave::interpreter& interp)
-         {
-             // INTERPRETER THREAD
-
-             octave::tree_evaluator& tw = interp.get_evaluator ();
-             octave::bp_table& bptab = tw.get_bp_table ();
-
-             bptab.remove_all_breakpoints_from_file (_script->get_fullfilename().toStdString (),
-                                                    true);
-         });*/
+    _script->breakpoint_remove_all();
 
 }
+
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::previous_breakpoint
+ * Move the cursor the previous breakpoint
+ * @param ID
+ */
+
 void wndOctaveScript::previous_breakpoint (const QWidget *ID)
 {
     if (ID != this)
@@ -897,108 +1206,11 @@ void wndOctaveScript::previous_breakpoint (const QWidget *ID)
 
 }
 
-void wndOctaveScript::add_breakpoint_event (int line, const QString& cond)
-{
-
-    if (_script==nullptr) return;
-
-    _script->add_breakpoint(line,cond);
-
-}
-
-void wndOctaveScript::do_breakpoint_marker (bool insert, const QWidget *ID, int line,
-                                           const QString& cond)
-{
-    if (ID != this || ID == nullptr)
-        return;
-
-    if (line > 0)
-    {
-        if (insert)
-        {
-            int editor_linenr = -1;
-            marker *bp = nullptr;
-
-            // If comes back indicating a nonzero breakpoint marker,
-            // reuse it if possible
-            Q_EMIT find_translated_line_number (line, editor_linenr, bp);
-            if (bp != nullptr)
-            {
-                if ((cond == "") != (bp->get_cond () == ""))
-                {
-                    // can only reuse conditional bp as conditional
-                    Q_EMIT remove_breakpoint_via_debugger_linenr (line);
-                    bp = nullptr;
-                }
-                else
-                    bp->set_cond (cond);
-            }
-
-            if (bp == nullptr)
-            {
-                bp = new marker (ui->textScript, line,
-                                cond == "" ? marker::breakpoint
-                                           : marker::cond_break, cond);
-
-                connect (this, &wndOctaveScript::remove_breakpoint_via_debugger_linenr,
-                        bp, &marker::handle_remove_via_original_linenr);
-                connect (this, &wndOctaveScript::request_remove_breakpoint_via_editor_linenr,
-                        bp, &marker::handle_request_remove_via_editor_linenr);
-                connect (this, &wndOctaveScript::remove_all_breakpoints_signal,
-                        bp, &marker::handle_remove);
-                connect (this, &wndOctaveScript::find_translated_line_number,
-                        bp, &marker::handle_find_translation);
-                connect (this, &wndOctaveScript::find_linenr_just_before,
-                        bp, &marker::handle_find_just_before);
-                connect (this, &wndOctaveScript::report_marker_linenr,
-                        bp, &marker::handle_report_editor_linenr);
-                connect (bp, &marker::request_remove,
-                        this, &wndOctaveScript::handle_request_remove_breakpoint);
-            }
-        }
-        else
-            Q_EMIT remove_breakpoint_via_debugger_linenr (line);
-    }
-
-}
-
-
-
-void
-wndOctaveScript::update_breakpoints ()
-{
-    if (_script->get_fullfilename().isEmpty ())
-        return;
-
-
-}
-
-void
-wndOctaveScript::update_breakpoints_handler (const octave_value_list& argout)
-{
-    octave_map dbg = argout(0).map_value ();
-    octave_idx_type n_dbg = dbg.numel ();
-
-    Cell file = dbg.contents ("file");
-    Cell line = dbg.contents ("line");
-    Cell cond = dbg.contents ("cond");
-
-    for (octave_idx_type i = 0; i < n_dbg; i++)
-    {
-        if (file (i).string_value () == _script->get_fullfilename().toStdString ())
-            do_breakpoint_marker (true, this, line (i).int_value (),
-                                 QString::fromStdString (cond (i).string_value ()));
-    }
-}
-
-void
-wndOctaveScript::handle_remove_next (int remove_line)
-{
-    // Store some info breakpoint
-    if (_script == nullptr) return;
-    _script->remove_breakpoint(remove_line);
-}
-
+//----------------------------------------------------
+/**
+ * @brief wndOctaveScript::file_has_changed
+ * @param do_close
+ */
 
 
 void
@@ -1016,8 +1228,6 @@ wndOctaveScript::file_has_changed (const QString&, bool do_close)
         }
 
         save_file();
-
-
     }
 
     if (QMessageBox::warning(this, "Warning", QString("The file ")+_script->get_fullfilename()+QString(" has been changed outside the editor.\n Do you want to reload?"),
@@ -1031,3 +1241,5 @@ wndOctaveScript::file_has_changed (const QString&, bool do_close)
         setModified(false);
     }
 }
+
+

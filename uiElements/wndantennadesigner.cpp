@@ -624,8 +624,8 @@ void wndAntennaDesigner::exportFF()
 	
 	NDArray impedance(dim_vector({1,1}),50.0);
 	antenna_struct.assign("impedance",octave_value(impedance));
-    de->get_workspace()->add_variable(name.toStdString(),false, antenna_struct);
-    emit de->updatedVariable(name.toStdString());
+    de->workspace_get()->add_variable(name.toStdString(),false, antenna_struct);
+    emit de->signal_updated_variable(name.toStdString());
 
 
 

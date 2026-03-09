@@ -62,6 +62,8 @@ void octavews::merge_value_list(const string_vector& vars, bool octave_generated
         if ((_oct_int==nullptr)&&(values.length()!=vars.numel()))
             return;
 
+        _data_interface->operation_wait_and_lock();
+
         for (int s = 0; s < vars.numel(); s++)
         {
             string vname = vars(s);
@@ -75,6 +77,8 @@ void octavews::merge_value_list(const string_vector& vars, bool octave_generated
                 _octave_variables[vname] = _oct_int->varval(vname);
 
         }
+
+        _data_interface->operation_unlock();
         return;
     }
 
@@ -82,7 +86,7 @@ void octavews::merge_value_list(const string_vector& vars, bool octave_generated
     {
         if (values.length()!=vars.numel())
             return;
-
+        _data_interface->operation_wait_and_lock();
         for (int s = 0; s < vars.numel(); s++)
         {
             string vname = vars(s);
@@ -93,11 +97,13 @@ void octavews::merge_value_list(const string_vector& vars, bool octave_generated
             _internal_variables[vname] = values(s);
 
         }
+        _data_interface->operation_unlock();
         return;
     }
 }
 void octavews::remove_value_list(const string_vector& vars)
 {
+    _data_interface->operation_wait_and_lock();
     for (int n=0; n < vars.numel(); n++)
     {
         string vname = vars(n);
@@ -109,11 +115,12 @@ void octavews::remove_value_list(const string_vector& vars)
         if (vfound != _octave_variables.end())
             _octave_variables.erase(vfound);
     }
+    _data_interface->operation_unlock();
 }
 
 void octavews::add_variable(const string& varname, bool octave_generated, const octave_value& value)
 {
-
+    _data_interface->operation_wait_and_lock();
     oct_dataset::iterator vfound;
     if (octave_generated)
     {
@@ -133,6 +140,8 @@ void octavews::add_variable(const string& varname, bool octave_generated, const 
         _octave_variables[varname] = _oct_int == nullptr ? value : _oct_int->varval(varname);
     else
         _internal_variables[varname] = value;
+
+    _data_interface->operation_unlock();
 }
 
 void octavews::clear()
@@ -155,13 +164,20 @@ void    octavews::clear_octave()
 
 octave_value&   octavews::var_value(const std::string& varname)
 {
+    _data_interface->operation_wait_and_lock();
     oct_dataset::iterator vfound = _internal_variables.find(varname);
     if (vfound != _internal_variables.end())
+    {
+        _data_interface->operation_unlock();
         return vfound->second;
+    }
 
     vfound = _octave_variables.find(varname);
     if (vfound != _octave_variables.end())
+    {
+        _data_interface->operation_unlock();
         return vfound->second;
+    }
 
     return dumb;
 }
@@ -185,33 +201,42 @@ bool            octavews::is_octave(const std::string& varname)
 
 void            octavews::workspace_to_interpreter_noautolist()
 {
+    _data_interface->operation_wait_and_lock();
     // Install only internal variables
     if (_oct_int==nullptr) return;
-    const oct_dataset& varx = _internal_variables;
-    for (const auto& var : varx)
+    const QMutexLocker locker(&_sync);
     {
-        if (_oct_int->is_variable(var.first))
-            _oct_int->assign(var.first, var.second);
-        else
-            _oct_int->install_variable(var.first, var.second, true);
+        const oct_dataset& varx = _internal_variables;
+        for (const auto& var : varx)
+        {
+            if (_oct_int->is_variable(var.first))
+                _oct_int->assign(var.first, var.second);
+            else
+                _oct_int->install_variable(var.first, var.second, true);
+        }
     }
+    _data_interface->operation_unlock();
 }
 
 void            octavews::workspace_to_interpreter()
 {
+    _data_interface->operation_wait_and_lock();
     // Install only internal variables
     if (_oct_int==nullptr) return;
-    const oct_dataset& varx = _internal_variables;
-    for (const auto& var : varx)
+    const QMutexLocker locker(&_sync);
     {
-        if (_oct_int->is_variable(var.first))
-            _oct_int->assign(var.first, var.second);
-        else
-            _oct_int->install_variable(var.first, var.second, true);
+        const oct_dataset& varx = _internal_variables;
+        for (const auto& var : varx)
+        {
+            if (_oct_int->is_variable(var.first))
+                _oct_int->assign(var.first, var.second);
+            else
+                _oct_int->install_variable(var.first, var.second, true);
 
-        add_variable_to_updatelist(var.first);
+            add_variable_to_updatelist(var.first);
+        }
     }
-
+    _data_interface->operation_unlock();
 }
 
 // Update only workspace values from interpreter (e.g. immediate_update needs so)
@@ -220,15 +245,21 @@ void            octavews::interpreter_to_workspace_update()
     if (_oct_int==nullptr)
         return;
 
-    for (auto& var: _internal_variables)
-        var.second = _oct_int->varval(var.first);
+    _data_interface->operation_wait_and_lock();
+    const QMutexLocker locker(&_sync);
+    {
+        for (auto& var: _internal_variables)
+            var.second = _oct_int->varval(var.first);
 
-    for (auto& var: _octave_variables)
-        var.second = _oct_int->varval(var.first);
+        for (auto& var: _octave_variables)
+            var.second = _oct_int->varval(var.first);
+    }
+    _data_interface->operation_unlock();
 }
 
 void            octavews::interpreter_to_workspace()
 {
+    _data_interface->operation_wait_and_lock();
     // get list of variables
     if (_oct_int==nullptr)
         return;
@@ -243,9 +274,11 @@ void            octavews::interpreter_to_workspace()
         _octave_variables[varname] = val;
         add_variable_to_updatelist(varname);
     }
+    _data_interface->operation_unlock();
 
     if (_data_interface!=nullptr)
-        emit _data_interface->updatedVariables(_updated_vars);
+        emit _data_interface->signal_updated_variables(_updated_vars);
+
     update_graphs();
 }
 
@@ -253,55 +286,72 @@ void            octavews::interpreter_to_workspace()
 octave_value_list octavews::get_var_values(string_vector names)
 {
     octave_value_list out;
-
-    for (int s=0; s < names.numel(); s++)
+    _data_interface->operation_wait_and_lock();
+    const QMutexLocker locker(&_sync);
     {
-        string vname = names[s];
-        if (vname.empty()) {out.append(octave_value()); continue;}
-        out.append(var_value(vname));
+        for (int s=0; s < names.numel(); s++)
+        {
+            string vname = names[s];
+            if (vname.empty()) {out.append(octave_value()); continue;}
+            out.append(var_value(vname));
+        }
     }
+
+    _data_interface->operation_unlock();
     return out;
 }
 
 void            octavews::set_var_values(string_vector names, octave_value_list values)
 {
-    for (int s=0; s < names.numel(); s++)
+    _data_interface->operation_wait_and_lock();
+    const QMutexLocker locker(&_sync);
     {
-        string varname = names[s];
-        if (varname.empty()) continue;
-        _oct_int->assign(varname,values(s));
-        oct_dataset::iterator vfound = _internal_variables.find(varname);
-        if (vfound != _internal_variables.end())
-            {vfound->second = values(s); continue;}
 
-        vfound = _octave_variables.find(varname);
-        if (vfound != _octave_variables.end())
-            {vfound->second = values(s); continue;}
+        for (int s=0; s < names.numel(); s++)
+        {
+            string varname = names[s];
+            if (varname.empty()) continue;
+            _oct_int->assign(varname,values(s));
+            oct_dataset::iterator vfound = _internal_variables.find(varname);
+            if (vfound != _internal_variables.end())
+                {vfound->second = values(s); continue;}
 
-        add_variable(varname,true, values(s));
+            vfound = _octave_variables.find(varname);
+            if (vfound != _octave_variables.end())
+                {vfound->second = values(s); continue;}
 
-        add_variable_to_updatelist(varname);
+            add_variable(varname,true, values(s));
+
+            add_variable_to_updatelist(varname);
+        }
+        if (_data_interface!=nullptr)
+            emit _data_interface->signal_updated_variables(_updated_vars);
+        update_graphs();
     }
-    if (_data_interface!=nullptr)
-        emit _data_interface->updatedVariables(_updated_vars);
-    update_graphs();
-
+    _data_interface->operation_unlock();
     return;
 }
 
 
 void        octavews::update_after_set_variables()
 {
-    if (_data_interface!=nullptr)
-        emit _data_interface->updatedVariables(_updated_vars);
+    //_data_interface->operation_wait_and_lock();
+    const QMutexLocker locker(&_sync);
+    {
 
-    update_graphs();
+        if (_data_interface!=nullptr)
+            emit _data_interface->signal_updated_variables(_updated_vars);
 
-    _updated_vars.clear();
+        update_graphs();
+
+        _updated_vars.clear();
+    }
+    //_data_interface->operation_unlock();
 }
 
 void        octavews::set_variable_no_immediate_update(const std::string& varname, const octave_value& value)
 {
+    _data_interface->operation_wait_and_lock();
     oct_dataset::iterator vfound = _internal_variables.find(varname);
     if (vfound != _internal_variables.end())
         vfound->second = value;
@@ -315,47 +365,64 @@ void        octavews::set_variable_no_immediate_update(const std::string& varnam
 
     }
     _oct_int->assign(varname,value);
+    _data_interface->operation_unlock();
 }
 
 
 void        octavews::set_variable(const std::string& varname, const octave_value& value)
 {
-    oct_dataset::iterator vfound = _internal_variables.find(varname);
-    if (vfound != _internal_variables.end())
-        vfound->second = value;
-    else
+    //_data_interface->operation_wait_and_lock();
+    const QMutexLocker locker(&_sync);
     {
-        vfound = _octave_variables.find(varname);
-        if (vfound != _octave_variables.end())
+
+        oct_dataset::iterator vfound = _internal_variables.find(varname);
+        if (vfound != _internal_variables.end())
             vfound->second = value;
         else
         {
-            add_variable(varname,false, value);
-            add_variable_to_updatelist(varname);
+            vfound = _octave_variables.find(varname);
+            if (vfound != _octave_variables.end())
+                vfound->second = value;
+            else
+            {
+                add_variable(varname,false, value);
+                add_variable_to_updatelist(varname);
+            }
         }
-    }
-    _oct_int->assign(varname,value);
-    if (_data_interface!=nullptr)
-        emit _data_interface->updatedVariable(varname);
+        _data_interface->operation_wait_and_lock();
+        _oct_int->assign(varname,value);
+        _data_interface->operation_unlock();
+        if (_data_interface!=nullptr)
+            emit _data_interface->signal_updated_variable(varname);
 
-    update_graphs();
+        update_graphs();
+    }
+    //_data_interface->operation_unlock();
 }
 QStringList		  octavews::get_all_vars()
 {
-	QStringList vout;
-	for (const auto& var: _internal_variables)
-		vout.append(QString::fromStdString(var.first));
-	for (const auto& var: _octave_variables)
-		vout.append(QString::fromStdString(var.first));
-	return vout;
+    QStringList vout;
+    _data_interface->operation_wait_and_lock();
+    const QMutexLocker locker(&_sync);
+    {
+        for (const auto& var: _internal_variables)
+            vout.append(QString::fromStdString(var.first));
+        for (const auto& var: _octave_variables)
+            vout.append(QString::fromStdString(var.first));
+    }
+    _data_interface->operation_unlock();
+    return vout;
 }
 
 string_vector     octavews::get_var_names(bool internal)
 {
+    _data_interface->operation_wait_and_lock();
     const oct_dataset& refds = internal ? _internal_variables : _octave_variables;
     string_vector out;
     for (const auto& var: refds)
         out.append(var.first);
+
+    _data_interface->operation_unlock();
     return out;
 }
 

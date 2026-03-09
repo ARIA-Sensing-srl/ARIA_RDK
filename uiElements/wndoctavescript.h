@@ -16,6 +16,7 @@
 #include "Qsci/qsciscintilla.h"
 #include "Qsci/qsciapis.h"
 #include <marker.h>
+#include <QKeyEvent>
 
 typedef std::function<void ()> fcn_callback;
 typedef std::function<void (octave::interpreter&)> meth_callback;
@@ -39,7 +40,6 @@ public:
     explicit wndOctaveScript(radarProject* proj, QString filename="", class octaveInterface* dataEngine=nullptr,QWidget *parent = nullptr, QString basedir="");
     explicit wndOctaveScript(octaveScript* script, class octaveInterface* dataEngine=nullptr,QWidget *parent = nullptr,QString basedir="");
     ~wndOctaveScript();
-
 private:
     static int              nNoname;
     radarProject*           _project;
@@ -52,6 +52,7 @@ private:
 	bool					_b_closed;
     QIntList                _bp_lines;
     QStringList             _bp_conditions;
+    int                     _n_rows;
 
 #ifdef USE_NATIVE_LEXER
 	octaveSyntaxHighlighter *hl;
@@ -62,8 +63,6 @@ private:
 #endif
     Ui::wndOctaveScript *ui;
 
-    void update_wnd_title();
-
     void setDefaultColor(QsciLexer* lexer);
     void createShortcutActions();
     void setModified(bool bmodified);
@@ -72,6 +71,12 @@ private:
     void add_breakpoint_event (int line, const QString& cond);
 
     void setInterpreterConnections();
+
+    void create_new_script();
+    void link_script_signals(octaveScript* script);
+    void breakpoint_update_all();
+
+
 signals:
     void update_tree(projectItem* item);
     void interpreter_event (const fcn_callback& fcn);
@@ -86,7 +91,9 @@ signals:
                                  int& editor_linenr);
     void report_marker_linenr (QIntList& lines, QStringList& conditions);
     void update_breakpoints_signal (const octave_value_list& args);
-    void request_add_breakpoint (int line, const QString& cond);
+
+
+
 public:
 
     void loadFile(QString fname);
@@ -100,6 +107,7 @@ public:
     void updateProject(radarProject* proj);
     void updateFont();
     void update_breakpoints ();
+
 public slots:
     void fileChangedOnDisk(QString str);
     void run_file();
@@ -111,28 +119,25 @@ public slots:
 	void modified();
 	void closeEvent( QCloseEvent* event );
     void marginClicked(int margin, int line, Qt::KeyboardModifiers state);
-    void update_breakpoints_handler (const octave_value_list& argout);
-    void handle_request_remove_breakpoint(int line);
-    void handle_request_add_breakpoint(int line, const QString& condition);
-    void toggle_breakpoint (const QWidget *ID);
+    void toggle_breakpoint (int line);
     void next_breakpoint (const QWidget *ID);
     void remove_all_breakpoints (const QWidget *ID);
     void previous_breakpoint (const QWidget *ID);
-    void do_breakpoint_marker (bool insert, const QWidget *ID, int line = -1,
-                              const QString& cond = "");
-    void handle_remove_next (int remove_line);
     void file_has_changed (const QString& path, bool do_close = false);
+    void            scriptIdle(const QString& filename);
+    void            scriptRunning(const QString& filename );
+    void            scriptDone(const QString& filename );
+    void            scriptError(const QString& filename,const QString& strError, int line);
+    void            scriptPaused(const QString& filename, int line);
 
-    void            engineRunning();
-    void            engineDone(const QString& command, int errorcode);
-    void            engineBusy();
-    void            enginePaused();
-
-    void            request_pause_engine();
     void            request_stop_engine();
-    void            request_step_run();
-
-
+    void            request_step();
+    void            request_toggle_breakpoint();
+    void keyPressEvent(QKeyEvent *e) {
+        if(e->key() != Qt::Key_Escape)
+            QDialog::keyPressEvent(e);
+        else {/* minimize */}
+    }
 
 };
 

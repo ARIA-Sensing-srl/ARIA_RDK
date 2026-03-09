@@ -61,7 +61,7 @@ MainWindow* MainWindow::mainWnd = nullptr;
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
     app_settings(QSettings::NativeFormat, QSettings::UserScope,
-                 "ARIA Sensing", "ARIA RDK") ,
+                 "ARIASensing", "ARIARDK") ,
     ui(new Ui::MainWindow),
     _plot2d_children(),
     _plot3d_children()
@@ -136,14 +136,7 @@ MainWindow::MainWindow(QWidget *parent)
     elabThread  = nullptr;
     createOctaveThread();
 
-    // Connect thread error to this
-#ifdef OCTAVE_THREAD
-    connect(elabThread->getData(), &octaveInterface::workerError, this, &MainWindow::octaveError);
-#else
-    connect(interfaceData, &octaveInterface::workerError, this, &MainWindow::octaveError);
     m_qd->setInterface(interfaceData);
-
-#endif
 
     if (wndOctaveInterface!=nullptr)
         wndOctaveInterface->update_octave_interface();
@@ -256,8 +249,10 @@ void MainWindow::octaveInterfaceCreate()
 #else
         if ((interfaceData!=nullptr)&&(wndOctaveInterface!=nullptr))
         {
-            connect(interfaceData,&octaveInterface::updatedVariable,    wndOctaveInterface,&mdiOctaveInterface::updatedSingleVar);
-            connect(interfaceData,&octaveInterface::updatedVariables,   wndOctaveInterface,&mdiOctaveInterface::updatedVars);
+            connect(interfaceData,&octaveInterface::signal_updated_variable,
+                    wndOctaveInterface,&mdiOctaveInterface::updatedSingleVar);
+            connect(interfaceData,&octaveInterface::signal_updated_variables,
+                    wndOctaveInterface,&mdiOctaveInterface::updatedVars);
         }
 #endif
         connect(ui->actionOctaveScriptNew, &QAction::triggered,  this, &MainWindow::newOctaveScript);
@@ -292,55 +287,18 @@ void MainWindow::octaveInterface_CloseWnd()
 
 void MainWindow::deleteOctaveThread()
 {
-#ifdef OCTAVE_THREAD
-    if (octaveThread!=nullptr)
-    {
-        if (interfaceData!=nullptr) interfaceData->stopThread(true);
-        if (elabThread->isPaused()) elabThread->resume();
-
-        if (octaveThread!=nullptr)
-        {
-            octaveThread->quit();
-            octaveThread->wait();
-        }
-        //while (!elabThread->isReady()){};
-    }
-#else
-    if (interfaceData!=nullptr)
-        delete interfaceData;
-#endif
+    //if (interfaceData!=nullptr)
+    //    delete interfaceData;
 }
 
 void MainWindow::createOctaveThread()
 {
-#ifdef OCTAVE_THREAD
-    if (octaveThread!=nullptr)
-        deleteOctaveThread();
-
-    octaveThread = new QThread(this);
-
-    elabThread = new qDataThread();
-    elabThread->moveToThread(octaveThread);
-
-    connect( elabThread, &qDataThread::error, this, &MainWindow::octaveError);
-    connect( octaveThread, &QThread::started, elabThread, &qDataThread::processDataThread);
-
-    connect( elabThread, &qDataThread::finished, octaveThread, &QThread::quit);
-    connect( elabThread, &qDataThread::finished, elabThread, &qDataThread::deleteLater);
-    connect( octaveThread, &QThread::finished, octaveThread, &QThread::deleteLater);
-
-    connect( elabThread, &qDataThread::commandCompleted, this, &MainWindow::octaveCompletedTask);
-
-    octaveThread->start();
-
-    interfaceData = elabThread->getData();
-#else
     interfaceData = new octaveInterface();
-#endif
+
     if ((interfaceData!=nullptr)&&(wndOctaveInterface!=nullptr))
     {
-        connect(interfaceData,&octaveInterface::updatedVariable,    wndOctaveInterface,&mdiOctaveInterface::updatedSingleVar);
-        connect(interfaceData,&octaveInterface::updatedVariables,   wndOctaveInterface,&mdiOctaveInterface::updatedVars);
+        connect(interfaceData,&octaveInterface::signal_updated_variable,    wndOctaveInterface,&mdiOctaveInterface::updatedSingleVar);
+        connect(interfaceData,&octaveInterface::signal_updated_variables,   wndOctaveInterface,&mdiOctaveInterface::updatedVars);
     }
 }
 
@@ -350,7 +308,7 @@ void MainWindow::octaveCompletedTask(QString task)
     // Do nothing, by now
 }
 
-void MainWindow::octaveError(QString error)
+void MainWindow::octaveError(const QString& fname, const QString& error, int line)
 {
 	wndOctaveInterface->error(error);
  //   QMessageBox::critical(this,"Error",error);
@@ -437,7 +395,7 @@ void MainWindow::newProject()
     ariasdk_projects_path.setPath(QFileInfo(projectFile).absolutePath());
 
 
-    project = new radarProject(projectFile,interfaceData==nullptr ? nullptr : interfaceData->get_workspace(),true);
+    project = new radarProject(projectFile,interfaceData==nullptr ? nullptr : interfaceData->workspace_get(),true);
 
     updateProjectTree();
 
@@ -447,7 +405,7 @@ void MainWindow::newProject()
     connect(project,&radarProject::item_updated,        this, &MainWindow::update_project_item);
     QString script_path = project->get_folder(cstr_scripts)->get_full_path();
     if (script_path!=nullptr)
-        if (interfaceData!=nullptr) interfaceData->set_pwd(script_path);
+        if (interfaceData!=nullptr) interfaceData->engine_set_pwd(script_path);
     project->save_project_file();
     ui->menuAdd->setEnabled(true);
     wndOctaveInterface->updateScriptsProject(project);
@@ -829,7 +787,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 		if (!wndOctaveInterface->close_scripts())
 		{event->ignore(); return;}
 
-        update_option_file();
+
         event->accept();
     }
     else
@@ -843,6 +801,12 @@ void MainWindow::closeEvent(QCloseEvent *event)
 void MainWindow::read_option_file()
 {
     QString def_path = QString(".") + QDir::separator();
+    app_settings.sync();
+    QSettings::Status status = app_settings.status();
+    if (status==QSettings::AccessError)
+    {
+        return;
+    }
     app_settings.beginGroup("Paths");
     ariasdk_modules_path.setPath(app_settings.value(QString("modules_path"),def_path).toString());
     ariasdk_projects_path.setPath(app_settings.value(QString("project_path"),def_path).toString());
@@ -881,6 +845,9 @@ void MainWindow::read_option_file()
 // Update options
 void MainWindow::update_option_file()
 {
+    app_settings.clear();
+    if (!app_settings.isWritable())
+        return;
     app_settings.beginGroup("Paths");
     app_settings.setValue(QString("modules_path"),ariasdk_modules_path.absolutePath()+QDir::separator());
     app_settings.setValue(QString("project_path"),ariasdk_projects_path.absolutePath()+QDir::separator());
@@ -904,10 +871,11 @@ void MainWindow::update_option_file()
     app_settings.endGroup();
 
     app_settings.beginGroup("Text Settings");
-    app_settings.setValue("scripts_font", ariasdk_script_font.family());
-    app_settings.setValue("scripts_font_size", ariasdk_script_font.pointSize());
+    //app_settings.setValue("scripts_font", ariasdk_script_font.family());
+    //app_settings.setValue("scripts_font_size", ariasdk_script_font.pointSize());
 
     app_settings.endGroup();
+
 }
 
 //---------------------------------------------------------------
@@ -949,7 +917,7 @@ void MainWindow::loadProject()
         ui->menuAdd->setEnabled(false);
     }
 
-    project = new radarProject(projectFile,interfaceData==nullptr ? nullptr : interfaceData->get_workspace(), false);
+    project = new radarProject(projectFile,interfaceData==nullptr ? nullptr : interfaceData->workspace_get(), false);
 
     wndOctaveInterface->updateScriptsProject(project);
 
@@ -963,7 +931,7 @@ void MainWindow::loadProject()
 
     QString script_path = project->get_folder(cstr_scripts)->get_full_path();
     if (script_path!=nullptr)
-        if (interfaceData!=nullptr) interfaceData->set_pwd(script_path);
+        if (interfaceData!=nullptr) interfaceData->engine_set_pwd(script_path);
 
     project->save_project_file();
     ui->menuAdd->setEnabled(true);
@@ -1010,7 +978,7 @@ void MainWindow::closeProject()
 		return;
 
 	if (interfaceData != nullptr)
-		interfaceData->clearWorkspace();
+        interfaceData->workspace_clear();
 
 	if (wndOctaveInterface!=nullptr)
 		wndOctaveInterface->clear_and_init_var_table();

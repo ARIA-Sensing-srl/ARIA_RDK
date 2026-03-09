@@ -90,7 +90,7 @@ octaveSyntaxHighlighter::octaveSyntaxHighlighter(octaveInterface* dataInterface,
 
     if (_data_interface==nullptr) return;
 
-    _octave_interpreter = _data_interface->get_octave_engine();
+    _octave_interpreter = _data_interface->engine_get_octave_engine();
 
     if (_octave_interpreter==nullptr) return;
 

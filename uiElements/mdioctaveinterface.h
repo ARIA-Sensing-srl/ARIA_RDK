@@ -17,6 +17,8 @@
 #include <octavescript.h>
 #include <dlgqwtplot.h>
 #include <QTextLine>
+#include <QKeyEvent>
+
 namespace Ui {
 class mdiOctaveInterface;
 }
@@ -45,6 +47,7 @@ public:
 
     void        updateFont();
     void        updateScriptsProject(radarProject* proj);
+    void        updateLocalVar(bool b_clear_only);
 signals:
     void plotVariable(QString varname);
 public slots:
@@ -58,7 +61,6 @@ public slots:
     // Bottom editor
     void newCommandLine();
     void closeEvent( QCloseEvent* event );
-    void octaveCompletedTask(QString task, int errorcode);
     void updateVarTable();
 
     void workspaceTableRightClick(QPoint pos);
@@ -115,6 +117,20 @@ public slots:
     void cleanHistory();
 
     void viewDataInTable();
+
+    // Breakpoints management
+    void handle_interpreter_busy(const QString& currentCmd);
+    void handle_interpreter_debug(const QString& fname, int line);
+    void handle_interpreter_complete(const QString& fname);
+    void handle_interpreter_error(const QString& command, const QString& error, int line);
+
+    void keyPressEvent(QKeyEvent *e) {
+        if(e->key() != Qt::Key_Escape)
+            QDialog::keyPressEvent(e);
+        else {/* minimize */}
+    }
+
+
 
 private:
     Ui::mdiOctaveInterface *ui;

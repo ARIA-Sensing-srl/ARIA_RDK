@@ -29,7 +29,7 @@
 #include <vtkUnstructuredGrid.h>
 #include <vtkDataSetMapper.h>
 #include <vtkGlyph3DMapper.h>
-
+#include <QKeyEvent>
 
 namespace Ui {
 class wndAntennaDesigner;
@@ -113,6 +113,11 @@ public slots:
     void importFFIO();
     void currentAntennaChanged(int index);
     void exportFF();
+    void keyPressEvent(QKeyEvent *e) {
+        if(e->key() != Qt::Key_Escape)
+            QDialog::keyPressEvent(e);
+        else {/* minimize */}
+    }
 
 
 };

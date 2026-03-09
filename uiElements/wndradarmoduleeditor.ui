@@ -37,7 +37,7 @@
       <bool>true</bool>
      </property>
      <property name="currentIndex">
-      <number>0</number>
+      <number>4</number>
      </property>
      <widget class="QWidget" name="pageRadarArray">
       <property name="geometry">
@@ -45,7 +45,7 @@
         <x>0</x>
         <y>0</y>
         <width>1025</width>
-        <height>543</height>
+        <height>531</height>
        </rect>
       </property>
       <attribute name="label">
@@ -189,7 +189,7 @@
         <x>0</x>
         <y>0</y>
         <width>1025</width>
-        <height>543</height>
+        <height>531</height>
        </rect>
       </property>
       <attribute name="label">
@@ -287,14 +287,14 @@
      </widget>
      <widget class="QWidget" name="tblParamSequence">
       <property name="enabled">
-       <bool>true</bool>
+       <bool>false</bool>
       </property>
       <property name="geometry">
        <rect>
         <x>0</x>
         <y>0</y>
         <width>1025</width>
-        <height>543</height>
+        <height>531</height>
        </rect>
       </property>
       <attribute name="label">
@@ -384,7 +384,7 @@
         <x>0</x>
         <y>0</y>
         <width>1025</width>
-        <height>543</height>
+        <height>531</height>
        </rect>
       </property>
       <attribute name="label">
@@ -474,7 +474,7 @@
         <x>0</x>
         <y>0</y>
         <width>1025</width>
-        <height>543</height>
+        <height>531</height>
        </rect>
       </property>
       <attribute name="label">

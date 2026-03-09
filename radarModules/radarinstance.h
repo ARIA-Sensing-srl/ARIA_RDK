@@ -201,6 +201,7 @@ public slots:
     void            serial_timeout();
     void            bytes_written(qint64 bytes);
     void            read_data();
+    void            octave_engine_scripts_done();
 
 signals:
     void            new_read_completed(const QByteArray& rx);

@@ -87,7 +87,7 @@ public slots:
 
 // Octave interface
     void octaveCompletedTask(QString task);
-    void octaveError(QString error);
+    void octaveError(const QString& fname, const QString& error, int line);
     void newOctaveScript();
 // Radar Table
     void initRadarTable();

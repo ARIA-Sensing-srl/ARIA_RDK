@@ -20,27 +20,13 @@ class octaveScript : public QObject, public projectItem
 {
     Q_OBJECT
 private:
-    QStringList      _lines;
-    QFile            _script_file;
-    octavews*        _octavews;
-    QVector<int>    _begin_line, _end_line;
-
-    void            interpret_lines();
-
-    QString         remove_comment_section(int line);
-    bool            is_pure_comment(int line);
-    bool            has_continuing_line(int line);
-    int             end_line(int line);
-    int             begin_line(int line);
-
-    octaveInterface*
-                    _octave_interface;
-
-    bool           _file_existing;  // if the file is missing this is just a placeholder.
-
+    QString             _text;
+    QFile               _script_file;
+    octavews*           _octavews;
+    octaveInterface*    _octave_interface;
+    bool                _file_existing;  // if the file is missing this is just a placeholder.
     void                setValid(bool bValid = true);
-
-    QMap<int,int>      _breakpoint_lines;   // This is a map between the line we ask a breakpoint and the effective one
+    int                 _debug_line;
 
     struct breakpoint_info
     {
@@ -51,7 +37,6 @@ private:
 
     bool                b_need_parsing;
     breakpoint_info     m_breakpoint_info;
-    enum InterpStatus   _interp_status;
 public:
     octaveScript();
     octaveScript(QString filename, projectItem* parent=nullptr);
@@ -59,7 +44,6 @@ public:
     ~octaveScript();
     void                    set_filename(QString filename, bool save_nload=false);
     QString                 get_fullfilename(){return _script_file.fileName();}
-    int                     get_lines_count();
 
     const octaveScript& operator = (const octaveScript& script);
 
@@ -70,9 +54,6 @@ public:
     void                    set_text(const QString& input_text);
     bool                    run(const oct_dataset& in, oct_dataset& out);
 
-    int                     get_line_count() {return _lines.count();}
-    std::string             get_std_line(int n);
-    QString                 get_line(int n);
     void                    load();
     void                    save();
 
@@ -82,28 +63,44 @@ public:
     bool                    operator == (octaveScript script);
     bool                    isValid() {return _file_existing;}
 
+    //----------------------------------------------------
     // Breakpoints management
-    void                    add_breakpoint (int line, const QString& cond="");
-    void                    remove_all_breakpoints();
-    void                    remove_breakpoint (int line);
-    bool                    has_breakpoint_at_line(int line);
-    bool                    has_breakpoints();
+    int                     breakpoint_toggle(int line, const QString& cond="");
+    int                     breakpoint_add (int line, const QString& cond="");
+    void                    breakpoint_remove_all();
+    int                     breakpoint_remove (int line);
+    bool                    breakpoint_at_line(int line, int& lineeq);
+    bool                    breakpoints_has_any();
+    int                     breakpoint_get_line(int line);
 
+    //------------------------------------------------------
     // Parsing status
     bool                    needParsing() {return b_need_parsing;};
     void                    setParsed()   {b_need_parsing = false;}
 
+    //
+
+    int   getCurrentDebugPosition() {return _debug_line; }
 signals:
-    void                    db_stop(octaveScript* script,int line);
-    void                    db_run(octaveScript* script);
-    void                    db_complete(octaveScript* script);
+    // Signals for script manager (e.g. editor)
+    void                    script_stop(const QString& filename, int line);
+    void                    script_run(const QString& filename );
+    void                    script_run_complete(const QString& filename);
+    void                    script_error(const QString& filename, const QString& strError, int line);
 
 public slots:
-    void                    interpreter_dbstop(const QString& fname, int line);
-    void                    interpreter_dbrun(const QString& fname, int line);
-    void                    interpreter_dbcomplete(const QString& fname, int line);
-    void                    request_pause();
-    void                    request_run();
+    // Slot to manage signals coming from the octaveInterface wrapper
+    void                    do_interpreter_dbstop(const QString& fname, int line);
+    void                    do_interpreter_dbrun(const QString& fname);
+    void                    do_interpreter_dbcomplete(const QString& fname);
+    void                    do_interpreter_error(const QString& fname, const QString& error, int line);
+    // Slot to manage requests from the GUI
+    void                    do_request_pause();
+    void                    do_request_run();
+    void                    do_request_step_in();
+    void                    do_request_step_out();
+    void                    do_request_continue();
+    void                    do_request_stop();
 };
 
 typedef octaveScript* octaveScript_ptr;
