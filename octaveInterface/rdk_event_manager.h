@@ -31,6 +31,8 @@ signals:
                                    int line);
     void            interpreter_dbstop(const QString& fname, int line);
     void            interpreter_dberror(const QString& fname, int line);
+private:
+    std::string     _priv_fcn_name; // in Windows we have to translate the filename from "c:\a\b\f.m" to "c:/a/b/f.m" before signaling any event
 };
 
 #endif // RDK_EVENT_MANAGER_H

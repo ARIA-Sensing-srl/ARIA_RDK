@@ -25,24 +25,27 @@ set(PROJECT_SOURCES
         mainwindow.ui
        ${TS_FILES}
 )
-#---------------------------------
-# Windows
-#---------------------------------
 
+set(OCTAVE_VERSION "11.1.0")
+#---------------------------------
+# Windows (requires MSYS2-minGW)
+#---------------------------------
+set(MSYS_HOME "C:/msys64")
 
 if (WIN32)
+
+  set(QT_CREATOR_SKIP_MAINTENANCE_TOOL_PROVIDER ON)
 #---------------------------------
 #paths
-  set(JKQT_INSTALL_PREFIX "C:/msys64/usr/local/JKQtPlotter/")
-  list(APPEND CMAKE_MODULE_PATH "${JKQT_INSTALL_PREFIX}/lib/cmake/JKQTPlotter6")
+  set(JKQT_INSTALL_PREFIX "${MSYS_HOME}/usr/local/JKQtPlotter/")
+  list(APPEND CMAKE_PREFIX_PATH "${JKQT_INSTALL_PREFIX}/lib/cmake/JKQTPlotter6")
   list(APPEND CMAKE_PREFIX_PATH "${JKQT_INSTALL_PREFIX}/bin")
-  list(PREPEND CMAKE_PREFIX_PATH "C:/msys64/mingw64/lib/cmake/vtk/patches/99")
-  list(APPEND CMAKE_CURRENT_LIST_DIR "C:/msys64/usr/local/JKQTPlotter/lib/cmake/JKQTPlotter6")
+  list(APPEND CMAKE_CURRENT_LIST_DIR "${MSYS_HOME}/usr/local/JKQTPlotter/lib/cmake/JKQTPlotter6")
 
 #---------------------------------
 #Qwt
 
-  set(QWT_ROOT "C:/msys64/usr/local/qwt-6.3.0-dev")
+  set(QWT_ROOT "${MSYS_HOME}/usr/local/qwt-6.3.0-dev")
   find_library( QWT NAMES qwt qwt6 PATHS ${QWT_ROOT}/lib REQUIRED )
   set(ENV{QT_PLUGIN_PATH} "${QWT_ROOT}/plugins:$QT_PLUGIN_PATH")
   message(QWT_ROOT="${QWT_ROOT}")
@@ -50,26 +53,32 @@ if (WIN32)
 
 #---------------------------------
 # VTK
-  #set(VTK_DIR "C:/msys64/home/Alessio/ARIA_RDK/VTK/lib/cmake/vtk-9.4")
+  #set(VTK_DIR "${MSYS_HOME}/home/Alessio/ARIA_RDK/VTK/lib/cmake/vtk-9.4")
+  list(PREPEND CMAKE_PREFIX_PATH "${MSYS_HOME}/mingw64/lib/cmake/vtk/patches/99")
 
 #---------------------------------
 # QScintilla
 
-find_library( QSCI_LIBRARY_PATH NAME qscintilla2_qt6 PATHS "/usr/lib"  REQUIRED )
-include_directories(AFTER "${QSCI_LIBRARY_PATH}/include")
+find_library( QSCI_LIBRARY_PATH NAME qscintilla2_qt6 PATHS "${MSYS_HOME}/migw64/lib"  REQUIRED )
+
+include_directories(AFTER "${QSCI_LIBRARY_PATH}/../include/qt6/Qsci")
+
 get_filename_component(QSCINTILLA_LIB_PATH "${QSCI_LIBRARY_PATH}" DIRECTORY)
+
 cmake_path(GET QSCINTILLA_LIB_PATH PARENT_PATH QSCINTILLA_PARENT)
+
 set(QSCINTILLA_INSTALL_PATH "${QSCINTILLA_PARENT}/bin")
 message("QSCINTILLA_INSTALL_PATH set to ${QSCINTILLA_INSTALL_PATH}")
+
+
 #---------------------------------
 #Octave
-set(OCTAVE_VERSION "10.2.0")
-set(OCTAVE_INSTALL_PATH "C:/msys64/mingw64/")
+set(OCTAVE_INSTALL_PATH "${MSYS_HOME}/mingw64/")
 include_directories(AFTER "${OCTAVE_INSTALL_PATH}/include/octave-${OCTAVE_VERSION}/octave")
 
 #---------------------------------
 # Eigen
-  set(EIGEN_ROOT "C:/A/eigen-3.4.0")
+  set(EIGEN_ROOT "${MSYS_HOME}/mingw64/include/eigen3")
 
 #---------------------------------
 # Link directories
@@ -101,7 +110,6 @@ else()
 #---------------------------------
 # Octave
    set(OCTAVE_INSTALL_PATH "~/my_octave")
-   set(OCTAVE_VERSION "10.3.0")
    find_library( OCTAVE_LIBRARY      NAME octinterp PATHS ${OCTAVE_INSTALL_PATH}/lib/octave/${OCTAVE_VERSION} REQUIRED )
    cmake_path(GET OCTAVE_LIBRARY PARENT_PATH OCTAVE_LIBRARY_PATH)
    find_path (    OCTAVE_INCLUDE_PATH NAME octave.h  PATHS ${OCTAVE_INSTALL_PATH}/include/octave-${OCTAVE_VERSION}/octave REQUIRED )
@@ -228,9 +236,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
 #    set_property(TARGET ARIA_RDK APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
 #                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
 # For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
-
-
-    qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
+#    qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
 else()
     if(ANDROID)
         add_library(ARIA_RDK SHARED
@@ -303,14 +309,23 @@ target_link_libraries(ARIA_RDK PRIVATE Qt${QT_VERSION_MAJOR}::Sql)
 
 target_link_libraries(ARIA_RDK PRIVATE ${QWT} )
 target_link_libraries(ARIA_RDK PRIVATE JKQTPlotter${QT_VERSION_MAJOR}::JKQTPlotter${QT_VERSION_MAJOR})
+
+
 target_link_libraries(ARIA_RDK PRIVATE ${VTK_LIBRARIES})
+
+vtk_module_autoinit(
+  TARGETS ARIA_RDK
+  MODULES ${VTK_LIBRARIES}
+)
+
 
 
 if (WIN32)
 
   target_link_libraries(ARIA_RDK PRIVATE "${OCTAVE_INSTALL_PATH}/lib/octave/${OCTAVE_VERSION}/liboctave.dll.a")
   target_link_libraries(ARIA_RDK PRIVATE "${OCTAVE_INSTALL_PATH}/lib/octave/${OCTAVE_VERSION}/liboctinterp.dll.a")
-  target_link_libraries(ARIA_RDK PRIVATE "${QSCINTILLA_INSTALL_PATH}/../bin/qscintilla2_qt6.dll")
+  target_link_libraries(ARIA_RDK PRIVATE "${QSCINTILLA_INSTALL_PATH}/../lib/libqscintilla2_qt6.dll.a")
+  message("linking ${QWT_ROOT}/lib/libqwt.dll.a")
   target_link_libraries(ARIA_RDK PRIVATE "${QWT_ROOT}/lib/libqwt.dll.a")
 
 else()
@@ -321,6 +336,7 @@ else()
   target_link_libraries(ARIA_RDK PRIVATE "${QSCINTILLA_INSTALL_PATH}/libqscintilla2_qt6.so")
 
 endif()
+
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
@@ -340,12 +356,8 @@ set_target_properties(ARIA_RDK PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
-if (WIN32)
-  #SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-rpath -Wl,"C:/Program Files/GNU Octave/Octave-9.4.0/mingw64/bin"")
-else()
-  include(GNUInstallDirs)
-endif()
 
+include(GNUInstallDirs)
 
 include_directories(AFTER ${PROJECT_SOURCE_DIR}/octaveInterface/)
 include_directories(AFTER ${PROJECT_SOURCE_DIR}/controller/)
@@ -356,13 +368,14 @@ include_directories(AFTER ${PROJECT_SOURCE_DIR}/utils/)
 include_directories(AFTER ${PROJECT_SOURCE_DIR}/editor/)
 include_directories(AFTER ${PROJECT_SOURCE_DIR}/uiElements/)
 
-
 message("${CMAKE_INSTALL_BINDIR} ; ${CMAKE_INSTALL_LIBDIR}")
-
-
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -pthread")
 SET(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR}/output/${CMAKE_BUILD_TYPE})
+SET(CMAKE_BINARY_DIR                ${PROJECT_SOURCE_DIR}/output/${CMAKE_BUILD_TYPE}/bin)
+SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY  ${PROJECT_SOURCE_DIR}/output/${CMAKE_BUILD_TYPE}/bin)
+
+set_target_properties(ARIA_RDK PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/output/${CMAKE_BUILD_TYPE}/bin)
 
 message("Output folder : ${CMAKE_INSTALL_PREFIX}")
 message("Binary folder : ${CMAKE_INSTALL_BINDIR}")
@@ -388,7 +401,7 @@ if(WIN32)
                         )
 #-------------------------------------------------------
 # Deploy Octave & QScintilla
-        set(MSYS_MINGW_HOME "C:/msys64/mingw64/")
+        set(MSYS_MINGW_HOME "${MSYS_HOME}/mingw64/")
 
         install(
                         DIRECTORY "${MSYS_MINGW_HOME}/bin/"

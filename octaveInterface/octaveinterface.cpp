@@ -23,6 +23,7 @@
 
 
 octaveInterface*	octaveInterface::_octave_interface_instance = nullptr;
+extern QString          m_current_directory;
 /*-----------------------------
  * QSharedData implementation
  *----------------------------*/
@@ -56,6 +57,58 @@ octaveInterface::octaveInterface() :
 
     _op_current._op_type            = OIP_STRING;
     _op_current._operation.command  = nullptr;
+
+    QString currentPath = QCoreApplication::applicationDirPath();
+    QString	octavePath  = QFileInfo(currentPath, QString("../share/")).absolutePath()+"/";
+    try
+    {
+        octave_value_list  pathList = _octave_engine->feval("genpath", std::list<octave_value>({charNDArray(octavePath.toUtf8())}));
+        _octave_engine->feval("addpath", pathList);
+    }
+    catch(...)
+    {
+    }
+
+    // Toolboxes
+    QString pkgPrefix = QFileInfo(currentPath, QString("../octave/toolboxes/")).absolutePath();
+    if (!QDir(pkgPrefix).exists())
+        QDir().mkdir(pkgPrefix);
+
+    try
+    {
+#ifdef WIN32
+        QString xtmp= (QDir().toNativeSeparators(pkgPrefix)+QDir().separator());
+        //xtmp = xtmp.last(xtmp.length()-2);
+        std::list<octave_value> prefix({
+                                        charNDArray(QString("prefix").toUtf8()),
+                                        charNDArray(xtmp.toUtf8())});
+#else
+        std::list<octave_value> prefix({
+                                        charNDArray(QString("prefix").toUtf8()),
+                                        charNDArray((QDir().toNativeSeparators(pkgPrefix)+QDir().separator()).toUtf8())});
+#endif
+
+        _octave_engine->feval("pkg",octave_value_list(prefix));
+    }
+    catch(...)
+    {
+    }
+#ifdef TOOLBOXES_IN_PATH
+    // Pre-load directories in "toolboxes"
+    QDirIterator directories(pkgPrefix, QDir::Dirs | QDir::NoSymLinks | QDir::NoDotAndDotDot);
+
+    while(directories.hasNext()){
+        directories.next();
+        try
+        {
+            _octave_engine->feval("addpath", std::list<octave_value>({charNDArray(directories.filePath().toUtf8())}));
+        }
+        catch(...)
+        {
+        }
+    }
+#endif
+
 
 }
 //-----------------------------
@@ -120,6 +173,8 @@ void    octaveInterface::engine_set_pwd(const QString& path)
 {
     if (_octave_engine==nullptr) return;
     _octave_engine->chdir(path.toStdString());
+    m_current_directory = path;
+
 }
 //-----------------------------
 /**

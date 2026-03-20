@@ -15,30 +15,32 @@
 #include <QFile>
 #include <QTextStream>
 
+QString          m_current_directory;
+
 int main(int argc, char *argv[])
 {
 	QString currentPath = QDir::currentPath();
-
-	QString tmpPath = QFileInfo(currentPath, QString("../tmp/")).absolutePath();
+    m_current_directory = currentPath;
+    QString tmpPath = QFileInfo(currentPath, QString("../octave/toolboxes/tmp/")).absolutePath();
 	if (!QDir(tmpPath).exists())
         QDir().mkdir(tmpPath);
 
 
 	QString xtmp = (QDir().toNativeSeparators(tmpPath)+QDir().separator());
 	//xtmp = xtmp.last(xtmp.length()-2);
-	qputenv("TMPDIR", xtmp.toUtf8());
+    qputenv("TMPDIR", xtmp.toLatin1());
 #ifdef WIN32
     //reset path to avoid conflicts with other mingw installations
-    qputenv("PATH",currentPath.toUtf8());
+    qputenv("PATH",currentPath.toLatin1());
     qputenv("PATH",qgetenv("PATH"));
 #endif
 
 #ifdef WIN32
 	QString homePath = QFileInfo(currentPath, QString("../")).absolutePath();
-	qputenv("OCT_HOME",(QDir().toNativeSeparators(homePath)+QDir().separator()).toUtf8());
-	qputenv("OCTAVE_HOME",(QDir().toNativeSeparators(homePath)+QDir().separator()).toUtf8());
-	qputenv("OCTAVE_EXEC_HOME",(QDir().toNativeSeparators(homePath)+QDir().separator()).toUtf8());
-	qputenv("OCTAVE_BINDIR",(QDir().toNativeSeparators(homePath)+QDir().separator()).toUtf8());
+    qputenv("OCT_HOME",(QDir().toNativeSeparators(homePath)+QDir().separator()).toLatin1());
+    qputenv("OCTAVE_HOME",(QDir().toNativeSeparators(homePath)+QDir().separator()).toLatin1());
+    qputenv("OCTAVE_EXEC_HOME",(QDir().toNativeSeparators(homePath)+QDir().separator()).toLatin1());
+    qputenv("OCTAVE_BINDIR",(QDir().toNativeSeparators(homePath)+QDir().separator()).toLatin1());
 
 	qputenv("ROOT_PATH",currentPath.toUtf8());
 #endif

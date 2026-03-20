@@ -7,8 +7,16 @@ void rdk_event_manager::enter_debugger_event (const std::string& fcn_name,
                      const std::string& fcn_file_name,
                      int line)
 {
+#ifdef  _WIN32
+    QString temp=QString::fromStdString(fcn_name);
+    temp.replace(QString("\\"), QString("/"));
+    _priv_fcn_name = temp.toStdString();
+#else
+    _priv_fcn_name = fcn_name;
+#endif
 
-   emit interperter_enter_dbevent(fcn_file_name, fcn_file_name,line-1);
+
+   emit interperter_enter_dbevent(_priv_fcn_name, _priv_fcn_name,line-1);
 }
 
 void rdk_event_manager::execute_in_debugger_event (const std::string& file, int line)

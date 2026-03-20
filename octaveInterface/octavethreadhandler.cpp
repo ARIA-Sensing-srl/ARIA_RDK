@@ -84,56 +84,6 @@ void octaveThreadHandler::engine_init_and_start()
      octave::command_editor::set_input_stream(_fdebug);
     //--------------------------------------------------------
 
-    QString currentPath = QCoreApplication::applicationDirPath();
-    QString	octavePath  = QFileInfo(currentPath, QString("../share/")).absolutePath()+"/";
-    try
-    {
-        octave_value_list  pathList = _octave_engine->feval("genpath", std::list<octave_value>({charNDArray(octavePath.toUtf8())}));
-        _octave_engine->feval("addpath", pathList);
-    }
-    catch(...)
-    {
-    }
-
-    // Toolboxes
-    QString pkgPrefix = QFileInfo(currentPath, QString("../octave/toolboxes/")).absolutePath();
-    if (!QDir(pkgPrefix).exists())
-        QDir().mkdir(pkgPrefix);
-
-    try
-    {
-#ifdef WIN32
-        QString xtmp= (QDir().toNativeSeparators(pkgPrefix)+QDir().separator());
-        //xtmp = xtmp.last(xtmp.length()-2);
-        std::list<octave_value> prefix({
-                                        charNDArray(QString("prefix").toUtf8()),
-                                        charNDArray(xtmp.toUtf8())});
-#else
-        std::list<octave_value> prefix({
-                                        charNDArray(QString("prefix").toUtf8()),
-                                        charNDArray((QDir().toNativeSeparators(pkgPrefix)+QDir().separator()).toUtf8())});
-#endif
-
-        _octave_engine->feval("pkg",octave_value_list(prefix));
-    }
-    catch(...)
-    {
-    }
-#ifdef TOOLBOXES_IN_PATH
-    // Pre-load directories in "toolboxes"
-    QDirIterator directories(pkgPrefix, QDir::Dirs | QDir::NoSymLinks | QDir::NoDotAndDotDot);
-
-    while(directories.hasNext()){
-        directories.next();
-        try
-        {
-            _octave_engine->feval("addpath", std::list<octave_value>({charNDArray(directories.filePath().toUtf8())}));
-        }
-        catch(...)
-        {
-        }
-    }
-#endif
     return;
 }
 //-----------------------------
@@ -166,8 +116,8 @@ void  octaveThreadHandler::engine_shutdown()
     if (_octave_engine!=nullptr)
     {
         _octave_engine->cleanup_tmp_files();
-
-        _octave_engine->get_output_system().reset();
+        // Deprecated in Octave 11.1.0
+        //_octave_engine->get_output_system().reset();
         _octave_engine->clear_all();
         try {
             _octave_engine->quit(0,true,true);
@@ -263,6 +213,9 @@ void octaveThreadHandler::internal_execute_run(octaveScript* script, bool single
         _octave_engine->get_evaluator().set_dbstep_flag(single_step ? 1:0);
         _octave_engine->get_evaluator().set_break_on_next_statement(single_step);
         _octave_engine->get_evaluator().quiet_breakpoint_flag(single_step);
+        QFileInfo finfo(script->get_fullfilename());
+       // _octave_engine->chdir(finfo.absolutePath().toStdString());
+
         _owner->operation_wait_and_lock();
         _octave_engine->source_file(fname.toStdString(),"",false,true);
     }
@@ -543,6 +496,7 @@ void     octaveThreadHandler::execute_eval_string(QString command)
         _oth_status     = OTH_IDLE;
         _parse_result   = OTH_LR_OK;
     }
+    _owner->operation_unlock();
     emit signal_handler_dbcomplete(command);
 }
 

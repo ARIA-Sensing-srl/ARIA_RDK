@@ -157,8 +157,8 @@ wndAntennaDesigner::wndAntennaDesigner(antenna* ant, QWidget *parent) :
     fillAntennaData();
 
     _renderer->AddActor((vtkProp*)(_actor.GetPointer()));
-    _renderer->AddActor2D((vtkProp*)(_axes.GetPointer()));
-    _renderer->AddActor2D(_color_bar);
+    _renderer->AddViewProp((vtkProp*)(_axes.GetPointer()));
+    _renderer->AddViewProp(_color_bar);
     _renderer->AddActor(_line_actor);
     _renderer->AddActor(_glyphs_actor);
     _renderer->AddActor(_text_actor);

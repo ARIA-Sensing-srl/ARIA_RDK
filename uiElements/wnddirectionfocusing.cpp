@@ -121,8 +121,8 @@ wndDirectionFocusing::wndDirectionFocusing(QWidget *parent,radarModule* radar_mo
     fill_antenna_data();
 
     _renderer->AddActor(_actor);
-    _renderer->AddActor2D(_axes);
-    _renderer->AddActor2D(_color_bar);
+    _renderer->AddViewProp(_axes);
+    _renderer->AddViewProp(_color_bar);
     _renderer->AddActor(_line_actor);
     _renderer->AddActor(_glyphs_actor);
     _renderer->AddActor(_text_actor);

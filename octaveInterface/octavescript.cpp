@@ -7,6 +7,7 @@
 #include <QFileInfo>
 #include <QDir>
 #include "interpreter.h"
+#include "file-ops.h"
 
 octaveScript::octaveScript(QString filename, projectItem* parent) : projectItem("newScript",DT_SCRIPT, parent),
     _text(),
@@ -144,9 +145,14 @@ void octaveScript::set_text(const QString& input_text)
             // If the text has been changed, we need to tell Octave that we need to parse again
             // the source file.
             octave::tree_evaluator& tw = interp->get_evaluator ();
-
-            octave_user_code* code = tw.get_user_code(QFileInfo(get_fullfilename()).baseName().toStdString());
-            if (code!=nullptr) code->mark_fcn_file_up_to_date(static_cast<OCTAVE_TIME_T> (0));
+            try
+            {
+                octave_user_code* code = tw.get_user_code(QFileInfo(get_fullfilename()).baseName().toStdString());
+                if (code!=nullptr) code->mark_fcn_file_up_to_date(static_cast<OCTAVE_TIME_T> (0));
+            }
+            catch(...)
+            {
+            }
         }
     }
 }
@@ -166,14 +172,12 @@ void octaveScript::setValid(bool bValid)
 void    octaveScript::save()
 {
     //b_need_parsing = true;
-
     if (!_script_file.fileName().isEmpty())
     {
         if (!_script_file.open(QIODevice::WriteOnly | QIODevice::Text)) return;
         QTextStream out(&_script_file);
         out << _text;
         _script_file.close();
-
         setValid();
     }
 }
@@ -257,7 +261,6 @@ int  octaveScript::breakpoint_toggle(int line, const QString& cond)
 int octaveScript::breakpoint_get_line(int line)
 {
     std::string fname = get_fullfilename().toStdString();
-
     octave::interpreter *interp = _octave_interface == nullptr ? nullptr : _octave_interface->engine_get_octave_engine();
     if (interp==nullptr) return -1;
 
@@ -265,12 +268,18 @@ int octaveScript::breakpoint_get_line(int line)
 
     octave::bp_table& bptab = tw.get_bp_table ();
 
-
     octave::bp_table::fname_bp_map previous_bp = bptab.get_breakpoint_list(octave_value_list(fname));
 
-
-    // Get the proper breakpoint line
-    int lineeq = bptab.add_breakpoint_in_file( fname, line+1, std::string(""));
+       // Get the proper breakpoint line
+    int lineeq;
+    try
+    {
+        lineeq = bptab.add_breakpoint_in_file( fname, line+1, std::string(""));
+    }
+    catch(...)
+    {
+        lineeq = 0;
+    }
 
     bool bp_was_there = false;
 
@@ -288,8 +297,14 @@ int octaveScript::breakpoint_get_line(int line)
             if (bp_was_there) break;
         }
 
+    try
+    {
     // If the breakpoint wasn't already present, it is removed from the file
     if (!bp_was_there) bptab.remove_breakpoint_from_file(fname, lineeq);
+    }
+    catch(...)
+    {
+    }
 
     return lineeq-1;
 
@@ -313,7 +328,14 @@ int octaveScript::breakpoint_add (int line, const QString& cond)
 
     // Get the proper breakpoint line
     _octave_interface->operation_wait_and_lock();
-    int lineeq = bptab.add_breakpoint_in_file( fname, line+1, cond.toStdString());
+    int lineeq ;
+    try
+    {
+        lineeq = bptab.add_breakpoint_in_file( fname, line+1, cond.toStdString());
+    }
+    catch(...)
+    {
+    }
     _octave_interface->operation_unlock();
 
 
@@ -340,7 +362,13 @@ int octaveScript::breakpoint_remove (int line)
     // Let's see if we have a precise location.
     int lineeq = -1;
     _octave_interface->operation_wait_and_lock();
-    bptab.remove_breakpoint_from_file (get_fullfilename().toStdString (), line+1);
+    try
+    {
+        bptab.remove_breakpoint_from_file (get_fullfilename().toStdString (), line+1);
+    }
+    catch(...)
+    {
+    }
     _octave_interface->operation_unlock();
     return lineeq-1;
 }
@@ -355,9 +383,30 @@ void octaveScript::breakpoint_remove_all()
     if (interp==nullptr) return;
     octave::tree_evaluator& tw = interp->get_evaluator ();
     octave::bp_table& bptab = tw.get_bp_table ();
+    std::string fname = get_fullfilename().toStdString();
 
-    bptab.remove_all_breakpoints_from_file(get_fullfilename().toStdString (),
-                                           true);
+    octave::bp_table::fname_bp_map bp_file = bptab.get_breakpoint_list(octave_value_list(fname));
+
+    bool bp_was_there = false;
+
+    for (auto& bp_list : bp_file)
+        if (bp_list.first == fname)
+        {
+            if (bp_list.second.size()>0)
+            {
+                bp_was_there = true;
+                break;
+            }
+        }
+    try
+    {
+    if (bp_was_there)
+        bptab.remove_all_breakpoints_from_file(get_fullfilename().toStdString (),
+                                               true);
+    }
+    catch(...)
+    {
+    }
 }
 
 //--------------------------------------
@@ -385,7 +434,14 @@ bool octaveScript::breakpoint_at_line(int line, int& lineeq)
 
     // Get the proper breakpoint line
     _octave_interface->operation_wait_and_lock();
-    lineeq = bptab.add_breakpoint_in_file( fname, line, "");
+    try
+    {
+        lineeq = bptab.add_breakpoint_in_file( fname, line, "");
+    }
+    catch(...)
+    {
+        lineeq=0;
+    }
     _octave_interface->operation_unlock();
     bool bp_was_there = false;
 
@@ -403,7 +459,13 @@ bool octaveScript::breakpoint_at_line(int line, int& lineeq)
             if (bp_was_there) break;
         }
     _octave_interface->operation_wait_and_lock();
-    if (!bp_was_there) bptab.remove_breakpoint_from_file(fname,lineeq);
+    try
+    {
+        if (!bp_was_there) bptab.remove_breakpoint_from_file(fname,lineeq);
+    }
+    catch(...)
+    {
+    }
     _octave_interface->operation_unlock();
     lineeq--;
     return bp_was_there;
