@@ -29,7 +29,7 @@ class wndOctaveScript;
 
 namespace octave
 {
-    class interpreter;
+class interpreter;
 }
 
 class wndOctaveScript : public QDialog
@@ -48,18 +48,18 @@ private:
     QFileSystemWatcher      watcher;
     bool                    _bInternal;
     bool                    _b_need_save_as;
-	bool					_b_modified;
-	bool					_b_closed;
+    bool					_b_modified;
+    bool					_b_closed;
     QIntList                _bp_lines;
     QStringList             _bp_conditions;
     int                     _n_rows;
 
 #ifdef USE_NATIVE_LEXER
-	octaveSyntaxHighlighter *hl;
+    octaveSyntaxHighlighter *hl;
 
 #else
-	QsciLexer				*_lexer;
-	QsciAPIs				*_api;
+    QsciLexer				*_lexer;
+    QsciAPIs				*_api;
 #endif
     Ui::wndOctaveScript *ui;
 
@@ -75,6 +75,7 @@ private:
     void create_new_script();
     void link_script_signals(octaveScript* script);
     void breakpoint_update_all();
+    void update_path();
 
 
 signals:
@@ -101,9 +102,9 @@ public:
     void fileChanged();
     octaveScript* get_script() {return _script;}
 
-	void showEvent(QShowEvent *event);
+    void showEvent(QShowEvent *event);
 
-	bool isClosed() {return _b_closed;}
+    bool isClosed() {return _b_closed;}
     void updateProject(radarProject* proj);
     void updateFont();
     void update_breakpoints ();
@@ -113,11 +114,11 @@ public slots:
     void run_file();
     bool save_file();
     bool save_file_as();
-	void update_tips();
+    void update_tips();
     void open_file();
     void new_file();
-	void modified();
-	void closeEvent( QCloseEvent* event );
+    void modified();
+    void closeEvent( QCloseEvent* event );
     void marginClicked(int margin, int line, Qt::KeyboardModifiers state);
     void toggle_breakpoint (int line);
     void next_breakpoint (const QWidget *ID);

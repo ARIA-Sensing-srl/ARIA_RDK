@@ -19,7 +19,7 @@
 #include <ovl.h>
 #include <parse.h>
 #include "builtin-defun-decls.h"
-
+#include "file-ops.h"
 int wndOctaveScript::nNoname = 0;
 
 extern QDir             ariasdk_modules_path;
@@ -28,6 +28,7 @@ extern QDir             ariasdk_scripts_path;
 extern QDir             ariasdk_antennas_path;
 extern QDir             ariasdk_antennaff_path;
 extern QFont            ariasdk_script_font;
+extern QString          m_current_directory;
 //----------------------------------------------------
 /**
  * @brief wndOctaveScript::wndOctaveScript
@@ -42,8 +43,8 @@ wndOctaveScript::wndOctaveScript(radarProject* proj, QString filename, octaveInt
     _data_interface(dataEngine),
     _bInternal(true),
     _b_need_save_as(false),
-	_b_modified(false),
-	_b_closed(false),
+    _b_modified(false),
+    _b_closed(false),
     _project(proj),
     _script(nullptr),
 
@@ -51,8 +52,8 @@ wndOctaveScript::wndOctaveScript(radarProject* proj, QString filename, octaveInt
     hl(nullptr),
 #else
 
-	_lexer(nullptr),
-	_api(nullptr),
+_lexer(nullptr),
+    _api(nullptr),
 
 #endif
     _n_rows(0),
@@ -62,18 +63,18 @@ wndOctaveScript::wndOctaveScript(radarProject* proj, QString filename, octaveInt
 
 
 #ifdef USE_NATIVE_LEXER
-	emit ui->textScript->undoAvailable(true);
+    emit ui->textScript->undoAvailable(true);
     hl = new octaveSyntaxHighlighter(_data_interface,ui->textScript->document());
 #else
-	if ((filename.endsWith(".cpp"))||(filename.endsWith(".cc"))||(filename.endsWith(".c")))
-		_lexer = new QsciLexerCPP(ui->textScript);
-	else
-		_lexer = new QsciLexerOctave(ui->textScript);
+    if ((filename.endsWith(".cpp"))||(filename.endsWith(".cc"))||(filename.endsWith(".c")))
+        _lexer = new QsciLexerCPP(ui->textScript);
+    else
+        _lexer = new QsciLexerOctave(ui->textScript);
 
     setDefaultColor(_lexer);
 
     ui->textScript->setLexer(_lexer);
-	_api = new QsciAPIs(_lexer);
+    _api = new QsciAPIs(_lexer);
 
 #endif
 
@@ -135,7 +136,7 @@ wndOctaveScript::wndOctaveScript(radarProject* proj, QString filename, octaveInt
     int fontWidth = QFontMetrics(ui->textScript->currentCharFormat().font()).averageCharWidth();
     ui->textScript->setTabStopDistance( 4 * fontWidth );
 #endif
-	ui->textScript->update();
+    ui->textScript->update();
 
 #ifndef USE_NATIVE_LEXER
     setupScintilla();
@@ -160,14 +161,14 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
     _script(script),
     _bInternal(true),
     _b_need_save_as(false),
-	_b_modified(false),
-	_b_closed(false),
+    _b_modified(false),
+    _b_closed(false),
 
 #ifdef USE_NATIVE_LEXER
-	hl(nullptr),
+    hl(nullptr),
 #else
-	_lexer(nullptr),
-	_api(nullptr),
+    _lexer(nullptr),
+    _api(nullptr),
 #endif
     _n_rows(0),
     ui(new Ui::wndOctaveScript)
@@ -175,12 +176,12 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
     ui->setupUi(this);
     _lexer = new QsciLexerOctave(ui->textScript);
 #ifdef USE_NATIVE_LEXER
-	hl = new octaveSyntaxHighlighter(_data_interface,ui->textScript->document());
+    hl = new octaveSyntaxHighlighter(_data_interface,ui->textScript->document());
 #else
     setDefaultColor(_lexer);
     ui->textScript->setLexer(_lexer);
-	_api = new QsciAPIs(_lexer);
-	_lexer->setAPIs(_api);
+    _api = new QsciAPIs(_lexer);
+    _lexer->setAPIs(_api);
 #endif
 
     if (script == nullptr)
@@ -216,7 +217,7 @@ wndOctaveScript::wndOctaveScript(octaveScript* script, class octaveInterface* da
         link_script_signals(_script);
     }
 
-	ui->textScript->update();
+    ui->textScript->update();
 #ifndef USE_NATIVE_LEXER
     setupScintilla();
 #endif
@@ -331,7 +332,14 @@ void    wndOctaveScript::scriptPaused(const QString& filename,int line)
     QString fthis = _script == nullptr ? "" : _script->get_fullfilename();
 
     ui->textScript->markerDeleteAll(marker::debugger_position);
-    if (fthis==filename)
+    bool beq = fthis==filename;
+    // in Win32 (MSYS), the filename is, e.g. "c:/"...
+    // but the file name is
+    if (!beq)
+    {
+    }
+
+    if (beq)
     {
         ui->tbRun->setEnabled(true);
         ui->tbStep->setEnabled(true);
@@ -372,13 +380,13 @@ void wndOctaveScript::setupScintilla()
     ui->textScript->markerDefine (QsciScintilla::Circle, marker::cond_break);
     ui->textScript->setMarkerBackgroundColor (QColor (255, 127, 0), marker::cond_break);
     ui->textScript->markerDefine (QsciScintilla::RightArrow,
-                              marker::debugger_position);
+                                 marker::debugger_position);
     ui->textScript->setMarkerBackgroundColor (QColor (255, 255, 0),
-                                          marker::debugger_position);
+                                             marker::debugger_position);
     ui->textScript->markerDefine (QsciScintilla::RightArrow,
-                              marker::unsure_debugger_position);
+                                 marker::unsure_debugger_position);
     ui->textScript->setMarkerBackgroundColor (QColor (192, 192, 192),
-                                          marker::unsure_debugger_position);
+                                             marker::unsure_debugger_position);
 
     connect(ui->textScript, &QsciScintilla::textChanged, this, &wndOctaveScript::modified);
     connect(ui->textScript, &QsciScintilla::marginClicked, this, &wndOctaveScript::marginClicked);
@@ -397,6 +405,11 @@ void wndOctaveScript::setupScintilla()
     ui->textScript->setIndentationsUseTabs (false);
 
     ui->textScript->setUtf8 (true);
+#ifdef _WIN32
+    ui->textScript->setEolMode(QsciScintilla::EolWindows);
+#else
+    ui->textScript->setEolMode(QsciScintilla::EolUnix);
+#endif
     // auto completion
     ui->textScript->SendScintilla (QsciScintillaBase::SCI_AUTOCSETCANCELATSTART, false);
     // Margin lines
@@ -530,6 +543,7 @@ void wndOctaveScript::request_step()
 
 void wndOctaveScript::run_file()
 {
+    update_path();
     int db_line = _script->getCurrentDebugPosition();
     if (db_line>=0)
     {
@@ -553,40 +567,40 @@ void wndOctaveScript::update_tips()
 {
 
 #ifndef USE_NATIVE_LEXER
-	_api->clear();
+    _api->clear();
 
     if ((_data_interface!=nullptr)&&(_data_interface->engine_get_octave_engine()!=nullptr))
-	{
+    {
         _data_interface->operation_wait_and_lock();
-		// Add variables
+        // Add variables
         std::list<std::string> varnames = _data_interface->engine_get_octave_engine()->variable_names();
 
-		for (std::list<std::string>::iterator iter = varnames.begin(); iter!=varnames.end(); iter++)
-			_api->add(QString::fromStdString(*iter));
+        for (std::list<std::string>::iterator iter = varnames.begin(); iter!=varnames.end(); iter++)
+            _api->add(QString::fromStdString(*iter));
 
         varnames = _data_interface->engine_get_octave_engine()->global_variable_names();
 
-		for (std::list<std::string>::iterator iter = varnames.begin(); iter!=varnames.end(); iter++)
-			_api->add(QString::fromStdString(*iter));
+        for (std::list<std::string>::iterator iter = varnames.begin(); iter!=varnames.end(); iter++)
+            _api->add(QString::fromStdString(*iter));
 
         varnames = _data_interface->engine_get_octave_engine()->top_level_variable_names();
 
-		for (std::list<std::string>::iterator iter = varnames.begin(); iter!=varnames.end(); iter++)
-			_api->add(QString::fromStdString(*iter));
-		// Add functions
+        for (std::list<std::string>::iterator iter = varnames.begin(); iter!=varnames.end(); iter++)
+            _api->add(QString::fromStdString(*iter));
+        // Add functions
 
 
         std::list<std::string> funcnames= _data_interface->engine_get_octave_engine()->user_function_names();
 
-		for (std::list<std::string>::iterator iter = funcnames.begin(); iter!=funcnames.end(); iter++)
-		{
-			_api->add(QString::fromStdString(*iter)+"( args )");
+        for (std::list<std::string>::iterator iter = funcnames.begin(); iter!=funcnames.end(); iter++)
+        {
+            _api->add(QString::fromStdString(*iter)+"( args )");
 
-		}
+        }
         _data_interface->operation_unlock();
-	}
-	_api->prepare();
-	_lexer->setAPIs(_api);
+    }
+    _api->prepare();
+    _lexer->setAPIs(_api);
 #endif
 }
 //----------------------------------------------------
@@ -599,24 +613,24 @@ void wndOctaveScript::showEvent(QShowEvent *event)
 {
     QDialog::showEvent(event);
 #ifndef  USE_NATIVE_LEXER
-	ui->textScript->setCaretForegroundColor(Qt::lightGray);
-	ui->textScript->setCaretWidth(5);
-//# Set the text wrapping mode to word wrap
-	ui->textScript->setWrapMode(QsciScintilla::WrapWord);
-//# Set the text wrapping mode visual indication
-	ui->textScript->setWrapVisualFlags(QsciScintilla::WrapFlagByText);
-//# Set the text wrapping to indent the wrapped lines
-	ui->textScript->setWrapIndentMode(QsciScintilla::WrapIndentSame);
-	ui->textScript->setAutoIndent(true);
-	ui->textScript->setAutoCompletionFillupsEnabled(true);
-	ui->textScript->setAutoCompletionCaseSensitivity(true);
-	ui->textScript->setAutoCompletionSource(QsciScintilla::AcsAll);
-	ui->textScript->setAutoCompletionThreshold(2);
-	ui->textScript->setAutoCompletionReplaceWord(true);
-	ui->textScript->setCallTipsVisible(0);
-	ui->textScript->setCallTipsPosition(QsciScintilla::CallTipsBelowText);
+    ui->textScript->setCaretForegroundColor(Qt::lightGray);
+    ui->textScript->setCaretWidth(5);
+    //# Set the text wrapping mode to word wrap
+    ui->textScript->setWrapMode(QsciScintilla::WrapWord);
+    //# Set the text wrapping mode visual indication
+    ui->textScript->setWrapVisualFlags(QsciScintilla::WrapFlagByText);
+    //# Set the text wrapping to indent the wrapped lines
+    ui->textScript->setWrapIndentMode(QsciScintilla::WrapIndentSame);
+    ui->textScript->setAutoIndent(true);
+    ui->textScript->setAutoCompletionFillupsEnabled(true);
+    ui->textScript->setAutoCompletionCaseSensitivity(true);
+    ui->textScript->setAutoCompletionSource(QsciScintilla::AcsAll);
+    ui->textScript->setAutoCompletionThreshold(2);
+    ui->textScript->setAutoCompletionReplaceWord(true);
+    ui->textScript->setCallTipsVisible(0);
+    ui->textScript->setCallTipsPosition(QsciScintilla::CallTipsBelowText);
 
-	update_tips();
+    update_tips();
 
 #endif
 
@@ -629,7 +643,7 @@ void wndOctaveScript::showEvent(QShowEvent *event)
 
 void wndOctaveScript::fileChangedOnDisk(QString str)
 {
-//    if (QMessageBox()
+    //    if (QMessageBox()
 }
 //----------------------------------------------------
 /**
@@ -646,15 +660,15 @@ bool wndOctaveScript::save_file()
 #ifdef USE_NATIVE_LEXER
     _script->set_text(ui->textScript->toPlainText().split("\n"));
 #else
-    _script->set_text(ui->textScript->text());
+    _script->set_text(ui->textScript->text().toLatin1());
 #endif
 
     _script->save();
     breakpoint_update_all();
 
-	_b_modified = false;
-	if (windowTitle().endsWith("*"))
-		setWindowTitle(windowTitle().removeLast());
+    _b_modified = false;
+    if (windowTitle().endsWith("*"))
+        setWindowTitle(windowTitle().removeLast());
 
     return true;
 }
@@ -751,7 +765,7 @@ void wndOctaveScript::open_file()
         if (res == QMessageBox::Cancel)
             return;
 
-   }
+    }
 
     QString scriptFile = QFileDialog::getOpenFileName(this,"Import script file",
                                                       ariasdk_scripts_path.absolutePath()+QDir::separator(),
@@ -759,70 +773,70 @@ void wndOctaveScript::open_file()
                                                       nullptr,
                                                       QFileDialog::Options(QFileDialog::Detail|QFileDialog::DontUseNativeDialog));
 
-   if (scriptFile.isEmpty())
+    if (scriptFile.isEmpty())
         return;
 
-   // Check if we are not opening a project script
-   bool bNewInternal = true;
+    // Check if we are not opening a project script
+    bool bNewInternal = true;
 
-   octaveScript* possibleOldScript =  nullptr;
-   QVector<octaveScript*> scripts;
+    octaveScript* possibleOldScript =  nullptr;
+    QVector<octaveScript*> scripts;
 
-   if (_project!=nullptr) scripts = _project->get_available_scripts();
+    if (_project!=nullptr) scripts = _project->get_available_scripts();
 
-   for (auto s : scripts)
-       if (s!=nullptr)
-       {
-           if (s->get_fullfilename() == scriptFile)
-           {
-               possibleOldScript = s;
-               bNewInternal = false;
-               break;
-           }
-       }
+    for (auto s : scripts)
+        if (s!=nullptr)
+        {
+            if (s->get_fullfilename() == scriptFile)
+            {
+                possibleOldScript = s;
+                bNewInternal = false;
+                break;
+            }
+        }
 
     if ((!_bInternal)&&(!bNewInternal))
-   {
-       // The new one is a project script. Update the script to the project's one
-       _script = possibleOldScript;
-       link_script_signals(_script);
-       _script->set_filename(scriptFile,false);
-       _bInternal = false;
-   }
+    {
+        // The new one is a project script. Update the script to the project's one
+        _script = possibleOldScript;
+        link_script_signals(_script);
+        _script->set_filename(scriptFile,false);
+        _bInternal = false;
+    }
 
-   if ((_bInternal)&&(!bNewInternal))
-   {
-       // The new one is a project script. Update the script pointer to the project's one
-       _script = possibleOldScript;
-       link_script_signals(_script);
-       _script->set_filename(scriptFile,false);
-       _bInternal = false;
-   }
+    if ((_bInternal)&&(!bNewInternal))
+    {
+        // The new one is a project script. Update the script pointer to the project's one
+        _script = possibleOldScript;
+        link_script_signals(_script);
+        _script->set_filename(scriptFile,false);
+        _bInternal = false;
+    }
 
-   if ((!_bInternal)&&(bNewInternal))
-   {
-       // The old one is a project script and the new one is not. We need to create a temporary octaveScript object
+    if ((!_bInternal)&&(bNewInternal))
+    {
+        // The old one is a project script and the new one is not. We need to create a temporary octaveScript object
         create_new_script();
-       _script->set_filename(scriptFile,false);
+        _script->set_filename(scriptFile,false);
         _bInternal = true;
-   }
+    }
 
-   if ((_bInternal)&&(bNewInternal))
-   {
-       // The new one is not a project script, we need to create a temporary octaveScript object iff prev was null
-       if (_script==nullptr)
-       {
-           create_new_script();
-       }
+    if ((_bInternal)&&(bNewInternal))
+    {
+        // The new one is not a project script, we need to create a temporary octaveScript object iff prev was null
+        if (_script==nullptr)
+        {
+            create_new_script();
+        }
 
         _bInternal = true;
-       _script->set_filename(scriptFile,false);
-   }
-   ui->textScript->setText(_script->get_text());
-   setModified(false);
+        _script->set_filename(scriptFile,false);
+    }
+    ui->textScript->setText(_script->get_text());
+    setModified(false);
 
 
-   _b_need_save_as = false;
+    _b_need_save_as = false;
 }
 //----------------------------------------------------
 /**
@@ -837,7 +851,7 @@ bool wndOctaveScript::save_file_as()
         fname+=".m";
 
     QString projectFile = QFileDialog::getSaveFileName(this,"Save script as",
-                                                      ariasdk_scripts_path.absolutePath()+QDir::separator()+fname,
+                                                       ariasdk_scripts_path.absolutePath()+QDir::separator()+fname,
                                                        tr("Script files(*.m);;All files (*.*)"),
                                                        nullptr,
                                                        QFileDialog::Options(QFileDialog::Detail|QFileDialog::DontUseNativeDialog));
@@ -857,7 +871,7 @@ bool wndOctaveScript::save_file_as()
 #ifdef USE_NATIVE_LEXER
     _script->set_text(ui->textScript->toPlainText());
 #else
-	_script->set_text(ui->textScript->text());
+    _script->set_text(ui->textScript->text());
 #endif
     _script->set_filename(projectFile);
     _script->save();
@@ -879,7 +893,7 @@ bool wndOctaveScript::save_file_as()
 void wndOctaveScript::setModified(bool bmodified)
 {
     _b_modified = bmodified;
-    updateTitle();    
+    updateTitle();
 }
 //---------------------------------------------
 /**
@@ -917,32 +931,32 @@ void wndOctaveScript::closeEvent( QCloseEvent* event )
                 return;
             }
     }
-	if (_b_modified)
-	{
-		QMessageBox::StandardButton result = QMessageBox::question(this, "Confirm","The current content has changed. Do you want to save?",QMessageBox::Yes|QMessageBox::No|QMessageBox::Cancel);
-		if (result == QMessageBox::No)
-		{event->accept(); _b_closed = true; return;}
-		if (result == QMessageBox::Cancel)
-		{event->ignore(); return;}
-		if (result == QMessageBox::Yes)
-		{
-			if (_b_need_save_as)
-				save_file_as();
-			else
-				save_file();
+    if (_b_modified)
+    {
+        QMessageBox::StandardButton result = QMessageBox::question(this, "Confirm","The current content has changed. Do you want to save?",QMessageBox::Yes|QMessageBox::No|QMessageBox::Cancel);
+        if (result == QMessageBox::No)
+        {event->accept(); _b_closed = true; return;}
+        if (result == QMessageBox::Cancel)
+        {event->ignore(); return;}
+        if (result == QMessageBox::Yes)
+        {
+            if (_b_need_save_as)
+                save_file_as();
+            else
+                save_file();
 
-			if (_b_modified)
-			{event->ignore(); return;}
+            if (_b_modified)
+            {event->ignore(); return;}
 
-			event->accept(); _b_closed = true; return;
-		}
+            event->accept(); _b_closed = true; return;
+        }
 
-		event->ignore();
-		return;
-	}
-	_b_closed = true;
-	event->accept();
-	return;
+        event->ignore();
+        return;
+    }
+    _b_closed = true;
+    event->accept();
+    return;
 }
 
 
@@ -959,7 +973,7 @@ void wndOctaveScript::updateFont()
 
 void wndOctaveScript::updateProject(radarProject* proj)
 {
-
+    update_path();
     if ((_project==nullptr)&&(proj==nullptr))
         return;
     // We are moving onto a new project
@@ -998,10 +1012,10 @@ void wndOctaveScript::updateProject(radarProject* proj)
             link_script_signals(_script);
             _bInternal= true;
             return;
-       }
+        }
 
-       // If script was internal (i.e. detached from any project) and detached from this one too,
-       // we don't need to do anything
+        // If script was internal (i.e. detached from any project) and detached from this one too,
+        // we don't need to do anything
         return;
     }
 
@@ -1033,7 +1047,7 @@ void wndOctaveScript::updateProject(radarProject* proj)
  */
 void wndOctaveScript::breakpoint_update_all()
 {
-
+    update_path();
     if (_script==nullptr) return;
     _script->breakpoint_remove_all();
     for (int line = 0; line < ui->textScript->lines(); line++)
@@ -1098,6 +1112,20 @@ void wndOctaveScript::marginClicked(int margin, int line, Qt::KeyboardModifiers 
     }
 
 }
+
+void wndOctaveScript::update_path()
+{
+
+    QFileInfo fi(_script->get_fullfilename());
+
+    QString cname = fi.absolutePath();
+
+    if (cname != m_current_directory)
+    {
+        _data_interface->engine_get_octave_engine()->chdir(cname.toStdString());
+        m_current_directory = cname;
+    }
+}
 //----------------------------------------------------
 /**
  * @brief wndOctaveScript::toggle_breakpoint
@@ -1107,6 +1135,7 @@ void wndOctaveScript::marginClicked(int margin, int line, Qt::KeyboardModifiers 
  */
 void wndOctaveScript::toggle_breakpoint (int line)
 {
+    update_path();
     // To get the actual line number, we need to have a file-saved script.
     if (_b_modified)
     {
@@ -1128,6 +1157,7 @@ void wndOctaveScript::toggle_breakpoint (int line)
     else
     {
         ui->textScript->markerAdd (line, marker::breakpoint);
+
         _script->breakpoint_add(line);
     }
 
@@ -1241,5 +1271,4 @@ wndOctaveScript::file_has_changed (const QString&, bool do_close)
         setModified(false);
     }
 }
-
 
