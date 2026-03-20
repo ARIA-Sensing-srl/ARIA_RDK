@@ -89,7 +89,7 @@ else
   
   % Install ARIA UWB Toolbox
   printf("Installing ARIA UWB toolbox \n");
-  pkg("install","ARIA_uwb_toolbox-main.tar.gz");
+  pkg("install","ARIA_uwb_toolbox-main.zip");
   printf("done\n");    
   
 endif;
