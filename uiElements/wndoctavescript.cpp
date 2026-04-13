@@ -406,7 +406,7 @@ void wndOctaveScript::setupScintilla()
 
     ui->textScript->setUtf8 (true);
 #ifdef _WIN32
-    ui->textScript->setEolMode(QsciScintilla::EolWindows);
+    ui->textScript->setEolMode(QsciScintilla::EolUnix);
 #else
     ui->textScript->setEolMode(QsciScintilla::EolUnix);
 #endif
