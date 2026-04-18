@@ -556,6 +556,7 @@ void wndOctaveScript::run_file()
 
 
     if (_data_interface==nullptr) return;
+    breakpoint_update_all();
     _script->do_request_run();
 }
 //----------------------------------------------------

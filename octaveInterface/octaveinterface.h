@@ -55,6 +55,7 @@ private:
     QThread*                            _octave_thread;
     octave::interpreter*                _octave_engine;
     mutable QMutex                      _sync;
+    int                                 _locked;
 
     void                                create_thread_connections();
     class radarInstance*                _current_device_owner;

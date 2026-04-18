@@ -10,7 +10,7 @@
 #include <octavews.h>
 #include <event-manager.h>
 #include "rdk_event_manager.h"
-
+#include <ostream>
 //----------------------------------------------
 /**
  * @brief The octaveThreadHandler class handles the
@@ -39,7 +39,6 @@ private:
     octaveScript*                       _running_script;
     QString                             _debug_script_fname;
     int                                 _debug_line;
-    FILE*                               _fdebug;
     octaveInterface*                    _owner;
 
     oth_lr_status                       _parse_result;      // Result's flag of the last operation
@@ -52,6 +51,11 @@ private:
     void                                internal_execute_run(octaveScript* script, bool single_step);
     // We need to add a Mutex to avoid race during breakpoint events
     mutable QMutex                      _sync;
+    // Debug pipe management
+    FILE* input_write = nullptr;   // write end
+    int   input_read_fd = -1;      // read end (per Octave)
+    FILE* input_stream= nullptr;
+    void  execute_send_command_during_debug(const QString& cmd);
 public:
     octaveThreadHandler(octaveInterface* owner=nullptr);
     ~octaveThreadHandler();
@@ -106,6 +110,7 @@ signals:
     void            signal_handler_dberror(const QString& fname, const QString& error, int line);
 
     void            finished();
+    void            output_ready(const QString& text);
 
 };
 

@@ -35,6 +35,7 @@ octaveInterface::octaveInterface() :
     , _workspace(nullptr)
     , _immediate_filename("")
     , _current_device_owner(nullptr)
+    , _locked(0)
 {
 
     // Create the handler
@@ -417,6 +418,7 @@ void    octaveInterface::operation_device_is_deleting(radarInstance* device)
 void    octaveInterface::operation_wait_and_lock()
 {
     _sync.lock();
+    _locked =1;
 }
 //-----------------------------
 /**
@@ -425,7 +427,9 @@ void    octaveInterface::operation_wait_and_lock()
  */
 void    octaveInterface::operation_unlock()
 {
+    if (_locked != 1) return;
     _sync.unlock();
+    _locked = 0;
 }
 
 //-----------------------------
@@ -531,6 +535,9 @@ void octaveInterface::execute_continue(octaveScript* script)
 
     if (_octave_engine==nullptr)
         return;
+    _octave_engine->get_evaluator().server_mode(false);
+    _octave_engine->get_evaluator().set_dbstep_flag(-1);
+    _octave_engine->get_evaluator().set_break_on_next_statement(false);
 
     if (_octave_thread_handler->engine_get_status()==octaveThreadHandler::OTH_DEBUG)
     {

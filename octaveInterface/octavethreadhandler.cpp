@@ -14,6 +14,7 @@
 #include "builtin-defun-decls.h"
 
 
+
 octaveThreadHandler::octaveThreadHandler(octaveInterface *owner) : QObject(),
     _oth_status(OTH_IDLE),
     _running_script(nullptr),
@@ -24,12 +25,18 @@ octaveThreadHandler::octaveThreadHandler(octaveInterface *owner) : QObject(),
 
 {
 
+    //
 }
 
 octaveThreadHandler::~octaveThreadHandler()
 {
 //    engine_shutdown();
 //    emit finished();
+    if (input_write) {
+        fclose(input_write);
+        input_write = nullptr;
+    }
+
 }
 
 //-----------------------------
@@ -48,30 +55,46 @@ void octaveThreadHandler::engine_init_and_start()
 {
     if (_owner==nullptr) return;
     if (_octave_engine!=nullptr) return;
-    // Initialize Octave Interpreter
+    // Octave interpreter initialization
+    // create a Pipe (WIN/Linux)
+    int pipefd[2];
+#ifdef _WIN32
+    if (_pipe(pipefd, 4096, _O_TEXT) != 0) {
+        emit output_ready("ERROR while creating debug pipe (Windows)\n");
+        return;
+    }
+#else
+    if (pipe(pipefd) != 0) {
+        emit output_ready("ERROR while creating debug pipe\n");
+        return;
+    }
+#endif
+
+    // Apertura FILE* (write end per noi, read end per Octave)
+#ifdef _WIN32
+    input_write = _fdopen(pipefd[1], "w");
+    input_stream = _fdopen(pipefd[0], "r");
+#else
+    input_write = fdopen(pipefd[1], "w");
+    input_stream = fdopen(pipefd[0], "r");
+#endif
 
     _octave_engine = new octave::interpreter();
     _octave_engine->interactive(true);
+
     _octave_engine->initialize_history(true);
     _octave_engine->initialize_load_path();
     _octave_engine->initialize();
     _octave_engine->get_error_system().debug_on_caught(false);
-    _octave_engine->get_evaluator().quiet_breakpoint_flag(false);
+    _octave_engine->get_evaluator().quiet_breakpoint_flag(true);
     _octave_engine->get_evaluator().server_mode(false);
-//    _octave_engine->execute();
-
-    // Setup output system
-
-    octave::output_system& os = _octave_engine->get_output_system();
-
-    os.flushing_output_to_pager(true);
-    os.really_flush_to_pager(true);
-    os.page_screen_output(false);
+    // Hook della pipe come stdin di Octave
+    octave::command_editor::set_input_stream(input_stream);
 
     //--------------------------------------------------------
     // Set-up an event manager
     _events = std::make_shared<rdk_event_manager>();
-
+    //_octave_engine->get_input_system().add_input_event_hook((octaveThreadHandler::_event_hook));
     octave::event_manager& evmgr = _octave_engine->get_event_manager ();
     evmgr.connect_link (_events);
     evmgr.enable ();
@@ -80,8 +103,7 @@ void octaveThreadHandler::engine_init_and_start()
     connect(_events.get(), &rdk_event_manager::interpreter_dberror,         this, &octaveThreadHandler::handle_interpreter_dberror);
     //--------------------------------------------------------
     // This file is needed to intercept and interact with breakpoints
-    _fdebug = fopen("dbg_in.txt","w+");
-     octave::command_editor::set_input_stream(_fdebug);
+
     //--------------------------------------------------------
 
     return;
@@ -124,8 +146,7 @@ void  octaveThreadHandler::engine_shutdown()
         } catch (...) {
         }
 
-        fclose(_fdebug);        
-        _octave_engine = nullptr;
+       _octave_engine = nullptr;
     }
 }
 
@@ -147,6 +168,9 @@ void octaveThreadHandler::execute_continue(octaveScript* script)
         return;
 
     if (_octave_engine==nullptr) return;
+
+    _octave_engine->get_evaluator().set_dbstep_flag(-1);
+    _octave_engine->get_evaluator().break_on_next_statement(false);
 
     // We are starting a new execution
     if (_oth_status==OTH_IDLE)
@@ -170,11 +194,14 @@ void octaveThreadHandler::execute_continue(octaveScript* script)
         // thread is in the wait cycle
         const QMutexLocker locker(&_sync);
         _oth_next_action = OTH_NA_CONTINUE;
+        _octave_engine->get_evaluator().dbcont();
+        _octave_engine->get_evaluator().set_dbstep_flag(0);
+        execute_send_command_during_debug("dbcont");
     }
 
     return;
-
 }
+//------------------------------------------------------
 /**
  * @brief octaveThreadHandler::internal_execute_run
  * @param script
@@ -202,7 +229,7 @@ void octaveThreadHandler::internal_execute_run(octaveScript* script, bool single
             _oth_next_action = OTH_NA_CONTINUE;
             _running_script = script;
             _debug_script_fname   = single_step ? script->get_fullfilename() : "";
-            _debug_line = single_step ? 0 : 1;
+            _debug_line = single_step ? 0 : -1;
         }
 
         emit signal_handler_dbrun(fname);
@@ -214,6 +241,7 @@ void octaveThreadHandler::internal_execute_run(octaveScript* script, bool single
         _octave_engine->get_evaluator().set_break_on_next_statement(single_step);
         _octave_engine->get_evaluator().quiet_breakpoint_flag(single_step);
         QFileInfo finfo(script->get_fullfilename());
+
        // _octave_engine->chdir(finfo.absolutePath().toStdString());
 
         _owner->operation_wait_and_lock();
@@ -279,7 +307,7 @@ void octaveThreadHandler::execute_run(octaveScript* script)
     internal_execute_run(script, false);
     return;
 }
-
+//------------------------------------------------------
 /**
  * @brief octaveThreadHandler::execute_step_in
  * @param script
@@ -301,7 +329,7 @@ void octaveThreadHandler::execute_step_in(octaveScript* script)
             _oth_next_action    = OTH_NA_STEP;
             _running_script     = script;
             _debug_script_fname = script->get_fullfilename();
-            _debug_line = 0;
+            _debug_line = -1;
         }
 
         internal_execute_run(script, true);
@@ -314,11 +342,17 @@ void octaveThreadHandler::execute_step_in(octaveScript* script)
         // thread is in the wait cycle
         const QMutexLocker locker(&_sync);
         _oth_next_action = OTH_NA_STEP;
+        execute_send_command_during_debug("dbstep");
+        _octave_engine->get_evaluator().dbcont();
     }
 
     return;
 }
-
+//------------------------------------------------------
+/**
+ * @brief octaveThreadHandler::execute_stop
+ * @param script
+ */
 void octaveThreadHandler::execute_stop(octaveScript* script)
 {
     /*if ((_running_script != nullptr)&&(_running_script!=script))
@@ -341,13 +375,14 @@ void octaveThreadHandler::execute_stop(octaveScript* script)
         // thread is in the wait cycle
         const QMutexLocker locker(&_sync);
         _oth_next_action = OTH_NA_STOP;
+        execute_send_command_during_debug("dbquit");
     }
 
     return;
 
 
 }
-
+//------------------------------------------------------
 /**
  * @brief octaveThreadHandler::execute_step_out
  * @param script
@@ -358,7 +393,7 @@ void octaveThreadHandler::execute_step_out(octaveScript* script)
  // TBD
     return;
 }
-
+//------------------------------------------------------
 /**
  * @brief octaveThreadHandler::execute_feval
  * @param command
@@ -499,7 +534,28 @@ void     octaveThreadHandler::execute_eval_string(QString command)
     _owner->operation_unlock();
     emit signal_handler_dbcomplete(command);
 }
+//-----------------------------------------------------
+/**
+ * @brief octaveThreadHandler::execute_send_command_during_debug
+ * @param string
+ */
+void  octaveThreadHandler::execute_send_command_during_debug(const QString& cmd)
+{
+    if (_oth_status!=OTH_DEBUG) return;
+    if (!input_write) return;
+    std::string line = cmd.toStdString() + "\n";
+    fwrite(line.data(), 1, line.size(), input_write);
+    fflush(input_write);
+    emit output_ready("->" + cmd);
+}
 
+//-----------------------------
+//-----------------------------
+// Handle section
+// This section controls events
+// starting from the octave interpreter
+//-----------------------------
+//-----------------------------
 //-----------------------------------------------------
 /**
  * @brief octaveThreadHandler::handle_interpreter_dbstop
@@ -520,10 +576,18 @@ void            octaveThreadHandler::handle_interpreter_dbstop(const QString& fn
         _running_script = nullptr;
     }
     // We are getting here from a breakpoint.
-    _owner->operation_unlock();
+
     emit signal_handler_dbstop(fname,line);
 
-    octave::output_system& os = _octave_engine->get_output_system();
+    octave::input_system& is = _octave_engine->get_input_system();
+
+    _octave_engine->interactive(true);
+
+    //_octave_engine->get_evaluator().server_mode(true);
+//    _octave_engine->get_evaluator().set_break_on_next_statement(true);
+//    _octave_engine->get_evaluator().set_dbstep_flag(0);
+    _owner->operation_unlock();
+    /*f
 
     while (_oth_next_action == OTH_NA_WAIT)
     {
@@ -556,7 +620,7 @@ void            octaveThreadHandler::handle_interpreter_dbstop(const QString& fn
         _debug_line = -1;
 
         emit signal_handler_dbcomplete(fname);
-    }
+    }*/
 }
 
 //-----------------------------------------------------
@@ -610,3 +674,4 @@ void            octaveThreadHandler::handle_interpreter_enter_debugger_event (co
     handle_interpreter_dbstop(fname,line);
 
 }
+
