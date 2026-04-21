@@ -7,6 +7,7 @@
 #include "wndradarinstanceeditor.h"
 #include "ui_wndradarinstanceeditor.h"
 #include "wndscanmodules.h"
+#include "mdioctaveinterface.h"
 
 #include <QMessageBox>
 #include <QFileDialog>
@@ -32,7 +33,7 @@ extern QDir             ariasdk_projects_path;
 extern QDir             ariasdk_scripts_path;
 extern QDir             ariasdk_antennas_path;
 extern QDir             ariasdk_antennaff_path;
-
+extern mdiOctaveInterface             *mdiOctaveInterfaceWnd;
 //---------------------------------------------------------------
 wndRadarInstanceEditor::wndRadarInstanceEditor(radarInstance* radar, QVector<radarModule*> available_models, QWidget *parent) :
     QDialog(parent),
@@ -150,6 +151,9 @@ wndRadarInstanceEditor::~wndRadarInstanceEditor()
     if (_scheduler!=nullptr)
         if (_scheduler->isRunning())
         {
+            if (mdiOctaveInterfaceWnd!=nullptr)
+                mdiOctaveInterfaceWnd->execution_restore_history_update();
+
             _scheduler->stop();
             delete _scheduler;
             _scheduler=nullptr;
@@ -1288,6 +1292,9 @@ void wndRadarInstanceEditor::connect_radar()
 
         if (_scheduler!=nullptr)
         {
+            if (mdiOctaveInterfaceWnd!=nullptr)
+                mdiOctaveInterfaceWnd->execution_restore_history_update();
+
             if (_scheduler->isRunning())
                 _scheduler->stop();
         }
@@ -1498,21 +1505,29 @@ void    wndRadarInstanceEditor::run()
         connect(_scheduler, &opScheduler::postacquisition_error,    this, &wndRadarInstanceEditor::postacquisition_error);
         connect(_scheduler, &opScheduler::postacquisition_done_all, this, &wndRadarInstanceEditor::postacquisition_done_all);
 
+        if (mdiOctaveInterfaceWnd!=nullptr)
+            mdiOctaveInterfaceWnd->execution_force_skip_history_update();
+
         _scheduler->run();
         return;
     }
 
     if (_scheduler->isRunning())
     {
-        // Here we may create different radar_devices (confirm
+        if (mdiOctaveInterfaceWnd!=nullptr)
+            mdiOctaveInterfaceWnd->execution_restore_history_update();
+
         _scheduler->stop();
 //        delete _scheduler;
 //        _scheduler = nullptr;
     }
     else
+    {
+        if (mdiOctaveInterfaceWnd!=nullptr)
+            mdiOctaveInterfaceWnd->execution_force_skip_history_update();
+
         _scheduler->run();
-
-
+    }
 }
 
 //----------------------------------------------------

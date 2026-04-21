@@ -35,6 +35,7 @@ typedef struct {
 } octintOperation;
 
 
+
 class octaveScript;
 
 class octaveInterface : public QObject
@@ -54,11 +55,14 @@ private:
     octaveThreadHandler*                _octave_thread_handler;
     QThread*                            _octave_thread;
     octave::interpreter*                _octave_engine;
-    mutable QMutex                      _sync;
+    mutable QMutex                       _sync;
     int                                 _locked;
 
     void                                create_thread_connections();
     class radarInstance*                _current_device_owner;
+    QString                             _last_mutex_owner ="";
+
+
 public:
     static octaveInterface*             _octave_interface_instance; // We have ONE interface instance in the RDK.
 
@@ -72,8 +76,9 @@ public:
     bool                            operation_execute_next_in_queue();
     const QString &                 operation_get__last_output() {return _last_output;}
     void                            operation_device_is_deleting(class radarInstance* device);
-    void                            operation_wait_and_lock();
+    void                            operation_wait_and_lock(const QString& fname="");
     void                            operation_unlock();
+    void                            operation_trylock();
     //----------------------------------------------------------------------------
     // Main octave engine
     octave::interpreter*            engine_get_octave_engine();
@@ -125,6 +130,7 @@ public slots:
     void            handle_octave_thread_dbrun(const QString& fname);
     void            handle_octave_thread_dbcomplete(const QString& fname);
     void            handle_octave_thread_dberror(const QString& command, const QString& error,int line);
+    void            handle_octave_thread_cmd_debug_done(const QString& cmd);
 signals:
     void            signal_workspace_updated();
     void            signal_workspace_deleted();
@@ -159,6 +165,8 @@ signals:
     void            signal_interface_execute_dbcomplete(const QString& fname);
     void            signal_interface_execute_dberror(const QString& fname, const QString& error, int line);
     void            signal_interface_execute_dbbusy(const QString& commandname);
+    void            signal_interface_execute_command_debug_done(const QString& cmd);
+
 };
 
 #endif // OCTAVEINTERFACE_H

@@ -55,7 +55,8 @@ private:
     FILE* input_write = nullptr;   // write end
     int   input_read_fd = -1;      // read end (per Octave)
     FILE* input_stream= nullptr;
-    void  execute_send_command_during_debug(const QString& cmd);
+    QString             _last_cmd = "";
+    bool                _is_db_cmd = false;
 public:
     octaveThreadHandler(octaveInterface* owner=nullptr);
     ~octaveThreadHandler();
@@ -71,7 +72,7 @@ public slots:
     void                            execute_feval_ovl(QString command, octave_value_list& in, int n_outputs);
     void                            execute_feval(QString command, const string_vector& input, const string_vector& output); // NB we may have empty in some output var
     void                            execute_eval_string(QString command);
-
+    void                            execute_send_command_during_debug(const QString& cmd);
     //----------------------------------------------------------------------------
     // Main octave engine
 public slots:
@@ -97,7 +98,8 @@ public slots:
     void            handle_interpreter_enter_debugger_event (const std::string& fcn_name,
                                                  const std::string& fcn_file_name,
                                                  int line);
-
+    void            handle_interpreter_post_input_event();
+    void            handle_interpreter_pre_input_event();
 
 
 signals:
@@ -108,7 +110,7 @@ signals:
     void            signal_handler_dbrun(const QString& fname);
     void            signal_handler_dbcomplete(const QString& fname);
     void            signal_handler_dberror(const QString& fname, const QString& error, int line);
-
+    void            signal_handler_cmd_complete_during_debug(const QString& cmd);
     void            finished();
     void            output_ready(const QString& text);
 

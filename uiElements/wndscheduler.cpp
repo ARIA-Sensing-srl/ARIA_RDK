@@ -6,7 +6,7 @@
 #include "wndscheduler.h"
 #include "ui_wndscheduler.h"
 #include "../scheduler/opscheduler.h"
-
+#include "mdioctaveinterface.h"
 #include <QCheckBox>
 #include <QPixmap>
 #include <QMessageBox>
@@ -17,6 +17,8 @@
 #define COL_STATUS          3
 
 extern octaveInterface         *interfaceData;
+extern mdiOctaveInterface             *mdiOctaveInterfaceWnd;
+
 wndScheduler::wndScheduler(QWidget *parent, radarProject* root, opScheduler* opsched)
     : QDialog(parent)
     , ui(new Ui::wndScheduler)
@@ -375,6 +377,8 @@ void wndScheduler::start()
     _scheduler->set_policy_on_error((RUN_POLICY)ui->cbErrorHandling->currentIndex());
     _scheduler->set_policy_on_timeout((TIMEOUT_POLICY)(ui->cbTimeOutHandling->currentIndex()));
     _scheduler->set_cycle_time(ui->sbTimeout->value());
+    if (mdiOctaveInterfaceWnd!=nullptr)
+        mdiOctaveInterfaceWnd->execution_force_skip_history_update();
 
     _scheduler->run();
 
@@ -382,6 +386,9 @@ void wndScheduler::start()
 //--------------------------------
 void wndScheduler::stop()
 {
+    if (mdiOctaveInterfaceWnd!=nullptr)
+        mdiOctaveInterfaceWnd->execution_restore_history_update();
+
     _scheduler->stop();
 
 }

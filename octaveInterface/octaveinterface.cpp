@@ -148,6 +148,8 @@ void octaveInterface::create_thread_connections()
     connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbrun,         this, &octaveInterface::handle_octave_thread_dbrun);
     connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbcomplete,    this, &octaveInterface::handle_octave_thread_dbcomplete);
     connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dberror,       this, &octaveInterface::handle_octave_thread_dberror);
+    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_cmd_complete_during_debug,
+                                                                                        this, &octaveInterface::handle_octave_thread_cmd_debug_done);
     connect(_octave_thread_handler, &octaveThreadHandler::finished, _octave_thread_handler,   &octaveThreadHandler::deleteLater, Qt::DirectConnection);
 
 
@@ -278,6 +280,18 @@ octave::interpreter*  octaveInterface::engine_get_octave_engine()
 
 bool octaveInterface::operation_append_command(const QString &newCommand)
 {
+    if (newCommand.isEmpty()) return true;
+    // If we are in debug mode, we don't put the command in the queue.
+    // Instead, we send the command immediately
+    if (this->engine_get_debug_line()>=0)
+    {
+        if (_octave_thread_handler!=nullptr)
+        {
+            //operation_wait_and_lock();
+            _octave_thread_handler->execute_send_command_during_debug(newCommand);
+        }
+        return true;
+    }
     _last_output = "";
     QString *op_string = new QString(newCommand);
     octintOperation new_op;
@@ -400,12 +414,11 @@ bool octaveInterface::operation_execute_next_in_queue()
 void    octaveInterface::operation_device_is_deleting(radarInstance* device)
 {
     if (device==nullptr) return;
-    //const QMutexLocker locker(&_sync);
+
     for (auto op : _op_list)
     {
         if ((op._op_type==OIP_SCRIPT)&&(op._op_owner==device))
-        {
-            ////const QMutexLocker locker(&_sync);
+        {            
             op._op_owner=nullptr;
         }
     }
@@ -415,10 +428,19 @@ void    octaveInterface::operation_device_is_deleting(radarInstance* device)
  * @brief octaveInterface::operation_wait_and_lock
  * Wait for the octave interpreter to be available and lock it
  */
-void    octaveInterface::operation_wait_and_lock()
+void    octaveInterface::operation_wait_and_lock(const QString& fname)
 {
     _sync.lock();
     _locked =1;
+    _last_mutex_owner = fname;
+}
+//-----------------------------
+/**
+ * @brief octaveInterface::operation_trylock
+ */
+void    octaveInterface::operation_trylock()
+{
+    _sync.tryLock(1);
 }
 //-----------------------------
 /**
@@ -427,9 +449,12 @@ void    octaveInterface::operation_wait_and_lock()
  */
 void    octaveInterface::operation_unlock()
 {
-    if (_locked != 1) return;
+    //if (!_locked)
+    //    _sync.tryLock(1);
+
     _sync.unlock();
     _locked = 0;
+    _last_mutex_owner = "";
 }
 
 //-----------------------------
@@ -750,42 +775,53 @@ void    octaveInterface::immediate_command(const std::string& str, const std::st
  */
 void  octaveInterface::handle_octave_thread_dbcomplete(const QString& fname)
 {
+    // Transfer data to the workspace
+    if (_workspace!=nullptr)
+        _workspace->interpreter_to_workspace();
+
+    // Announce the update of the workspace
+    emit signal_workspace_updated();
+
+    // This is a signal that goes into EVERY slot.
+    emit signal_interface_execute_dbcomplete(fname);
+
+    // We have completed a script of an owner. If we don't have any further left from
+    // the same owner, we may signal that we are done with it.
+    if (_current_device_owner!=nullptr)
     {
-        //const QMutexLocker locker(&_sync);
-
-        // Transfer data to the workspace
-        if (_workspace!=nullptr)
-            _workspace->interpreter_to_workspace();
-
-        // Announce the update of the workspace
-        emit signal_workspace_updated();
-
-        // This is a signal that goes into EVERY slot.
-        emit signal_interface_execute_dbcomplete(fname);
-
-        // We have completed a script of an owner. If we don't have any further left from
-        // the same owner, we may signal that we are done with it.
-        if (_current_device_owner!=nullptr)
+        bool b_any_left = false;
+        for (auto left: _op_list)
         {
-            bool b_any_left = false;
-            for (auto left: _op_list)
+            if ((left._op_type==OIP_SCRIPT)&&(left._op_owner==_current_device_owner))
             {
-                if ((left._op_type==OIP_SCRIPT)&&(left._op_owner==_current_device_owner))
-                {
-                    b_any_left = true;
-                    break;
-                }
+                b_any_left = true;
+                break;
             }
-            //
-            if (!b_any_left)
-                _current_device_owner->octave_engine_scripts_done();
         }
+        //
+        if (!b_any_left)
+            _current_device_owner->octave_engine_scripts_done();
     }
-
 
     // Go with the next operation (if any)
     if (!_op_list.empty())
         operation_execute_next_in_queue();
+}
+//-----------------------------
+/**
+ * @brief octaveInterface::handle_octave_thread_cmd_debug_done
+ * @param cmd
+ */
+void octaveInterface::handle_octave_thread_cmd_debug_done(const QString& cmd)
+{
+    // Transfer data to the workspace
+    if (_workspace!=nullptr)
+        _workspace->interpreter_to_workspace();
+
+    // Announce the update of the workspace
+    emit signal_workspace_updated();
+
+    emit signal_interface_execute_command_debug_done(cmd);
 }
 //-----------------------------
 /**

@@ -58,6 +58,8 @@ extern QString cstr_comm_protocol;
 
 MainWindow* MainWindow::mainWnd = nullptr;
 
+extern mdiOctaveInterface             *mdiOctaveInterfaceWnd;
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
     app_settings(QSettings::NativeFormat, QSettings::UserScope,
@@ -66,6 +68,8 @@ MainWindow::MainWindow(QWidget *parent)
     _plot2d_children(),
     _plot3d_children()
 {
+    mdiOctaveInterfaceWnd = nullptr;
+
     ui->setupUi(this);
     // Radar Devices: menu signals
     connect(ui->actionScan,             &QAction::triggered, this, &MainWindow::radarModule_Scan);;
@@ -176,6 +180,9 @@ MainWindow::~MainWindow()
 
     if (_multiradarScheduler!=nullptr)
     {
+        if (mdiOctaveInterfaceWnd!=nullptr)
+            mdiOctaveInterfaceWnd->execution_restore_history_update();
+
         _multiradarScheduler->stop();
         delete _multiradarScheduler;
         _multiradarScheduler = nullptr;
@@ -988,6 +995,9 @@ void MainWindow::closeProject()
 
     if (_multiradarScheduler!=nullptr)
     {
+        if (mdiOctaveInterfaceWnd!=nullptr)
+            mdiOctaveInterfaceWnd->execution_restore_history_update();
+
         _multiradarScheduler->stop();
         _multiradarScheduler->delete_all_radars();
         _radarTreeItems.clear();
@@ -1107,6 +1117,10 @@ void MainWindow::deleteDevice()
             if (QMessageBox::warning(this, "Confirm", tr("The device ")+radar->get_device_name()+tr(" is running. Need to stop it before deleting. Confirm?"))==QMessageBox::No)
                 return;
         }
+
+        if (mdiOctaveInterfaceWnd!=nullptr)
+            mdiOctaveInterfaceWnd->execution_restore_history_update();
+
         _multiradarScheduler->delete_radar(radar);
         _multiradarScheduler->stop();
     }
@@ -1667,6 +1681,9 @@ void MainWindow::removeDeviceFile(radarInstance* instance)
         if ((_multiradarScheduler->get_devices().count()==0)&&(_multiradarScheduler->isRunning()))
             _multiradarScheduler->stop();
 
+        if (mdiOctaveInterfaceWnd!=nullptr)
+            mdiOctaveInterfaceWnd->execution_restore_history_update();
+
         auto rtiItem = _radarTreeItems.find(instance);
         if (rtiItem!=_radarTreeItems.end())
             _radarTreeItems.erase(rtiItem);
@@ -2017,13 +2034,21 @@ void MainWindow::runRadars()
                 //2. We need to add a new device with the scheduler running
                 if (QMessageBox::warning(this,"Warning", "To add a device to the runnning thread, all runnning devices must be stopped and restarted\n Continue?",
                                          QMessageBox::Yes | QMessageBox::No)==QMessageBox::No) return;
+
+                if (mdiOctaveInterfaceWnd!=nullptr)
+                    mdiOctaveInterfaceWnd->execution_force_skip_history_update();
+
                 _multiradarScheduler->stop();
                 _multiradarScheduler->add_radar(device);
                 _multiradarScheduler->run();
             }
             else
             {
-                if (!_multiradarScheduler->has_device(device)) _multiradarScheduler->add_radar(device);                
+                if (!_multiradarScheduler->has_device(device)) _multiradarScheduler->add_radar(device);
+
+                if (mdiOctaveInterfaceWnd!=nullptr)
+                    mdiOctaveInterfaceWnd->execution_force_skip_history_update();
+
                 _multiradarScheduler->run();
             }
         }
@@ -2044,6 +2069,9 @@ void MainWindow::stopRadars()
 
             //1. If the device do not belong to the scheduler, do nothing
             if (!_multiradarScheduler->has_device(device)) continue;
+
+            if (mdiOctaveInterfaceWnd!=nullptr)
+                mdiOctaveInterfaceWnd->execution_restore_history_update();
 
             _multiradarScheduler->stop(device);
             _multiradarScheduler->delete_radar(device);

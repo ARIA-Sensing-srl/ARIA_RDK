@@ -40,6 +40,7 @@ public:
     QTextEdit*  get_textoutput();
     void        update_octave_interface();
     void        add_variable_row(int row, const std::string& name, const octave_value& val, bool internal);
+    void        update_variable_row(int row, const std::string& name, const octave_value& val, bool internal);
 	void		clear_and_init_var_table();
 
 	bool		close_scripts();
@@ -123,14 +124,15 @@ public slots:
     void handle_interpreter_debug(const QString& fname, int line);
     void handle_interpreter_complete(const QString& fname);
     void handle_interpreter_error(const QString& command, const QString& error, int line);
-
+    void handle_interpreter_execute_command_debug_done(const QString& command);
     void keyPressEvent(QKeyEvent *e) {
         if(e->key() != Qt::Key_Escape)
             QDialog::keyPressEvent(e);
         else {/* minimize */}
     }
 
-
+    void execution_force_skip_history_update() {_force_skip_history_append = true;}
+    void execution_restore_history_update()    {_force_skip_history_append = false;}
 
 private:
     Ui::mdiOctaveInterface *ui;
@@ -145,6 +147,11 @@ private:
     bool                                _b_deleting;
 
     void                                workspaceTableDblClick(const QModelIndex &index);
+    bool                                _skip_history_append = false;
+    bool                                _force_skip_history_append = false;
+    bool                                _running_command = false;
+
+    void                                command_set_running(bool is_running);
 };
 
 #endif // MDIOCTAVEINTERFACE_H

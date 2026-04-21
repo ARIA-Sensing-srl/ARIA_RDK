@@ -25,12 +25,18 @@ public:
 
 
     void interpreter_interrupted ();
+
+    void post_input_event();
+
+    void pre_input_event ();
 signals:
     void            interperter_enter_dbevent(const std::string& fcn_name,
                                    const std::string& fcn_file_name,
                                    int line);
     void            interpreter_dbstop(const QString& fname, int line);
     void            interpreter_dberror(const QString& fname, int line);
+    void            interpreter_post_input_event();
+    void            interpreter_pre_input_event();
 private:
     std::string     _priv_fcn_name; // in Windows we have to translate the filename from "c:\a\b\f.m" to "c:/a/b/f.m" before signaling any event
 };

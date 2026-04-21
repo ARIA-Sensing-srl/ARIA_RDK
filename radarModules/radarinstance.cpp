@@ -1399,7 +1399,7 @@ void    radarInstance::immediate_update_variable(const std::string& varname)
         return;
 
     if (_workspace->data_interface()==nullptr) return;
-    _workspace->data_interface()->operation_wait_and_lock();
+    _workspace->data_interface()->operation_wait_and_lock("immediate_update_variable");
     octave_value var_value = _workspace->data_interface()->engine_get_octave_engine()->varval(varname);
     _workspace->data_interface()->operation_unlock();
 

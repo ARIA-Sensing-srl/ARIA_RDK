@@ -327,7 +327,7 @@ int octaveScript::breakpoint_add (int line, const QString& cond)
     std::string fname = get_fullfilename().toStdString();
 
     // Get the proper breakpoint line
-    _octave_interface->operation_wait_and_lock();
+    _octave_interface->operation_wait_and_lock("breakpoint_add");
     int lineeq ;
     try
     {
@@ -361,7 +361,7 @@ int octaveScript::breakpoint_remove (int line)
 
     // Let's see if we have a precise location.
     int lineeq = -1;
-    _octave_interface->operation_wait_and_lock();
+    _octave_interface->operation_wait_and_lock("breakpoint_remove");
     try
     {
         bptab.remove_breakpoint_from_file (get_fullfilename().toStdString (), line+1);
@@ -433,7 +433,7 @@ bool octaveScript::breakpoint_at_line(int line, int& lineeq)
     // Try adding the breakpoint to see which line this is falling into.    
 
     // Get the proper breakpoint line
-    _octave_interface->operation_wait_and_lock();
+    _octave_interface->operation_wait_and_lock("breakpoint_at_line");
     try
     {
         lineeq = bptab.add_breakpoint_in_file( fname, line, "");
@@ -458,7 +458,7 @@ bool octaveScript::breakpoint_at_line(int line, int& lineeq)
 
             if (bp_was_there) break;
         }
-    _octave_interface->operation_wait_and_lock();
+    _octave_interface->operation_wait_and_lock("breakpoint_at_line");
     try
     {
         if (!bp_was_there) bptab.remove_breakpoint_from_file(fname,lineeq);
@@ -489,7 +489,7 @@ bool octaveScript::breakpoints_has_any()
     std::string fname = get_fullfilename().toStdString();
     octave_value_list bp_list;
     bp_list.append(charNDArray(fname));
-    _octave_interface->operation_wait_and_lock();
+    _octave_interface->operation_wait_and_lock("breakpoints_has_any");
     octave::bp_table::fname_bp_map bpmap = bptab.get_breakpoint_list(bp_list);
     _octave_interface->operation_unlock();
 
@@ -517,7 +517,7 @@ void octaveScript::do_interpreter_dbstop(const QString& fname, int line)
 {
 
     _debug_line = line;
-    //_octave_interface->engine_get_octave_engine()->stop();
+
     emit script_stop(fname, line);
 
 }

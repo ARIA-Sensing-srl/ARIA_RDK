@@ -317,6 +317,7 @@ void        opScheduler::init_devices()
 // This is a default operation
 void        opScheduler::run()
 {
+    _b_active = true;
     radarProject* project = get_root();
     if (project!=nullptr)
     {
@@ -407,6 +408,7 @@ void        opScheduler::stop(radarInstance* device)
         if ((_workers.isEmpty())||(banyworkerRunning==false))
         {
             _b_running = false;
+            _b_active = false;
         }
     }
 }
@@ -508,6 +510,7 @@ void opScheduler::acquisition_loop()
 //----------------------------
 void opScheduler::timer_done()
 {
+    if (!_b_active) return;
     _timer_done=true;
 
     for (auto &worker:_workers)
@@ -529,6 +532,7 @@ void opScheduler::timer_done()
 //----------------------------
 void opScheduler::initDone(opSchedulerOperations* op)
 {
+    if (!_b_active) return;
     for (auto& worker: _workers)
         if (worker->get_status()==INIT_SCRIPTS_DONE)
             emit init_done(worker->get_device());
@@ -544,6 +548,7 @@ void opScheduler::initDone(opSchedulerOperations* op)
 //----------------------------
 void opScheduler::initError(opSchedulerOperations* op)
 {
+    if (!_b_active) return;
     emit init_error(op->get_device());
     if (_policy_on_error == HALT_ALL)
     {
@@ -571,6 +576,7 @@ void opScheduler::initError(opSchedulerOperations* op)
 //----------------------------
 void opScheduler::postAcquisitionDone(opSchedulerOperations* op)
 {
+    if (!_b_active) return;
     for (auto& worker: _workers)
         if (worker->get_status()==ACQUISTION_RESTART)
             emit postacquisition_done(worker->get_device());
@@ -586,6 +592,7 @@ void opScheduler::postAcquisitionDone(opSchedulerOperations* op)
 //----------------------------
 void opScheduler::postAcquisitionError(opSchedulerOperations* op)
 {
+    if (!_b_active) return;
     emit postacquisition_error(op->get_device());
     if (_policy_on_error == HALT_ALL)
     {
@@ -613,6 +620,7 @@ void opScheduler::postAcquisitionError(opSchedulerOperations* op)
 //----------------------------
 void opScheduler::device_connected(radarInstance* device)
 {
+    if (!_b_active) return;
     for (auto& worker: _workers)
         if (worker->get_device()->is_connected())
             emit connection_done(worker->get_device());
@@ -629,6 +637,7 @@ void opScheduler::device_connected(radarInstance* device)
 //----------------------------
 void opScheduler::error_on_connection(radarInstance* device)
 {
+    if (!_b_active) return;
     emit connection_error(device);
 }
 //----------------------------

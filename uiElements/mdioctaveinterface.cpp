@@ -30,6 +30,8 @@ using namespace octave;
 
 extern octaveInterface         *interfaceData;
 
+mdiOctaveInterface             *mdiOctaveInterfaceWnd;
+
 QTextEdit*  mdiOctaveInterface::get_textoutput()
 {
     return ui->outputCommands;
@@ -48,9 +50,9 @@ mdiOctaveInterface::mdiOctaveInterface(qDataThread* worker,  QWidget *parent) :
 {
     ui->setupUi(this);
 
-    // Connectin signals
+    // Connectin signals for commands and history
     connect(ui->lineEdit,  &QLineEdit::returnPressed,this, &mdiOctaveInterface::newCommandLine);
-    connect(ui->pbExecute, &QPushButton::clicked, this, &mdiOctaveInterface::newCommandLine);
+    connect(ui->pbExecute, &QPushButton::clicked,    this, &mdiOctaveInterface::newCommandLine);
     ui->historyCommands->viewport()->installEventFilter(this);
 
     // Workspace table
@@ -60,6 +62,7 @@ mdiOctaveInterface::mdiOctaveInterface(qDataThread* worker,  QWidget *parent) :
     connect(ui->btnOctaveScriptNew,    &QPushButton::clicked, this, &mdiOctaveInterface::newScript);
     connect(ui->btnOctaveScriptLoad,   &QPushButton::clicked, this, &mdiOctaveInterface::openScript);
     connect(ui->btnExport,             &QPushButton::clicked, this, &mdiOctaveInterface::saveWorkspaceData);
+
 
     //-----------------------------------------------
     // Update workspace table
@@ -93,13 +96,14 @@ mdiOctaveInterface::mdiOctaveInterface(qDataThread* worker,  QWidget *parent) :
     // as default, make the "local variables" (debug window) as hidden
     ui->LocalVars->setVisible(false);
 
-
+    mdiOctaveInterfaceWnd = this;
 }
 
 
 
 void mdiOctaveInterface::handle_interpreter_busy(const QString& currentCmd)
 {
+    command_set_running(true);
     QMessageBox::warning(this, "Warning", "The elaboration engine is currently busy. Operation Aborted");
 }
 
@@ -111,7 +115,7 @@ void mdiOctaveInterface::updateLocalVar(bool b_clear_only)
     ui->tbLocalVars->clearContents();
     if (b_clear_only) return;
     if (_interfaceData==nullptr) return;
-    _workspace->data_interface()->operation_wait_and_lock();
+    _workspace->data_interface()->operation_wait_and_lock("updateLocalVar");
     std::shared_ptr<stack_frame> frame = _interfaceData->engine_get_octave_engine()->get_evaluator().get_current_stack_frame();
     if (frame==nullptr)  return;
 
@@ -137,8 +141,10 @@ void mdiOctaveInterface::updateLocalVar(bool b_clear_only)
 
 void mdiOctaveInterface::handle_interpreter_debug(const QString& fname, int line)
 {
-//    if (!ui->LocalVars->isVisible()) ui->LocalVars->setVisible(true);
-//    updateLocalVar(false);
+    command_set_running(false);
+    // Change the prompt
+    ui->lblCommand->setText("Debug >");
+
     QList<QMdiSubWindow*> subwnds = ui->mdiArea->subWindowList();
     for (auto &child: subwnds)
     {
@@ -160,11 +166,33 @@ void mdiOctaveInterface::handle_interpreter_debug(const QString& fname, int line
     ui->mdiArea->addSubWindow(wndScript);
     wndScript->showMaximized();
 
+
 }
 
+void mdiOctaveInterface::command_set_running(bool is_running)
+{
+    _running_command = is_running;
+    ui->pbExecute->setEnabled(!_running_command);
+}
+
+void mdiOctaveInterface::handle_interpreter_execute_command_debug_done(const QString& command)
+{
+    command_set_running(false);
+
+    if (command.isEmpty()) return;
+    // Here we don't care about forced skip (if we are in debug mode, we need to have a visual feedback of the commands
+    // given
+    if (!_skip_history_append)
+        ui->historyCommands->append(command);
+    _skip_history_append = false;
+
+    ui->historyCommands->setTextColor( QColor( "white" ));
+}
 
 void mdiOctaveInterface::handle_interpreter_complete(const QString& command)
 {
+    command_set_running(false);
+
     ui->LocalVars->setVisible(false);
     updateLocalVar(true);
     // Do we need to update the table?
@@ -172,14 +200,21 @@ void mdiOctaveInterface::handle_interpreter_complete(const QString& command)
         return;
 
     //ui->outputCommands->append(_interfaceData->get_last_output());
+
     ui->historyCommands->setTextColor( QColor( "white" ));
-    ui->historyCommands->append(command);
+    if ((!_skip_history_append)&&(!_force_skip_history_append))
+        ui->historyCommands->append(command);
+    _skip_history_append = false;
+
+    // Change the prompt
+    ui->lblCommand->setText("Command >");
 
 
 }
 
 void mdiOctaveInterface::handle_interpreter_error(const QString& command, const QString& error, int line)
 {
+    command_set_running(false);
     if (_workspace==nullptr)
         return;
 
@@ -211,6 +246,8 @@ void mdiOctaveInterface::update_octave_interface()
             this, &mdiOctaveInterface::handle_interpreter_busy);
     connect(interfaceData, &octaveInterface::signal_interface_execute_dbstop,
             this, &mdiOctaveInterface::handle_interpreter_debug);
+    connect(interfaceData, &octaveInterface::signal_interface_execute_command_debug_done,
+            this, &mdiOctaveInterface::handle_interpreter_execute_command_debug_done);
 
     _interfaceData = interfaceData;
     if (_interfaceData!=nullptr)
@@ -298,7 +335,6 @@ bool mdiOctaveInterface::eventFilter(QObject *obj, QEvent *event) {
     {
         if (obj == ui->historyCommands->viewport())
         {
-            //QTextLine tl = currentTextLine(ui->historyCommands->textCursor());
             int pos = ui->historyCommands->textCursor().position();
             QString strCopy = ui->historyCommands->toPlainText();
             qsizetype send = strCopy.indexOf("\n",pos);
@@ -306,6 +342,8 @@ bool mdiOctaveInterface::eventFilter(QObject *obj, QEvent *event) {
             qsizetype start= strCopy.lastIndexOf("\n",pos);
             strCopy = strCopy.mid(start,send-start);
             ui->lineEdit->setText(strCopy);
+            _skip_history_append = true;
+            ui->pbExecute->click();
         }
 
     }
@@ -398,17 +436,56 @@ void mdiOctaveInterface::error(QString errorString)
 
 void mdiOctaveInterface::newCommandLine()
 {
+    if (_running_command) return;
+
     QString strCommand = ui->lineEdit->text();
     if (strCommand.isEmpty())
         return;
-
+    command_set_running(true);
     interfaceData->operation_append_command(strCommand);
 
     ui->lineEdit->setText("");
 }
 
 
+void mdiOctaveInterface::update_variable_row(int row, const std::string& name, const octave_value& val, bool internal)
+{
+    if (name.empty())
+        return;
+    if (row >= ui->workspaceList->rowCount())
+        return;
+    ui->workspaceList->item(row,0)->setIcon(internal ? iconInternal : iconOctave);
 
+    ui->workspaceList->item(row,1)->setText(QString::fromStdString(name));
+    dim_vector varsize = val.dims();
+    QString strSize="";
+    for (int sid = 0; sid < varsize.ndims(); sid++)
+    {
+        strSize += QString::number(varsize(sid));
+        if (sid < varsize.ndims()-1)
+            strSize += QString(" x ");
+    }
+
+    ui->workspaceList->item(row,2)->setText(strSize);
+
+    std::stringstream os;
+    val.short_disp(os);
+    std::string strval = os.str();
+
+
+    ui->workspaceList->item(row,3)->setText(QString::fromStdString(strval));
+
+    // Column 4: value type
+
+    QString strValType = QString::fromStdString(val.class_name());
+
+    if (val.is_complex_scalar()||val.is_complex_matrix())
+        strValType = "complex";
+
+
+    ui->workspaceList->item(row,4)->setText(strValType);
+
+}
 
 void mdiOctaveInterface::add_variable_row(int row, const std::string& name, const octave_value& val, bool internal)
 {
@@ -421,7 +498,6 @@ void mdiOctaveInterface::add_variable_row(int row, const std::string& name, cons
 
     // Column 1: name
     ui->workspaceList->setItem(row,1,new QTableWidgetItem(QString::fromStdString(name)));
-
     // Column 2: size
     dim_vector varsize = val.dims();
     QString strSize="";
@@ -432,21 +508,26 @@ void mdiOctaveInterface::add_variable_row(int row, const std::string& name, cons
             strSize += QString(" x ");
     }
 
+
     ui->workspaceList->setItem(row,2,new QTableWidgetItem(strSize));
 
     // Column 3: short string with value
     std::stringstream os;
     val.short_disp(os);
     std::string strval = os.str();
+
+
     ui->workspaceList->setItem(row,3,new QTableWidgetItem(QString::fromStdString(strval)));
+
     // Column 4: value type
 
     QString strValType = QString::fromStdString(val.class_name());
 
     if (val.is_complex_scalar()||val.is_complex_matrix())
         strValType = "complex";
-    ui->workspaceList->setItem(row,4,new QTableWidgetItem(strValType));
 
+
+    ui->workspaceList->setItem(row,4,new QTableWidgetItem(strValType));
 }
 
 void mdiOctaveInterface::clear_and_init_var_table()
@@ -459,14 +540,6 @@ void mdiOctaveInterface::clear_and_init_var_table()
 
 void  mdiOctaveInterface::updateVarTable()
 {
-	//return;
-	// Get the list of selected rows
-	/*
-	QModelIndexList selected = ui->workspaceList->selectionModel()->selectedRows();
-	QStringList		selectedVars;
-	for (const auto& sel : selected)
-		selectedVars.append(ui->workspaceList->item(sel.row(),1)->text());
-*/
     QStringList vars = _interfaceData->workspace_get()->get_all_vars();
 
 	// Remove unnecessary rows
@@ -481,20 +554,31 @@ void  mdiOctaveInterface::updateVarTable()
 	}
 
 	int rmax = ui->workspaceList->rowCount();
-	for (auto& v: vars)
+
+
+
+    for (auto& v: vars)
 	{
-		bool bfound = false;
-		for (int row = 0; (row < rmax)&&(!bfound); row++)
+        int row_found = -1;
+        for (int row = 0; row < rmax; row++)
 		{
 			if (ui->workspaceList->item(row,1)->text()==v)
-				bfound = true;
+                row_found = row;
 		}
 
-		if (bfound) continue;
+
 		std::string vstring = v.toStdString();
 		bool internal = _workspace->is_internal(vstring);
 		octave_value val = _workspace->var_value(vstring);
-		add_variable_row(ui->workspaceList->rowCount(), vstring, val, internal);
+
+        if (row_found == -1)
+        {
+            int n = ui->workspaceList->rowCount();
+            ui->workspaceList->setRowCount(n+1);
+            add_variable_row(n, vstring, val, internal);
+        }
+        else
+            update_variable_row(row_found, vstring, val, internal);
 	}
 }
 

@@ -572,7 +572,7 @@ void wndOctaveScript::update_tips()
 
     if ((_data_interface!=nullptr)&&(_data_interface->engine_get_octave_engine()!=nullptr))
     {
-        _data_interface->operation_wait_and_lock();
+        _data_interface->operation_wait_and_lock("update_tips");
         // Add variables
         std::list<std::string> varnames = _data_interface->engine_get_octave_engine()->variable_names();
 

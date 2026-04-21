@@ -98,6 +98,7 @@ private:
     void                            add_radars_from_names();
     RUN_POLICY                      _policy_on_error;
     TIMEOUT_POLICY                  _timeout_policy;
+    bool                            _b_active = false;      // This is to avoid two different schedulers running on the same device
 public:
     opScheduler(octaveInterface* octint, projectItem* parent = nullptr);
     opScheduler(const opScheduler& sched);

@@ -262,9 +262,9 @@
      <widget class="QWidget" name="layoutWidget_3">
       <layout class="QHBoxLayout" name="horizontalLayout_3">
        <item>
-        <widget class="QLabel" name="label_3">
+        <widget class="QLabel" name="lblCommand">
          <property name="text">
-          <string>Command</string>
+          <string>Command &gt;</string>
          </property>
         </widget>
        </item>

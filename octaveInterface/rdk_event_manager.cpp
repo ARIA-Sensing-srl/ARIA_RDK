@@ -41,3 +41,14 @@ void rdk_event_manager::interpreter_interrupted ()
 {
     //emit interpreter_dbstop("",0);
 }
+
+void rdk_event_manager::post_input_event()
+{
+    emit interpreter_post_input_event();
+}
+
+
+void rdk_event_manager::pre_input_event()
+{
+    emit interpreter_pre_input_event();
+}
