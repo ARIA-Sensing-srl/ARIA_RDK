@@ -12,7 +12,9 @@
 #include <QMessageBox>
 #include "cmd-edit.h"
 #include "builtin-defun-decls.h"
-
+#ifdef _WIN32
+#include <io.h>
+#endif
 
 
 octaveThreadHandler::octaveThreadHandler(octaveInterface *owner) : QObject(),
