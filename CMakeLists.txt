@@ -501,7 +501,7 @@ if(WIN32)
                         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
                 )
 
-                qt_generate_deploy_qml_app_script(
+                qt_generate_deploy_app_script(
                         TARGET ARIA_RDK
                         OUTPUT_SCRIPT deploy_script
                 )
