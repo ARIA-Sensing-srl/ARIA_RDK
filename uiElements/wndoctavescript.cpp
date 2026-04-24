@@ -389,8 +389,9 @@ void wndOctaveScript::setupScintilla()
                                              marker::unsure_debugger_position);
 
     connect(ui->textScript, &QsciScintilla::textChanged, this, &wndOctaveScript::modified);
+#ifndef _WIN32
     connect(ui->textScript, &QsciScintilla::marginClicked, this, &wndOctaveScript::marginClicked);
-
+#endif
     // line numbers
     //ui->textScript->setMarginsForegroundColor (QColor (96, 96, 96));
     //ui->textScript->setMarginsBackgroundColor (QColor (232, 232, 220));
