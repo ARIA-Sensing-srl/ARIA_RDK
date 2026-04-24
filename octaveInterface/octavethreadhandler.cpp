@@ -14,6 +14,7 @@
 #include "builtin-defun-decls.h"
 #ifdef _WIN32
 #include <io.h>
+#include <fcntl.h>
 #endif
 
 
