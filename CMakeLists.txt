@@ -97,7 +97,7 @@ else()
 #---------------------------------
 # Linux
 #---------------------------------
-  set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/${CMAKE_BUILD_TYPE}")
+  set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/${BUILD_SUFFIX}")
 
 #Qwt
 
@@ -368,18 +368,22 @@ include_directories(AFTER ${PROJECT_SOURCE_DIR}/utils/)
 include_directories(AFTER ${PROJECT_SOURCE_DIR}/editor/)
 include_directories(AFTER ${PROJECT_SOURCE_DIR}/uiElements/)
 
-message("${CMAKE_INSTALL_BINDIR} ; ${CMAKE_INSTALL_LIBDIR}")
-
+set(BUILD_SUFFIX ${CMAKE_BUILD_TYPE})
+if("${BUILD_SUFFIX}" STREQUAL "")
+  set(BUILD_SUFFIX "Release")
+endif()
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -pthread")
-SET(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR}/output/${CMAKE_BUILD_TYPE})
-SET(CMAKE_BINARY_DIR                ${PROJECT_SOURCE_DIR}/output/${CMAKE_BUILD_TYPE}/bin)
-SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY  ${PROJECT_SOURCE_DIR}/output/${CMAKE_BUILD_TYPE}/bin)
+SET(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR}/output/${BUILD_SUFFIX})
+SET(CMAKE_BINARY_DIR                ${PROJECT_SOURCE_DIR}/output/${BUILD_SUFFIX}/bin)
+SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY  ${PROJECT_SOURCE_DIR}/output/${BUILD_SUFFIX}/bin)
 
-set_target_properties(ARIA_RDK PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/output/${CMAKE_BUILD_TYPE}/bin)
+set_target_properties(ARIA_RDK PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/output/${BUILD_SUFFIX}/bin)
 
 message("Output folder : ${CMAKE_INSTALL_PREFIX}")
 message("Binary folder : ${CMAKE_INSTALL_BINDIR}")
+
 #-------------------------------------------------
+message("${CMAKE_INSTALL_BINDIR} ; ${CMAKE_INSTALL_LIBDIR}")
 # Deploy Qt and all binaries (dlls)
 
 # --- windeployqt integration ---

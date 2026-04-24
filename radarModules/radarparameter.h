@@ -62,6 +62,7 @@ protected:
     bool                _b_is_transmitting;
     PLOT_TYPE           _plottype;
     RP_STATUS           _status;
+    bool                _b_retransmit;  // Flag to avoid re-transmission of params during simple inquiries
 public:
     radarParamBase() :
         _rpt(RPT_UNDEFINED),
@@ -81,7 +82,8 @@ public:
         _b_plotted(false),
         _b_is_transmitting(false),
         _plottype(PTJK_PLOT),
-        _status(RPS_IDLE)
+        _status(RPS_IDLE),
+        _b_retransmit(true)
     {
 
     }
@@ -102,7 +104,9 @@ public:
         _workspace(nullptr),
         _b_compound_name(false),
         _b_is_transmitting(false),
-        _status(RPS_IDLE)
+        _status(RPS_IDLE),
+        _b_retransmit(true)
+
     {
 
     }
@@ -124,7 +128,9 @@ public:
         _workspace(v2._workspace),
         _b_compound_name(v2._b_compound_name),
         _b_is_transmitting(v2._b_is_transmitting),
-        _status(v2._status)
+        _status(v2._status),
+        _b_retransmit(v2._b_retransmit)
+
 
     {}
 
@@ -144,7 +150,9 @@ public:
         _workspace(v2._workspace),
         _b_compound_name(v2._b_compound_name),
         _b_is_transmitting(v2._b_is_transmitting),
-        _status(v2._status)
+        _status(v2._status),
+        _b_retransmit(v2._b_retransmit)
+
     {}
 
     virtual ~radarParamBase() {};
@@ -245,6 +253,9 @@ public:
      RP_STATUS              get_status() {return _status;}
 
      virtual void           convert_data(const octave_value& data_in) {};
+
+     bool                   can_retransmit() {return _b_retransmit;}
+     void                   set_retransmit(bool retransmit) {_b_retransmit = retransmit;}
 };
 
 
@@ -270,6 +281,7 @@ public:
         _availableset(v2._availableset)
     {
     }
+
     virtual std::shared_ptr<radarParamBase> clone() const override
     {
         return std::shared_ptr<radarParamBase>(new radarParameter<T>(*this));

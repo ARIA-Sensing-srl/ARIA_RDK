@@ -1619,7 +1619,7 @@ bool    radarInstance::inquiry_parameter(radarParamPointer param)
 {
     QVector<radarParamPointer> params = get_param_group(param);
 
-    if (params.count()==0)
+        if (params.count()==0)
         return false;
 
     // Check if the parameter is already in the param
@@ -1644,6 +1644,7 @@ bool    radarInstance::inquiry_parameter(radarParamPointer param)
 
 	bool bOk =  transmit_param_blocking(params, true);
     _params_to_inquiry.removeAll(params[0]);
+
     return bOk;
 }
 
@@ -1871,7 +1872,12 @@ bool    radarInstance::transmit_param_blocking(const QVector<radarParamPointer>&
 
     _serialport->clear(QSerialPort::Output);    
     _n_params_to_receive+=params.length();
-    QByteArray data_tx = encode_param_for_transmission(params,inquiry);
+
+    if (inquiry)
+        for (auto p: params)
+            p->set_retransmit(false);
+
+     QByteArray data_tx = encode_param_for_transmission(params,inquiry);
     _serial_status = SS_TRANSMITTING;
     _serialport->write(data_tx);
     if (_serialport->waitForBytesWritten(kWriteTimeoutTx)) {
@@ -1890,7 +1896,13 @@ bool    radarInstance::transmit_param_blocking(const QVector<radarParamPointer>&
         if (_serialport->waitForReadyRead(kWriteTimeoutRx))
         {
             serial_chain_data(_serialport->readAll());
-            if (_serial_status == SS_RECEIVEDONE) return true;
+            {
+                if (inquiry)
+                    for (auto p: params)
+                        p->set_retransmit(true);
+
+                if (_serial_status == SS_RECEIVEDONE) return true;
+            }
         }
         else
         {
@@ -2044,11 +2056,13 @@ void    radarInstance::param_is_updated(radarParamPointer param)
         {
             if (!_params_to_inquiry.isEmpty())
             {
-                inquiry_parameter(_params_to_inquiry[0]); return;
+                if (_params_to_inquiry[0]->can_retransmit())
+                    inquiry_parameter(_params_to_inquiry[0]); return;
             }
             if (!_params_to_modify.isEmpty())
             {
-				transmit_param_blocking(get_param_group(_params_to_modify[0]), false); return;
+                if (_params_to_modify[0]->can_retransmit())
+                    transmit_param_blocking(get_param_group(_params_to_modify[0]), false); return;
             }
 
             return;
@@ -2078,14 +2092,16 @@ void    radarInstance::param_is_updated(radarParamPointer param)
             if (!bfound_inquiry)
             {
                 if (!_params_to_inquiry.isEmpty())
-                    inquiry_parameter(_params_to_inquiry[0]);
+                    if (_params_to_modify[0]->can_retransmit())
+                        inquiry_parameter(_params_to_inquiry[0]);
             }
 
             if (!bfound_modify)
             {
                 // Move to the next element in the queue
                 if (!_params_to_modify.isEmpty())
-					transmit_param_blocking(get_param_group(_params_to_modify[0]), false);
+                    if (_params_to_modify[0]->can_retransmit())
+                        transmit_param_blocking(get_param_group(_params_to_modify[0]), false);
             }
         }
     }

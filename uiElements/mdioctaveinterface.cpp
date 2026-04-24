@@ -454,9 +454,17 @@ void mdiOctaveInterface::update_variable_row(int row, const std::string& name, c
         return;
     if (row >= ui->workspaceList->rowCount())
         return;
+
+    if (ui->workspaceList->item(row,0)==nullptr)
+        ui->workspaceList->setItem(row,0,new QTableWidgetItem());
+
     ui->workspaceList->item(row,0)->setIcon(internal ? iconInternal : iconOctave);
 
+    if (ui->workspaceList->item(row,1)==nullptr)
+        ui->workspaceList->setItem(row,1,new QTableWidgetItem());
+
     ui->workspaceList->item(row,1)->setText(QString::fromStdString(name));
+
     dim_vector varsize = val.dims();
     QString strSize="";
     for (int sid = 0; sid < varsize.ndims(); sid++)
@@ -466,12 +474,17 @@ void mdiOctaveInterface::update_variable_row(int row, const std::string& name, c
             strSize += QString(" x ");
     }
 
+    if (ui->workspaceList->item(row,2)==nullptr)
+        ui->workspaceList->setItem(row,2,new QTableWidgetItem());
+
     ui->workspaceList->item(row,2)->setText(strSize);
 
     std::stringstream os;
     val.short_disp(os);
     std::string strval = os.str();
 
+    if (ui->workspaceList->item(row,3)==nullptr)
+        ui->workspaceList->setItem(row,3,new QTableWidgetItem());
 
     ui->workspaceList->item(row,3)->setText(QString::fromStdString(strval));
 
@@ -482,6 +495,8 @@ void mdiOctaveInterface::update_variable_row(int row, const std::string& name, c
     if (val.is_complex_scalar()||val.is_complex_matrix())
         strValType = "complex";
 
+    if (ui->workspaceList->item(row,4)==nullptr)
+        ui->workspaceList->setItem(row,4,new QTableWidgetItem());
 
     ui->workspaceList->item(row,4)->setText(strValType);
 

@@ -204,6 +204,8 @@ radarParamBase& radarParamBase::operator = (radarParamBase& v2)
     _workspace = v2._workspace;
     _b_is_transmitting = v2._b_is_transmitting;
     _status = v2._status;
+    _b_retransmit = v2._b_retransmit;
+
     return *this;
 }
 //------------------------------------------------------
@@ -226,6 +228,7 @@ radarParamBase& radarParamBase::operator = (const radarParamBase& v2)
     _workspace = v2._workspace;
     _b_is_transmitting = v2._b_is_transmitting;
     _status = v2._status;
+    _b_retransmit = v2._b_retransmit;
     return *this;
 }
 //------------------------------------------------------
@@ -285,6 +288,7 @@ bool    radarParamBase::operator == (const radarParamBase& param)
     if (_pure_command!=param._pure_command) return false;
     if (_b_compound_name!=param._b_compound_name)
         return false;
+    if (_b_retransmit!=param._b_retransmit) return false;
 
     return true;
 }
