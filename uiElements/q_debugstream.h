@@ -84,6 +84,7 @@ protected:
     virtual std::streamsize xsputn(const char *p, std::streamsize n)
     {
         m_string.append(p, p + n);
+
         QString msg = QString::fromStdString(m_string);
         QString varname="";
         QString filepath="";
@@ -104,23 +105,17 @@ protected:
             int ns = n_update >= 0 ? n_update : (n_inquiry >=0 ? n_inquiry : n_command);
             int nfixed_length = n_update >= 0 ? str_message_immediate_update.length() : (n_inquiry >= 0 ? str_message_immediate_inquiry.length() : str_message_immediate_command.length());
             int right_n =  msg.length() - ( ns + nfixed_length);
-            QString var_file = msg.right(right_n).simplified();
-            int comma   = var_file.indexOf(',',0);
-            if (comma >=0)
-            {
-                varname = var_file.left(comma).simplified();
-                filepath= var_file.right(var_file.length()-comma-1);
-                // Check that file exists
-                if (!QFile(filepath).exists())
-                    filepath.clear();
 
-                if ((!varname.isEmpty()&&(!filepath.isEmpty())))
-                {
-                    b_immediate_update = n_update >= 0;
-                    b_immediate_inquiry= n_inquiry>= 0;
-                    b_immediate_command= n_command>= 0;
-                }
+            varname = msg.right(right_n-1).simplified();
+            if ((!varname.isEmpty()/*&&(!filepath.isEmpty())*/))
+            {
+                b_immediate_update = n_update >= 0;
+                b_immediate_inquiry= n_inquiry>= 0;
+                b_immediate_command= n_command>= 0;
             }
+            // We need to append a CR so that this command is discarded next.
+            m_string.append("\n");
+
         }
 
         bool b_any_plot = false;
@@ -147,9 +142,9 @@ protected:
                 m_string.erase(m_string.begin(), m_string.begin() + pos + 1);
             }
         }
-        if ((octInt!=nullptr)&&(!varname.isEmpty())&&(!filepath.isEmpty()))
+        if ((octInt!=nullptr)&&(!varname.isEmpty()))
         {
-			m_interface_file = filepath.toStdString();
+            m_interface_file = "";
             if (b_immediate_update)
 				octInt->immediate_update_of_radar_var(varname.toStdString(),m_interface_file);
             if (b_immediate_inquiry)
@@ -168,7 +163,8 @@ private:
 	std::string	m_interface_file;
     //mdiOctaveInterface*     _wndOctave;
 signals:
-    void sendLogString(const QString& str);
+    void    sendLogString(const QString& str);
+
 
 };
 #endif // ThreadLogStream_H

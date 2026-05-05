@@ -255,7 +255,7 @@ void octaveThreadHandler::internal_execute_run(octaveScript* script, bool single
         _debug_line = -1;
         _running_script = nullptr;
 
-        _owner->operation_unlock();
+        _owner->operation_unlock("internal_execute_run");
 
         emit signal_handler_dberror(fname, "Octave abnormally exited", -1);
 
@@ -267,12 +267,14 @@ void octaveThreadHandler::internal_execute_run(octaveScript* script, bool single
         _parse_result   = OTH_LR_EXCEPTION;
         _debug_script_fname = "";
         _debug_line = -1;
-        _owner->operation_unlock();
+
 
         _running_script = nullptr;
 
         _octave_engine->get_error_system().save_exception(ex);
         QString str_error = QString::fromStdString(_octave_engine->get_error_system().last_error_message());
+
+        _owner->operation_unlock("internal_execute_run");
 
         emit signal_handler_dberror(fname, str_error, -1);
         return;
@@ -481,7 +483,7 @@ void     octaveThreadHandler::execute_eval_string(QString command)
         _oth_status = OTH_IDLE;
         _parse_result= OTH_LR_EXIT;
 
-        _owner->operation_unlock();
+        _owner->operation_unlock("execute_eval_string");
         emit signal_handler_dberror(command, "Octave exited abnormally", -1);
 
 
@@ -495,7 +497,7 @@ void     octaveThreadHandler::execute_eval_string(QString command)
         _oth_status = OTH_IDLE;
         _parse_result = OTH_LR_EXCEPTION;
 
-        _owner->operation_unlock();
+        _owner->operation_unlock("execute_eval_string");
         emit signal_handler_dberror(command, str_error, -1);
         return;
     }
@@ -521,6 +523,23 @@ void  octaveThreadHandler::execute_send_command_during_debug(const QString& cmd)
     std::string line = cmd.toStdString() + "\n";
     fwrite(line.data(), 1, line.size(), input_write);
     fflush(input_write);
+
+}
+/**
+ * @brief octaveThreadHandler::execute_send_reply_during_immediate
+ * @param cmd
+ */
+void octaveThreadHandler::execute_send_reply_during_immediate(const QString& cmd)
+{
+    _last_cmd = cmd;
+    _owner->operation_wait_and_lock();
+    _last_cmd = "";
+
+    std::string line = cmd.toStdString() + "\n";
+    fwrite(line.data(), 1, line.size(), input_write);
+    fflush(input_write);
+
+
 
 }
 
@@ -576,7 +595,7 @@ void            octaveThreadHandler::handle_interpreter_dbrun(const QString& fna
  */
 void            octaveThreadHandler::handle_interpreter_dbcomplete(const QString& fname)
 {
-    _owner->operation_unlock();
+    _owner->operation_unlock("handle_interpreter_dbcomplete");
     _running_script = nullptr;
     _debug_script_fname = "";
     _debug_line = -1;
@@ -592,7 +611,7 @@ void            octaveThreadHandler::handle_interpreter_dbcomplete(const QString
  */
 void            octaveThreadHandler::handle_interpreter_dberror(const QString& command, int line)
 {
-    _owner->operation_unlock();
+    _owner->operation_unlock("handle_interpreter_dberror");
     _running_script = nullptr;
     _debug_script_fname = "";
     _debug_line = -1;
@@ -611,8 +630,6 @@ void            octaveThreadHandler::handle_interpreter_enter_debugger_event (co
                                              const std::string& fcn_file_name,
                                              int line)
 {
-
-
     QString fname = QString::fromStdString(fcn_file_name);
 
     handle_interpreter_dbstop(fname,line);
@@ -625,11 +642,7 @@ void            octaveThreadHandler::handle_interpreter_enter_debugger_event (co
  */
 void            octaveThreadHandler::handle_interpreter_post_input_event()
 {
-    //if (_last_cmd=="") return;
-    //_owner->operation_wait_and_lock();
-    //emit output_ready("->" + _last_cmd);
-    //emit signal_handler_cmd_complete_during_debug(_last_cmd);
-    //_last_cmd = "";
+
 }
 //------------------------------------------------------
 /**
@@ -644,8 +657,12 @@ void            octaveThreadHandler::handle_interpreter_post_input_event()
 void            octaveThreadHandler::handle_interpreter_pre_input_event()
 {
     if (_last_cmd=="") return;
+
     _octave_engine->interactive(true);
-    _owner->operation_unlock();
+
+    _owner->operation_unlock("handle_interpreter_pre_input_event");
     _last_cmd ="";
-    emit signal_handler_dbstop(_debug_script_fname,_debug_line);
+    //emit signal_handler_dbstop(_debug_script_fname,_debug_line);
+    _owner->handle_octave_thread_dbstop(_debug_script_fname, _debug_line);
 }
+

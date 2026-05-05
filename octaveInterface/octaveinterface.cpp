@@ -19,10 +19,9 @@
 #include "radarinstance.h"
 #include "builtin-defun-decls.h"
 #include "octavethreadhandler.h"
-//#include "iostream"
+#include "aria_rdk_interface_messages.h"
 
 
-octaveInterface*	octaveInterface::_octave_interface_instance = nullptr;
 extern QString          m_current_directory;
 /*-----------------------------
  * QSharedData implementation
@@ -31,8 +30,7 @@ extern QString          m_current_directory;
  * @brief octaveInterface::octaveInterface
  */
 octaveInterface::octaveInterface() :
-    _op_list()
-    , _workspace(nullptr)
+    _op_list()    
     , _immediate_filename("")
     , _current_device_owner(nullptr)
     , _locked(0)
@@ -51,10 +49,6 @@ octaveInterface::octaveInterface() :
     emit signal_engine_init();
 
     _octave_engine = _octave_thread_handler==nullptr?nullptr : _octave_thread_handler->engine_get_octave_engine();
-
-    // Create the workspace and link it to the interpreter
-    _workspace = new octavews(_octave_engine);
-    _workspace->data_interface(this);
 
     _op_current._op_type            = OIP_STRING;
     _op_current._operation.command  = nullptr;
@@ -118,13 +112,13 @@ octaveInterface::octaveInterface() :
  */
 octaveInterface::~octaveInterface()
 {
+    // Send the abort command, should the octave engine being stuck into an "immediate" cycle
+    immediate_abort();
+
     _octave_thread->quit();
 
     //delete _octave_thread;
     _octave_thread = nullptr;
-
-    if (_workspace!=nullptr)
-        delete _workspace;
 }
 
 void octaveInterface::create_thread_connections()
@@ -143,13 +137,13 @@ void octaveInterface::create_thread_connections()
     connect(this, &octaveInterface::signal_execute_command,  _octave_thread_handler, &octaveThreadHandler::execute_eval_string);
     connect(this, &octaveInterface::signal_engine_init,      _octave_thread_handler, &octaveThreadHandler::engine_init_and_start, Qt::DirectConnection);
     // Connected signals from the handler to this
-    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbstop,        this, &octaveInterface::handle_octave_thread_dbstop);
-    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbstep_done,   this, &octaveInterface::handle_octave_thread_dbstep_done);
-    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbrun,         this, &octaveInterface::handle_octave_thread_dbrun);
-    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbcomplete,    this, &octaveInterface::handle_octave_thread_dbcomplete);
-    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dberror,       this, &octaveInterface::handle_octave_thread_dberror);
+    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbstop,        this, &octaveInterface::handle_octave_thread_dbstop, Qt::DirectConnection);
+    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbstep_done,   this, &octaveInterface::handle_octave_thread_dbstep_done, Qt::DirectConnection);
+    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbrun,         this, &octaveInterface::handle_octave_thread_dbrun, Qt::DirectConnection);
+    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbcomplete,    this, &octaveInterface::handle_octave_thread_dbcomplete, Qt::DirectConnection);
+    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dberror,       this, &octaveInterface::handle_octave_thread_dberror, Qt::DirectConnection);
     connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_cmd_complete_during_debug,
-                                                                                        this, &octaveInterface::handle_octave_thread_cmd_debug_done);
+                                                                                        this, &octaveInterface::handle_octave_thread_cmd_debug_done, Qt::DirectConnection);
     connect(_octave_thread_handler, &octaveThreadHandler::finished, _octave_thread_handler,   &octaveThreadHandler::deleteLater, Qt::DirectConnection);
 
 
@@ -442,19 +436,26 @@ void    octaveInterface::operation_trylock()
 {
     _sync.tryLock(1);
 }
+
 //-----------------------------
 /**
  * @brief octaveInterface::operation_unlock
  * Unlock the operation
  */
-void    octaveInterface::operation_unlock()
+void    octaveInterface::operation_unlock(const QString& fname)
 {
-    //if (!_locked)
-    //    _sync.tryLock(1);
-
     _sync.unlock();
     _locked = 0;
-    _last_mutex_owner = "";
+    if (!_last_mutex_owner.isEmpty())
+    {
+        if (_last_mutex_owner!=fname)
+        {
+            int c=2;
+            c = c+1;
+
+        }
+        _last_mutex_owner = fname;
+    }
 }
 
 //-----------------------------
@@ -480,31 +481,18 @@ void	octaveInterface::workspace_clear()
  * @param val
  * @param internal
  */
-void            octaveInterface::workspace_append_var(QString name, const octave_value& val, bool internal)
+void            octaveInterface::workspace_append_var(QString name, const octave_value& val)
 {
-    if (_workspace == nullptr) return;
+    if (_octave_engine==nullptr) return;
     if (name.isEmpty()) return;
-    _workspace->add_variable(name.toStdString(), !internal, val);
-    if (internal)
-        _workspace->workspace_to_interpreter();
-}
-//---------------------------------------
-/**
- * @brief octaveInterface::workspace_refresh
- */
-void            octaveInterface::workspace_refresh()
-{
-    if (_workspace == nullptr) return;
-    _workspace->workspace_to_interpreter();
-}
-//---------------------------------------
-/**
- * @brief octaveInterface::workspace_update_interpreter_internal_vars
- */
-void            octaveInterface::workspace_update_interpreter_internal_vars()
-{
-    if (_workspace==nullptr) return;
-    _workspace->workspace_to_interpreter();
+
+    operation_wait_and_lock("workspace_append_var");
+
+    std::string var = name.toStdString();
+    variable_set_value(var, val);
+
+    operation_unlock("workspace_append_var");
+
 }
 
 //---------------------------------------
@@ -515,9 +503,74 @@ void            octaveInterface::workspace_update_interpreter_internal_vars()
  */
 bool    octaveInterface::workspace_save_to_file(QString filename)
 {
-    if (_workspace == nullptr) return false;
-    _workspace->save_to_file(filename.toStdString());
+    if (_octave_engine==nullptr) return;
+    operation_wait_and_lock("workspace_save_to_file");
+
+    octave_value_list val_input({octave_value("-v7.3"),octave_value(filename.toStdString())});
+    _octave_engine->feval("save",val_input);
+
+    operation_unlock("workspace_save_to_file");
     return true;
+}
+//---------------------------------------
+/**
+ * @brief octaveInterface::variable_set_value
+ * @param varname
+ * @param val
+ */
+void        octaveInterface::variable_set_value(const std::string& varname, const octave_value& val)
+{
+    if (_octave_engine==nullptr) return;
+
+    if (_octave_engine->is_variable(varname))
+        _octave_engine->assign(varname, val);
+    else
+        _octave_engine->install_variable(varname, val,true);
+
+}
+//---------------------------------------
+/**
+ * @brief octaveInterface::variable_get_value
+ * @param varname
+ * @return
+ */
+octave_value octaveInterface::variable_get_value(const std::string& varname)
+{
+    if (_octave_engine==nullptr) return octave_value();
+
+    if (_octave_engine->is_variable(varname))
+        return _octave_engine->varval(varname);
+    return octave_value();
+}
+//---------------------------------------
+/**
+ * @brief octaveInterface::variable_exists
+ * @param varname
+ * @return True if the variable is into the data interface (octave workspace actually)
+ */
+bool octaveInterface::variable_exists(const std::string& varname)
+{
+    return ((_octave_engine!=nullptr)&&(_octave_engine->is_variable(varname)));
+}
+//---------------------------------------
+/**
+ * @brief octaveInterface::variable_get_names
+ * @return
+ */
+QStringList octaveInterface::variable_get_names()
+{
+    if (_octave_engine==nullptr) return QStringList();
+
+    std::list<std::string> varnames = _octave_engine->variable_names();
+
+    QStringList out;
+    out.resize(varnames.size());
+
+    int v =0;
+    for (auto varname : varnames)
+        out(v++)= QString::fromStdString(varname);
+
+    return out;
 }
 //-----------------------------
 //-----------------------------
@@ -532,7 +585,7 @@ bool    octaveInterface::workspace_save_to_file(QString filename)
  * @return
  * This function is equivalent to the "feval" function in octave API. It execute a command, with a list
  * of inputs and it returns the list of n_outputs (remember that octave has a variable length of output
- * too). If the engine thread is busy, return an empty OVL
+ * too). If the engine thread is busy, return an empty OVL (Octave_Value_List)
  */
 void octaveInterface::execute_feval(QString command, octave_value_list& in, int n_outputs)
 {
@@ -658,10 +711,7 @@ void octaveInterface::execute_stop(octaveScript* script)
         // TBD Check if we need to reset this flags
 
         _octave_engine->get_evaluator().set_break_on_next_statement(true);
-
-
     }
-
 }
 //---------------------------------------
 /**
@@ -673,11 +723,22 @@ void octaveInterface::execute_stop(octaveScript* script)
 
 void            octaveInterface::execute_feval(QString command, const string_vector& input, const string_vector& output)
 {
-    if (_workspace==nullptr) return;
+    if (_octave_engine==nullptr) return;
     // Build inputs
-    octave_value_list in = _workspace->get_var_values(input);
+
+    operation_wait_and_lock("execute_feval");
+    octave_value_list in(input);
     int nout = output.numel();
-    _workspace->set_var_values(output,_octave_engine->feval(command.toLatin1(),in,nout));
+
+    octave_value_list outval = _octave_engine->feval(command.toLatin1(),in,nout);
+
+    for (int n=0; n < nout; n++)
+    {
+        std::string var_out = output(n);
+        variable_set_value(var_out, output(n));
+    }
+
+    operation_unlock("execute_feval");
 }
 /**
  * @brief octaveInterface::execute_eval_command Executes a string (e.g. coming from the command line)
@@ -693,17 +754,28 @@ void    octaveInterface::execute_eval_command(QString command)
 // Radar-direct interface section
 //-----------------------------
 //-----------------------------
-//---------------------------------------
+
 /**
- * @brief octaveInterface::immediate_remove_interface_file
+ * @brief octaveInterface::immediate_abort
+ * Send the abort string so that any octave loop is halted
+ * This must be called by the radar project once all devices have performed their I/O operation
  */
-void octaveInterface::immediate_remove_interface_file()
+
+void octaveInterface::immediate_abort()
 {
-    if (_immediate_filename.empty()) return;
-    QFileInfo fi(QString::fromStdString(_immediate_filename));
-    if (fi.fileName()!=".rdk_tmp.atp") return;
-    std::remove(_immediate_filename.c_str());
-    _immediate_filename.clear();
+
+    _octave_thread_handler->execute_send_reply_during_immediate(QString::fromStdString(str_message_abort));
+
+}
+
+/**
+ * @brief octaveInterface::immediate_done_success
+ * This must be called by the radar project once all devices have performed their I/O operation
+ */
+void octaveInterface::immediate_done_success()
+{
+    // Delete lock file->check if we should maintain it here, or it must be removed from the radarDevice
+    _octave_thread_handler->execute_send_reply_during_immediate(QString::fromStdString(_immediate_filename));
 }
 //-----------------------------
 /**
@@ -713,14 +785,21 @@ void octaveInterface::immediate_remove_interface_file()
  */
 void    octaveInterface::immediate_update_of_radar_var(const std::string& str, const std::string& filename)
 {
-    _immediate_filename = filename;
-    if ((str.empty())||(filename.empty())) {immediate_remove_interface_file(); return;}
 
-    if (!std::filesystem::exists(filename)) return;
-    //_vars_immediate_update.insert(str);
+    // The input should match the str_message_immediate_inquiry
+    // If not, exit without doing anything
+    if (str.empty()) return;
+    //if (!_immediate_filename.empty()) return;
+    _immediate_filename = str_message_immediate_update + ":" + str;
+
+    // 1. remove the lock, so that we can update variables
+    operation_unlock(QString::fromStdString(_immediate_filename));
+
+    // 2. do the inquiry from the device
     emit signal_immediate_update_radar_variable(str);
-    // Delete lock file
-    immediate_remove_interface_file();
+//    if (_owner_project!=nullptr)
+//        _owner_project->immediate_variable_updated(str);
+
 }
 
 //-----------------------------
@@ -731,17 +810,25 @@ void    octaveInterface::immediate_update_of_radar_var(const std::string& str, c
  */
 void    octaveInterface::immediate_inquiry_of_radar_var(const std::string& str, const std::string& filename)
 {
+    // The input should match the str_message_immediate_inquiry
+    // If not, exit without doing anything
+    if (str.empty()) return;
+    //if (!_immediate_filename.empty()) return;
+    _immediate_filename = str_message_immediate_inquiry + ":" + str;
 
-    _immediate_filename = filename;
-    if ((str.empty())||(filename.empty())) {immediate_remove_interface_file(); return;}
+    // 1. remove the lock, so that we can update variables
+    operation_unlock(QString::fromStdString(_immediate_filename));
 
-    // Add the variable to the list of modified vars
-    //_vars_immediate_update.insert(str);
-    if (!std::filesystem::exists(filename)) return;
+    _is_in_immediate_cycle = true;
+    // 2. do the inquiry from the device
 
     emit signal_immediate_inquiry_radar_variable(str);
-    // Delete lock file
-    immediate_remove_interface_file();
+    //if (_owner_project!=nullptr)
+    //    _owner_project->immediate_inquiry(str);
+
+    // 3. The operation to close the pipe communication are left to the project. It's the radar devices that know
+    // if the operation was concluded successfully or not
+
 }
 //-----------------------------
 /**
@@ -751,15 +838,22 @@ void    octaveInterface::immediate_inquiry_of_radar_var(const std::string& str, 
  */
 void    octaveInterface::immediate_command(const std::string& str, const std::string& filename)
 {
-    _immediate_filename = filename;
-    if ((str.empty())||(filename.empty())) {immediate_remove_interface_file(); return;}
+    // The input should match the str_message_immediate_command
+    // If not, exit without doing anything
+    if (str.empty()) return;
 
-    // Add the variable to the list of modified vars
-    if (!std::filesystem::exists(filename)) return;
+    _immediate_filename = str_message_immediate_command + ":" + str;
 
+    // 1. remove the lock, so that we can update variables
+    operation_unlock(QString::fromStdString(_immediate_filename));
+
+    // 2. do the inquiry from the device
     emit signal_immediate_send_radar_command(str);
-    // Delete lock file
-    immediate_remove_interface_file();
+
+    // 3. The operation to close the pipe communication are left to the project. It's the radar devices that know
+    // if the operation was concluded successfully or not
+
+
 }
 
 //-----------------------------
@@ -775,10 +869,6 @@ void    octaveInterface::immediate_command(const std::string& str, const std::st
  */
 void  octaveInterface::handle_octave_thread_dbcomplete(const QString& fname)
 {
-    // Transfer data to the workspace
-    if (_workspace!=nullptr)
-        _workspace->interpreter_to_workspace();
-
     // Announce the update of the workspace
     emit signal_workspace_updated();
 
@@ -814,10 +904,6 @@ void  octaveInterface::handle_octave_thread_dbcomplete(const QString& fname)
  */
 void octaveInterface::handle_octave_thread_cmd_debug_done(const QString& cmd)
 {
-    // Transfer data to the workspace
-    if (_workspace!=nullptr)
-        _workspace->interpreter_to_workspace();
-
     // Announce the update of the workspace
     emit signal_workspace_updated();
 
@@ -845,11 +931,11 @@ void octaveInterface::handle_octave_thread_dbstop(const QString& fname, int line
     // This function signal to the UX the situation of the octave which is in
     // stand-by waiting for next step
     // Transfer data to the workspace
-    if (_workspace!=nullptr)
-        _workspace->interpreter_to_workspace();
+    //if (_workspace!=nullptr)
+    //    _workspace->interpreter_to_workspace();
 
     // Announce the update of the workspace
-    emit signal_workspace_updated();
+    //emit signal_workspace_updated();
 
     //
     emit signal_interface_execute_dbstop(fname,line);

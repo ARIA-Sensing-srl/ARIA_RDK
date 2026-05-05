@@ -10,6 +10,7 @@
 #include "radarproject.h"
 #include <octave.h>
 #include <interpreter.h>
+#include "aria_rdk_interface_messages.h"
 #define noop (void)0
 
 #undef SERIAL_CHECK_TX
@@ -26,7 +27,7 @@ radarInstance::radarInstance(radarModule* module) : radarModule("newRadar", DT_R
     _protocol(nullptr),
     _ref_module(module),
     _map_octws_param_names(),
-    _workspace(nullptr),
+    _octave_interface(nullptr),
     _radar_uid(QByteArray::fromHex("ffffffff")),
 #ifdef INTERFACE_STRUCT
     _radar_cell(),
@@ -60,10 +61,10 @@ radarInstance::radarInstance(radarInstance& radar) : radarModule(radar.get_uid()
 radarInstance& radarInstance::operator = (radarInstance& radar)
 {
     radarModule::operator=(radar);
-    _workspace = radar._workspace;
+
     _protocol= radar._protocol;
     _ref_module= radar._ref_module;
-    _workspace = radar._workspace;
+    _octave_interface = radar._octave_interface;
 
     if (_serialport==nullptr)
         initSerialPortTimer();
@@ -137,8 +138,8 @@ void    radarInstance::set_module(radarModule *ref)
 //-----------------------------------------------
 radarInstance::~radarInstance()
 {
-    if ((_workspace!=nullptr)&&(_workspace->data_interface()!=nullptr))
-        _workspace->data_interface()->operation_device_is_deleting(this);
+    if (_octave_interface!=nullptr)
+        _octave_interface->operation_device_is_deleting(this);
 
     clearSerialPortTimer();
     clear_antenna_table();
@@ -154,19 +155,19 @@ QString radarInstance::get_item_descriptor()
            ( _ref_module==nullptr?":ERROR_UNDEFINED" : QString(":")+ _ref_module->get_name());
 }
 //-----------------------------------------------
-void            radarInstance::attach_to_workspace(octavews *dws)
+void            radarInstance::attach_to_interface(octaveInterface *oct_int)
 {
-    _workspace = dws;
+    _octave_interface = oct_int;
     const auto& px = get_param_table();
     for (const auto& param: px)
         if (param!=nullptr)
-            param->link_to_workspace(_workspace);
+            param->link_to_octave_interface(_octave_interface);
 }
 
 //-----------------------------------------------
-octavews*  radarInstance::get_workspace(void)
+octavews*  radarInstance::get_octave_interface(void)
 {
-    return _workspace;
+    return _octave_interface;
 }
 //-----------------------------------------------
 QString     radarInstance::get_mapped_name(radarParamPointer param)
@@ -213,7 +214,7 @@ QVector<radarParamPointer>  radarInstance::get_cmdgrp_varlist(radarParamPointer 
 //-----------------------------------------------
 void        radarInstance::create_variable(QString parameterName)
 {
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
 
     radarParamPointer param = get_param(parameterName);
     if (param == nullptr) return;
@@ -252,7 +253,7 @@ void            radarInstance::remove_variable(radarParamPointer param)
 //-----------------------------------------------
 void            radarInstance::workspace_to_params()
 {
-    if (_workspace==nullptr) return;
+    if (_octave_interface==nullptr) return;
     const auto& mapx = _map_octws_param_names;
     for (auto pair = mapx.begin(); pair != mapx.end(); pair++)
     {
@@ -260,19 +261,19 @@ void            radarInstance::workspace_to_params()
         radarParamPointer  param = pair.value();
         if (param==nullptr) continue;
 
-        param->set_value(_workspace->var_value(octave_name.toStdString()));
+        param->set_value(_octave_interface->variable_get_value(octave_name.toStdString()));
     }
 }
 //-----------------------------------------------
 void            radarInstance::params_to_workspace()
 {
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
     const auto& mapx = _map_octws_param_names;
     for (auto pair = mapx.begin(); pair != mapx.end(); pair++)
     {
         radarParamPointer param = pair.value();
         if (param==nullptr) continue;
-        _workspace->add_variable(pair.key().toStdString(),false,param->get_value());
+        _octave_interface->variable_set_value(pair.key().toStdString(),param->get_value());
     }
 }
 
@@ -1045,7 +1046,7 @@ bool radarInstance::load_xml()
                 {   // Create a new placeholder script
                     octaveScript* newScript = new octaveScript (get_root()->get_folder(cstr_scripts)->get_full_path()
                                                                +QFileInfo(script_file).fileName(),get_root()->get_folder(QString(cstr_scripts)));
-                    newScript->attach_to_dataengine(get_root()->get_workspace()->data_interface());
+                    newScript->attach_to_dataengine(get_root()->get_octave_interface());
                     get_root()->add_script(newScript);
                     _init_scripts.append(newScript);
                 }
@@ -1079,7 +1080,7 @@ bool radarInstance::load_xml()
                 {   // Create a new placeholder script
                     octaveScript* newScript = new octaveScript (get_root()->get_folder(cstr_scripts)->get_full_path()
                                                                +QFileInfo(script_file).fileName(),get_root()->get_folder(QString(cstr_scripts)));
-                    newScript->attach_to_dataengine(get_root()->get_workspace()->data_interface());
+                    newScript->attach_to_dataengine(get_root()->get_octave_interface());
                     get_root()->add_script(newScript);
                     _post_acquisition_scripts.append(newScript);
                 }
@@ -1232,14 +1233,10 @@ void  radarInstance::clear_params_update_lists()
 //--------------------------------------------------
 bool radarInstance::init_pre()
 {
-    if (_workspace == nullptr)
+    if (_octave_interface == nullptr)
         return false;
 
     if (!is_connected()) return false;
-
-    if (_workspace==nullptr) return false;
-
-    if (_workspace->data_interface()==nullptr) return false;
 
     clear_params_update_lists();
     _radar_operation = RADAROP_INIT_PARAMS;
@@ -1254,13 +1251,12 @@ bool radarInstance::init_pre()
 bool radarInstance::init_scripts()
 {
     // Run scripts
-    if (_workspace == nullptr)
+    if (_octave_interface == nullptr)
         return false;
-    if (_workspace->data_interface()==nullptr) return false;
 
     _radar_operation = RADAROP_INIT_SCRIPTS;
 
-    _workspace->data_interface()->operation_append_script_list(_init_scripts);
+    _octave_interface->operation_append_script_list(_init_scripts);
 
     return true;
 }
@@ -1268,14 +1264,11 @@ bool radarInstance::init_scripts()
 void radarInstance::init()
 {
    // Go thru list of
-    if (_workspace == nullptr)
+    if (_octave_interface == nullptr)
         return;
 
     if (!is_connected()) return;
 
-    if (_workspace==nullptr) return;
-
-    if (_workspace->data_interface()==nullptr) return;
 
     init_pre();
 
@@ -1285,14 +1278,10 @@ void radarInstance::init()
 //--------------------------------------------------
 bool radarInstance::postacquisition_pre()
 {
-    if (_workspace == nullptr)
+    if (_octave_interface == nullptr)
         return false;
 
     if (!is_connected()) return false;
-
-    if (_workspace==nullptr) return false;
-
-    if (_workspace->data_interface()==nullptr) return false;
 
     _radar_operation = RADAROP_POSTACQ_PARAMS;
 
@@ -1305,13 +1294,12 @@ bool radarInstance::postacquisition_pre()
 bool radarInstance::postacquisition_scripts()
 {
     // Run scripts
-    if (_workspace == nullptr)
+    if (_octave_interface == nullptr)
         return false;
-    if (_workspace->data_interface()==nullptr) return false;
 
     _radar_operation = RADAROP_POSTACQ_SCRIPTS;
 
-    _workspace->data_interface()->operation_append_script_list(_post_acquisition_scripts,this);
+    _octave_interface->operation_append_script_list(_post_acquisition_scripts,this);
 
     return true;
 }
@@ -1330,14 +1318,12 @@ void radarInstance::octave_engine_scripts_done()
 void radarInstance::run()
 {
     // Run pre-processing script
-    if (_workspace == nullptr)
-        return;
 
 }
 //--------------------------------------------------
 void radarInstance::export_to_octave()
 {
-    if (_workspace == nullptr)
+    if (_octave_interface == nullptr)
         return;
 
     for (auto& param: _params)
@@ -1347,19 +1333,11 @@ void radarInstance::export_to_octave()
             continue;
 
         // add a single independent variable
-        _workspace->set_variable(get_mapped_name(param).toStdString(),   param->get_value());
+        _octave_interface->variable_set_value(get_mapped_name(param).toStdString(),   param->get_value());
 
-#ifdef INTERFACE_STRUCT
-        // in the struct maintain the parameter name
-        _radar_cell.setfield(param->get_name().toStdString(),param->get_value());
-#endif
     }
 
-#ifdef INTERFACE_STRUCT
-    _workspace->set_variable(get_device_name().toStdString(), _radar_cell);
-#endif
     _workspace->workspace_to_interpreter();
-
 }
 
 //--------------------------------------------------
@@ -1367,43 +1345,18 @@ void radarInstance::import_from_octave()
 {
     if (_workspace == nullptr)
         return;
-#ifdef INTERFACE_STRUCT
-    octave_value radar_struct = _workspace->var_value(get_device_name().toStdString());
-
-    if (radar_struct.isempty())
-    {
-        qDebug() << "empty data";
-        return;
-    }
-
-    if (!radar_struct.isstruct())
-    {
-        qDebug() << "not a struct";
-        return;
-    }
-    octave_map octstruct = radar_struct.map_value();
-    for (auto & field : octstruct)
-    {
-        std::cout << field.first;
-        std::cout << field.second;
-        set_param_value(QString::fromStdString(field.first),octstruct.getfield(field.first).elem(0),false,true);
-    }
-#endif
-
-
 }
 //--------------------------------------------------
-void    radarInstance::immediate_update_variable(const std::string& varname)
+int    radarInstance::immediate_update_variable(const std::string& varname)
 {
-    if (_workspace == nullptr)
-        return;
+    if (_octave_interface == nullptr)
+        return 1;
 
-    if (_workspace->data_interface()==nullptr) return;
-    _workspace->data_interface()->operation_wait_and_lock("immediate_update_variable");
-    octave_value var_value = _workspace->data_interface()->engine_get_octave_engine()->varval(varname);
-    _workspace->data_interface()->operation_unlock();
+    //_workspace->data_interface()->operation_wait_and_lock("immediate_update_variable");
+    octave_value var_value = _octave_interface->variable_get_value(varname);
+    //_workspace->data_interface()->operation_unlock();
 
-    if (varname.empty()) return;
+    if (varname.empty()) return 1;
 
     for (auto& param : _params)
         if (param!=nullptr)
@@ -1416,120 +1369,129 @@ void    radarInstance::immediate_update_variable(const std::string& varname)
                     //span list, cur param is not listed
                     for (auto& updateOnlyParam : lst){
                         if (updateOnlyParam!=nullptr) {
-                            octave_value var_value_updateOnly = _workspace->data_interface()->engine_get_octave_engine()->varval(get_mapped_name(updateOnlyParam).toStdString());
-                            immediate_set_param_value(updateOnlyParam, var_value_updateOnly, true);
+                            octave_value var_value_updateOnly = _octave_interface->variable_get_value(get_mapped_name(updateOnlyParam).toStdString());
+                            if (immediate_set_param_value(updateOnlyParam, var_value_updateOnly, true)==-1)
+                                return -1;
                         }
                     }
 
                 }
-                immediate_set_param_value(param, var_value);
-                return;
+                return immediate_set_param_value(param, var_value);
             }
         }
+    return 1;
 }
 //--------------------------------------------------
-void    radarInstance::immediate_inquiry_variable(const std::string& varname)
+int    radarInstance::immediate_inquiry_variable(const std::string& varname)
 {
-    if (varname.empty()) return;
+    if (varname.empty()) return 1;
 
     for (auto& param : _params)
         if (param!=nullptr)
         {
             if (get_mapped_name(param).toStdString() == varname)
             {
-                immediate_inquiry_value(param);
-                return;
+                return immediate_inquiry_value(param);
             }
         }
 
+    return 1;
 }
 //--------------------------------------------------
-void    radarInstance::immediate_set_param_value(radarParamPointer param, const octave_value& val, bool updateLocalOnly)
+/**
+ * @brief radarInstance::immediate_set_param_value
+ * @param param
+ * @param val
+ * @param updateLocalOnly
+ * @return 0 if ok, -1 if error, 1 if nothing had to be done
+ */
+int    radarInstance::immediate_set_param_value(radarParamPointer param, const octave_value& val, bool updateLocalOnly)
 {
     if (param->get_io_type()==RPT_IO_OUTPUT)
-        return;
+        return 1;
     if (param->get_type()==RPT_VOID)
-        return;
+        return 1;
 
     QVector<radarParamPointer> params = get_param_group(param);
 
     // Inquiry the module this device belongs to
     if (params.count()==0)
-        return;
+        return 1;
 
     param->set_value(val);
     if (!updateLocalOnly){
 
-        if (!is_connected()) return;
+        if (!is_connected()) return 1;
+
         if (transmit_param_blocking(params))
             param_is_updated(param);
+        else
+            return -1;
+
     }
+    return 0;
 }
 //--------------------------------------------------
-void    radarInstance::immediate_inquiry_value(radarParamPointer param)
+int    radarInstance::immediate_inquiry_value(radarParamPointer param)
 {
     if (param->get_io_type()==RPT_IO_INPUT)
-        return;
+        return 1;
     if (param->get_type()==RPT_VOID)
-        return;
+        return 1;
 
     QVector<radarParamPointer> params = get_param_group(param);
-    if ((!params[0]->has_inquiry_value())&&(params[0]->get_io_type()==RPT_IO_IO)) return;
+    if ((!params[0]->has_inquiry_value())&&(params[0]->get_io_type()==RPT_IO_IO)) return 1;
     if (params.count()==0)
-        return;
-    if (!is_connected()) return;
+        return 1;
+    if (!is_connected()) return 1;
+
     if (transmit_param_blocking(params, true))
         param_is_updated(param);
+    else
+        return -1;
+    return 0;
 }
 //--------------------------------------------------
-void    radarInstance::immediate_set_command(radarParamPointer param)
+int    radarInstance::immediate_set_command(radarParamPointer param)
 {
     if (param->get_io_type()!=RPT_IO_INPUT)
-        return;
+        return 1;
     if (param->get_type()!=RPT_VOID)
-        return;
+        return 1;
 
-    if (!is_connected()) return;
-    transmit_command_blocking(param);
+    if (!is_connected()) return 1;
+
+    if (!transmit_command_blocking(param))
+        return -1;
+
+    return 0;
 }
 
 //--------------------------------------------------
-void    radarInstance::immediate_command(const std::string& varname)
+int    radarInstance::immediate_command(const std::string& varname)
 {
-    if (varname.empty()) return;
+    if (varname.empty()) return 1;
 
     for (auto& param : _params)
         if (param!=nullptr)
         {
             if (get_mapped_name(param).toStdString() == varname)
             {
-                immediate_set_command(param);
-                return;
+               return immediate_set_command(param);
             }
         }
+    return 1;
 }
 //--------------------------------------------------
 void    radarInstance::update_variable(const std::string& varname)
 {
 
-    if (_workspace == nullptr)
+    if (_octave_interface == nullptr)
         return;
 
-    octave_value var_value = _workspace->var_value(varname);
+    octave_value var_value = _octave_interface->variable_get_value(varname);
 
     if (varname.empty()) return;
-#ifdef INTERFACE_STRUCT
-    if ((varname == get_device_name().toStdString())&&(var_value.isstruct()))
-    {
-
-        octave_map octstruct = var_value.map_value();
-
-        for (auto& field : octstruct)
-            set_param_value(QString::fromStdString(field.first),field.second,false,true);
-
-        return;
-    }
-#endif
 
     for (auto& param : _params)
         if (param!=nullptr)
@@ -1537,6 +1499,7 @@ void    radarInstance::update_variable(const std::string& varname)
             if (get_mapped_name(param).toStdString() == varname)
             {
                 set_param_value(param, var_value, true, true);
+
                 return;
             }
         }
@@ -1545,17 +1508,6 @@ void    radarInstance::update_variable(const std::string& varname)
 void    radarInstance::update_variables(const std::set<std::string>& varlist)
 {
     // First update the struct, then update the mapped fields (higher priority for the latter)
-#ifdef INTERFACE_STRUCT
-    for (auto& varname : varlist)
-    {
-        if (varname.empty()) continue;
-        if (varname == get_device_name().toStdString())
-        {
-            update_variable(varname);
-            break;
-        }
-    }
-#endif
     for (auto& varname : varlist)
     {
         for (auto& param:_params)
@@ -1588,10 +1540,6 @@ void    radarInstance::update_variables(const std::set<std::string>& varlist)
 
     for (auto& varname : varlist)
     {
-#ifdef INTERFACE_STRUCT
-        // Skip struct
-        if (varname == get_device_name().toStdString()) continue;
-#endif
         for (auto& param:_params)
         {
             if (get_mapped_name(param).toStdString() == varname)
@@ -2251,12 +2199,12 @@ void radarInstance::update_param_workspace_gui(radarParamPointer param/*, bool u
         return;
     if (param->get_io_type()==RPT_IO_INPUT) return;
     // To be done
-    if (_workspace!=nullptr)
+    if (_octave_interface!=nullptr)
     {
         if (param->get_type() != RPT_VOID)
             if (param->is_linked_to_octave())
             {
-                _workspace->set_variable(get_mapped_name(param).toStdString(),   param->get_value());
+                _octave_interface->variable_set_value(get_mapped_name(param).toStdString(),   param->get_value());
             }
     }
 

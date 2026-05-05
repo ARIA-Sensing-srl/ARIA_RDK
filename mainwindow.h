@@ -155,7 +155,9 @@ public slots:
     void                        preacquisition_error(radarInstance* device);
     void                        scheduler_timing_error();
 
-
+// Tree project
+    void                        project_item_expanded(QTreeWidgetItem *item);
+    void                        project_item_collapsed(QTreeWidgetItem *item);
 protected:
     void closeEvent(QCloseEvent *event);
 

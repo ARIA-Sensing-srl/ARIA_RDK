@@ -39,8 +39,8 @@ public:
 	void        delete_children(class dlgQWTPlot* child);
     QTextEdit*  get_textoutput();
     void        update_octave_interface();
-    void        add_variable_row(int row, const std::string& name, const octave_value& val, bool internal);
-    void        update_variable_row(int row, const std::string& name, const octave_value& val, bool internal);
+    void        add_variable_row(int row, const std::string& name, const octave_value& val);
+    void        update_variable_row(int row, const std::string& name, const octave_value& val);
 	void		clear_and_init_var_table();
 
 	bool		close_scripts();
@@ -137,9 +137,7 @@ public slots:
 private:
     Ui::mdiOctaveInterface *ui;
     class qDataThread           *_elabThread;
-    class octaveInterface       *_interfaceData;
-    class octavews              *_workspace;
-    class dataWorkspace         *_dataws;
+    class octaveInterface       *_octave_interface;
     class radarProject          *_project;
     QVector<class wndOctaveScript*>     _scripts_children;
     QVector<class wndPlot2d*>           _plot2d_children;

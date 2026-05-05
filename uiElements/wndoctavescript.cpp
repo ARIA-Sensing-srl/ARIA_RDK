@@ -567,6 +567,7 @@ void wndOctaveScript::run_file()
 
 void wndOctaveScript::update_tips()
 {
+    if (_data_interface->engine_get_status()!=octaveThreadHandler::OTH_IDLE) return;
 
 #ifndef USE_NATIVE_LEXER
     _api->clear();
@@ -599,7 +600,7 @@ void wndOctaveScript::update_tips()
             _api->add(QString::fromStdString(*iter)+"( args )");
 
         }
-        _data_interface->operation_unlock();
+        _data_interface->operation_unlock("update_tips");
     }
     _api->prepare();
     _lexer->setAPIs(_api);

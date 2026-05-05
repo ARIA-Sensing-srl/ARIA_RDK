@@ -201,7 +201,7 @@ radarParamBase& radarParamBase::operator = (radarParamBase& v2)
     _group_order = v2._group_order;
     _pure_command= v2._pure_command;
     _b_compound_name = v2._b_compound_name;
-    _workspace = v2._workspace;
+    _octave_interface = v2._octave_interface;
     _b_is_transmitting = v2._b_is_transmitting;
     _status = v2._status;
     _b_retransmit = v2._b_retransmit;
@@ -225,7 +225,7 @@ radarParamBase& radarParamBase::operator = (const radarParamBase& v2)
     _is_grouped = v2._is_grouped;
     _group_order = v2._group_order;
     _pure_command= v2._pure_command;
-    _workspace = v2._workspace;
+    _octave_interface = v2._octave_interface;
     _b_is_transmitting = v2._b_is_transmitting;
     _status = v2._status;
     _b_retransmit = v2._b_retransmit;
@@ -247,13 +247,13 @@ QString radarParamBase::get_alias_octave_name()
     return _var;
 }
 //------------------------------------------------------
-void               radarParamBase::link_to_workspace(octavews* workspace)
+void               radarParamBase::link_to_octave_interface(octaveInterface* oct_int)
 {
-    _workspace = workspace;
+    _octave_interface = oct_int;
 }
-octavews*          radarParamBase::get_workspace()
+octavews*          radarParamBase::get_octave_interface()
 {
-    return _workspace;
+    return _octave_interface;
 }
 
 //------------------------------------------------------
@@ -1008,14 +1008,14 @@ radarParameter<enumElem>&      radarParameter<enumElem>::operator = (const radar
 void radarParameter<enumElem>::update_variable()
 {
     if (_var.isEmpty()) return;
-    if (_workspace==nullptr) return;
+    if (_octave_interface==nullptr) return;
     Array<std::string> out;
     out.resize(dim_vector(_value.count(),1));
     for (int n=0; n<_value.count(); n++)
         out(n) = _value[n].first.toStdString();
-
-    _workspace->add_variable(_var.toStdString(), false, out);
-//    _var->updateValue(out);
+    // CHECK: do we need to update anything in the engine?
+    octave_value v(out);
+    _octave_interface->variable_set_value(_var.toStdString(), v);
 }
 //------------------------------------------------------
 bool radarParameter<enumElem>::is_scalar()
@@ -1476,10 +1476,10 @@ int radarParameter<enumElem>::get_pair(int strIndex)
 //------------------------------------------------------
 void radarParameter<enumElem>::var_changed()
 {
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
     if (_var.isEmpty()) return;
-
-    Array<std::string> var_content = _workspace->var_value(_var.toStdString()).cellstr_value();
+    // In the octave engine, the enum is stored as an array of string (enum IDs)
+    Array<std::string> var_content = _octave_interface->variable_get_value(_var.toStdString()).cellstr_value();
 
     for (int n=0; n < var_content.numel(); n++)
     {
@@ -1920,10 +1920,10 @@ bool radarParameter<QString>::split_values(const QByteArray& data)
 //------------------------------------------------------
 void radarParameter<QString>::var_changed()
 {
-    if (_workspace==nullptr) return;
+    if (_octave_interface==nullptr) return;
     if (_var.isEmpty()) return;
 
-    Array<std::string> sv = _workspace->var_value(_var.toStdString()).cellstr_value();
+    Array<std::string> sv = _octave_interface->variable_get_value(_var.toStdString()).cellstr_value();
 
     for (int n=0; n < sv.numel(); n++)
     {
@@ -1938,12 +1938,12 @@ void radarParameter<QString>::var_changed()
 void radarParameter<QString>::update_variable()
 {
     if (_var.isEmpty()) return;
-    if (_workspace==nullptr) return;
+    if (_octave_interface==nullptr) return;
 
     Array<std::string> sv(dim_vector(_value.count(),1));
     for (int n=0; n < _value.count(); n++)
         sv(n) = _value[n].toStdString();
-    _workspace->add_variable(_var.toStdString(), false, octave_value(sv));
+    _octave_interface->variable_set_value(_var.toStdString(), octave_value(sv));
 }
 //------------------------------------------------------
 unsigned int radarParameter<QString>::value_bytes_count()
@@ -2564,10 +2564,10 @@ template<> bool radarParameter<float>::split_values(const QByteArray& data)
 //------------------------------------------------------
 template<> void radarParameter<int8_t>::var_changed()
 {
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
     if (_var.isEmpty()) return;
 
-    int8NDArray var_value = _workspace->var_value(_var.toStdString()).int8_array_value();
+    int8NDArray var_value = _octave_interface->variable_get_value(_var.toStdString()).int8_array_value();
 
     for (int n=0; n < var_value.numel(); n++)
         if (!is_valid(var_value(n))) return;
@@ -2578,18 +2578,18 @@ template<> void radarParameter<int8_t>::var_changed()
 //------------------------------------------------------
 template<> void radarParameter<int8_t>::update_variable()
 {
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
     if (_var.isEmpty()) return;
 
-    _workspace->add_variable(_var.toStdString(), false, octave_value((Array<octave_int8>(_value))));
+    _octave_interface->variable_set_value(_var.toStdString(), octave_value((Array<octave_int8>(_value))));
 }
 
 //------------------------------------------------------
 template<> void radarParameter<uint8_t>::var_changed()
 {
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
     if (_var.isEmpty()) return;
-    uint8NDArray var_value = _workspace->var_value(_var.toStdString()).uint8_array_value();
+    uint8NDArray var_value = _octave_interface->var_value(_var.toStdString()).uint8_array_value();
 
     for (int n=0; n < var_value.numel(); n++)
         if (!is_valid(var_value(n))) return;
@@ -2600,19 +2600,19 @@ template<> void radarParameter<uint8_t>::var_changed()
 //------------------------------------------------------
 template<> void radarParameter<uint8_t>::update_variable()
 {
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
     if (_var.isEmpty()) return;
 
-    _workspace->add_variable(_var.toStdString(), false, octave_value((Array<octave_uint8>(_value))));
+    _octave_interface->variable_set_value(_var.toStdString(), octave_value((Array<octave_uint8>(_value))));
 }
 
 //------------------------------------------------------
 
 template<> void radarParameter<int16_t>::var_changed()
 {
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
     if (_var.isEmpty()) return;
-    int16NDArray var_value = _workspace->var_value(_var.toStdString()).int16_array_value();
+    int16NDArray var_value = _octave_interface->variable_get_value(_var.toStdString()).int16_array_value();
 
     for (int n=0; n < var_value.numel(); n++)
         if (!is_valid(var_value(n))) return;
@@ -2622,19 +2622,19 @@ template<> void radarParameter<int16_t>::var_changed()
 //------------------------------------------------------
 template<> void radarParameter<int16_t>::update_variable()
 {
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
     if (_var.isEmpty()) return;
 
-    _workspace->add_variable(_var.toStdString(), false, octave_value((Array<octave_int16>(_value))));
+    _octave_interface->variable_set_value(_var.toStdString(), octave_value((Array<octave_int16>(_value))));
 }
 
 //------------------------------------------------------
 
 template<> void radarParameter<uint16_t>::var_changed()
 {
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
     if (_var.isEmpty()) return;
-    uint16NDArray var_value = _workspace->var_value(_var.toStdString()).uint16_array_value();
+    uint16NDArray var_value = _octave_interface->variable_get_value(_var.toStdString()).uint16_array_value();
 
     for (int n=0; n < var_value.numel(); n++)
         if (!is_valid(var_value(n))) return;
@@ -2644,10 +2644,10 @@ template<> void radarParameter<uint16_t>::var_changed()
 //------------------------------------------------------
 template<> void radarParameter<uint16_t>::update_variable()
 {
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
     if (_var.isEmpty()) return;
 
-    _workspace->add_variable(_var.toStdString(), false, octave_value((Array<octave_uint16>(_value))));
+    _octave_interface->variable_set_value(_var.toStdString(), octave_value((Array<octave_uint16>(_value))));
 }
 
 //------------------------------------------------------
@@ -2655,9 +2655,9 @@ template<> void radarParameter<uint16_t>::update_variable()
 
 template<> void radarParameter<int32_t>::var_changed()
 {
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
     if (_var.isEmpty()) return;
-    int32NDArray var_value = _workspace->var_value(_var.toStdString()).int32_array_value();
+    int32NDArray var_value = _octave_interface->variable_get_value(_var.toStdString()).int32_array_value();
 
     for (int n=0; n < var_value.numel(); n++)
         if (!is_valid(var_value(n))) return;
@@ -2667,19 +2667,19 @@ template<> void radarParameter<int32_t>::var_changed()
 //------------------------------------------------------
 template<> void radarParameter<int32_t>::update_variable()
 {
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
     if (_var.isEmpty()) return;
 
-    _workspace->add_variable(_var.toStdString(), false, octave_value((Array<octave_int32>(_value))));
+    _octave_interface->variable_set_value(_var.toStdString(), octave_value((Array<octave_int32>(_value))));
 }
 
 //------------------------------------------------------
 
 template<> void radarParameter<uint32_t>::var_changed()
 {
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
     if (_var.isEmpty()) return;
-    uint32NDArray var_value = _workspace->var_value(_var.toStdString()).uint32_array_value();
+    uint32NDArray var_value = _octave_interface->variable_get_value(_var.toStdString()).uint32_array_value();
 
     for (int n=0; n < var_value.numel(); n++)
         if (!is_valid(var_value(n))) return;
@@ -2690,19 +2690,19 @@ template<> void radarParameter<uint32_t>::var_changed()
 //------------------------------------------------------
 template<> void radarParameter<uint32_t>::update_variable()
 {
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
     if (_var.isEmpty()) return;
 
-    _workspace->add_variable(_var.toStdString(), false, octave_value((Array<octave_uint32>(_value))));
+    _octave_interface->variable_set_value(_var.toStdString(),  octave_value((Array<octave_uint32>(_value))));
 }
 
 //------------------------------------------------------
 
 template<> void radarParameter<float>::var_changed()
 {
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
     if (_var.isEmpty()) return;
-    FloatNDArray var_value = _workspace->var_value(_var.toStdString()).float_array_value();
+    FloatNDArray var_value = _octave_interface->variable_get_value(_var.toStdString()).float_array_value();
 
     for (int n=0; n < var_value.numel(); n++)
         if (!is_valid(var_value(n))) return;
@@ -2712,11 +2712,11 @@ template<> void radarParameter<float>::var_changed()
 //------------------------------------------------------
 template<> void radarParameter<float>::update_variable()
 {
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
     if (_var.isEmpty()) return;
 
 
-	_workspace->add_variable(_var.toStdString(), false, octave_value(FloatNDArray(Array<float>(_value))));
+    _octave_interface->variable_set_value(_var.toStdString(), octave_value(FloatNDArray(Array<float>(_value))));
 }
 
 //------------------------------------------------------
@@ -2724,9 +2724,9 @@ template<> void radarParameter<float>::update_variable()
 
 template<> void radarParameter<char>::var_changed()
 {
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
     if (_var.isEmpty()) return;
-    charNDArray var_value = _workspace->var_value(_var.toStdString()).char_array_value();
+    charNDArray var_value = _octave_interface->variable_get_value(_var.toStdString()).char_array_value();
 
     for (int n=0; n < var_value.numel(); n++)
         if (!is_valid(var_value(n))) return;
@@ -2736,10 +2736,10 @@ template<> void radarParameter<char>::var_changed()
 //------------------------------------------------------
 template<> void radarParameter<char>::update_variable()
 {
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
     if (_var.isEmpty()) return;
 
-    _workspace->add_variable(_var.toStdString(), false, octave_value((Array<char>(_value))));
+    _octave_interface->variable_set_value(_var.toStdString(), octave_value((Array<char>(_value))));
 }
 
 //------------------------------------------------------

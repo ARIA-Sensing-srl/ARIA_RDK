@@ -11,6 +11,7 @@
 #include <event-manager.h>
 #include "rdk_event_manager.h"
 #include <ostream>
+
 //----------------------------------------------
 /**
  * @brief The octaveThreadHandler class handles the
@@ -57,6 +58,7 @@ private:
     FILE* input_stream= nullptr;
     QString             _last_cmd = "";
     bool                _is_db_cmd = false;
+
 public:
     octaveThreadHandler(octaveInterface* owner=nullptr);
     ~octaveThreadHandler();
@@ -73,6 +75,7 @@ public slots:
     void                            execute_feval(QString command, const string_vector& input, const string_vector& output); // NB we may have empty in some output var
     void                            execute_eval_string(QString command);
     void                            execute_send_command_during_debug(const QString& cmd);
+    void                            execute_send_reply_during_immediate(const QString& cmd);
     //----------------------------------------------------------------------------
     // Main octave engine
 public slots:
@@ -90,6 +93,7 @@ public:
     oth_status                      engine_get_status() {return _oth_status;}
     void                            engine_reset_script(octaveScript* script);
     void                            engine_shutdown();
+
 public slots:
     void            handle_interpreter_dbstop(const QString& fname, int line);
     void            handle_interpreter_dbrun(const QString& fname);
@@ -100,6 +104,7 @@ public slots:
                                                  int line);
     void            handle_interpreter_post_input_event();
     void            handle_interpreter_pre_input_event();
+
 
 
 signals:

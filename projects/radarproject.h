@@ -91,16 +91,16 @@ class radarProject : public QObject, public projectItem
 {
     Q_OBJECT
 private:
-    QFile               _radar_project_file;
-    QString             _last_error;
-    bool                _b_loading;
-    class octavews*     _workspace;
+    QFile                       _radar_project_file;
+    QString                     _last_error;
+    bool                        _b_loading;
+    class octaveInterface*      _octave_interface;
 
 public:
-    radarProject(QString name, class octavews* ws = nullptr, bool newProject = true);
+    radarProject(QString name, class octaveInterface* oct_int = nullptr, bool newProject = true);
     ~radarProject();
-    void                set_workspace(class octavews* ws = nullptr);
-    class octavews*     get_workspace() {return _workspace;}
+    void                        set_octave_interface(class octaveInterface* oct_int = nullptr);
+    class octaveInterface*      get_octave_interface() {return _octave_interface;}
 //-----------------------------------
 // Leafs
     projectItem*    get_root() {return this;}

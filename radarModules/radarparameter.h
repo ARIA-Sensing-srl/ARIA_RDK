@@ -14,6 +14,7 @@
 #include <QtXml>
 
 #include <octavews.h>
+#include <octaveinterface.h>
 
 enum RADARPARAMTYPE{RPT_UNDEFINED, RPT_FLOAT, RPT_INT8, RPT_UINT8, RPT_INT16, RPT_UINT16, RPT_INT32, RPT_UINT32, RPT_ENUM, RPT_STRING, RPT_VOID};
 enum RADARPARAMSIZE{RPT_SCALAR, RPT_NDARRAY};
@@ -56,7 +57,7 @@ protected:
     bool                _is_grouped;
     int                  _group_order;
     QByteArray           _pure_command;
-    octavews*            _workspace;
+    octaveInterface*     _octave_interface;
     bool                 _b_compound_name;
     bool                _b_plotted;
     bool                _b_is_transmitting;
@@ -77,7 +78,7 @@ public:
         _is_grouped(false),
         _group_order(-1),
         _pure_command(""),
-        _workspace(nullptr),
+        _octave_interface(nullptr),
         _b_compound_name(false),
         _b_plotted(false),
         _b_is_transmitting(false),
@@ -101,7 +102,7 @@ public:
         _is_grouped(false),
         _group_order(-1),
         _pure_command(""),
-        _workspace(nullptr),
+        _octave_interface(nullptr),
         _b_compound_name(false),
         _b_is_transmitting(false),
         _status(RPS_IDLE),
@@ -125,7 +126,7 @@ public:
         _is_grouped(v2._is_grouped),
         _group_order(v2._group_order),
         _pure_command(v2._pure_command),
-        _workspace(v2._workspace),
+        _octave_interface(v2._octave_interface),
         _b_compound_name(v2._b_compound_name),
         _b_is_transmitting(v2._b_is_transmitting),
         _status(v2._status),
@@ -147,7 +148,7 @@ public:
         _is_grouped(v2._is_grouped),
         _group_order(v2._group_order),
         _pure_command(v2._pure_command),
-        _workspace(v2._workspace),
+        _octave_interface(v2._octave_interface),
         _b_compound_name(v2._b_compound_name),
         _b_is_transmitting(v2._b_is_transmitting),
         _status(v2._status),
@@ -220,8 +221,8 @@ public:
      void                   set_alias_octave_name(const QString& var);
      QString                get_alias_octave_name();
      void                   unset_alias_octave_name();
-     void                   link_to_workspace(octavews* workspace);
-     octavews*              get_workspace();
+     void                   link_to_octave_interface(octaveInterface* oct_int = nullptr);
+     octavews*              get_octave_interface();
 
      virtual void           var_changed() = 0;
 

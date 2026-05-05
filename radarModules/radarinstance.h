@@ -26,9 +26,9 @@ class radarInstance : public QObject, public radarModule
     Q_OBJECT
 private:
     std::shared_ptr<interfaceProtocol>      _protocol;
-    radarModule*                 _ref_module;
+    radarModule*                            _ref_module;
     QMap<QString,radarParamPointer>         _map_octws_param_names; // each pair is "workspace name" (e.g. LT102_ABCDEF01_parameter) to parameter
-    octavews*                    _workspace;
+    octaveInterface*                        _octave_interface;
     QByteArray                   _radar_uid;                    // This is the expected _radar_uid
     QByteArray                   _actual_radar_uid;             // This is the actual _radar_uid
     bool                         _fixed_serial_port;            // If true connect only to devices of given serial port (basically: PC do not change)
@@ -74,8 +74,8 @@ public:
 
     radarInstance& operator = (radarInstance& radar);
 
-    void            attach_to_workspace(octavews *dws);
-    octavews*       get_workspace(void);
+    void            attach_to_interface(octaveInterface *oct_int = nullptr);
+    octavews*       get_octave_interface(void);
     QString         get_mapped_name(radarParamPointer param);
     QVector<radarParamPointer> get_cmdgrp_varlist(radarParamPointer param);
 
@@ -84,9 +84,9 @@ public:
     void            remove_variable(QString parameterName);
     void            remove_variable(radarParamPointer param);
 //---------------------------------------------------------------
-    void            immediate_set_param_value(radarParamPointer param, const octave_value& val, bool updateLocalOnly = false);
-    void            immediate_inquiry_value(radarParamPointer param);
-    void            immediate_set_command(radarParamPointer param);
+    int             immediate_set_param_value(radarParamPointer param, const octave_value& val, bool updateLocalOnly = false);
+    int             immediate_inquiry_value(radarParamPointer param);
+    int             immediate_set_command(radarParamPointer param);
 //---------------------------------------------------------------
     void            set_param_value(radarParamPointer param, octave_value val, bool transmit = false, bool update_workspace = false);
     void            set_param_value(radarParamPointer param, const QVector<QVariant>& val, bool transmit = false, bool update_workspace = false);
@@ -148,9 +148,9 @@ public:
     void            export_to_octave();
     void            import_from_octave();
 //---------------------------------------------------------------
-    void            immediate_update_variable(const std::string& varname);
-    void            immediate_inquiry_variable(const std::string& varname);
-    void            immediate_command(const std::string& varname);
+    int            immediate_update_variable(const std::string& varname);
+    int            immediate_inquiry_variable(const std::string& varname);
+    int            immediate_command(const std::string& varname);
 //---------------------------------------------------------------
     void            update_variable(const std::string& varname);
     void            update_variables(const std::set<std::string>& varlist);

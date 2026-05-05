@@ -163,6 +163,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(_multiradarScheduler, &opScheduler::postacquisition_error,    this, &MainWindow::postacquisition_error);
     connect(_multiradarScheduler, &opScheduler::postacquisition_done_all, this, &MainWindow::postacquisition_done_all);
 
+    connect(ui->treeProject, &QTreeWidget::itemExpanded, this, &MainWindow::project_item_expanded);
+    connect(ui->treeProject, &QTreeWidget::itemCollapsed, this, &MainWindow::project_item_collapsed);
+
 }
 
 MainWindow::~MainWindow()
@@ -247,13 +250,6 @@ void MainWindow::octaveInterfaceCreate()
         connect(wndOctaveInterface,  &QDialog::destroyed, this, &MainWindow::octaveInterface_CloseWnd);
         // Connect also octave signals
 
-#ifdef OCTAVE_THREAD
-        if (elabThread!=nullptr)
-        {
-            connect(elabThread, &qDataThread::commandCompleted, wndOctaveInterface, &mdiOctaveInterface::octaveCompletedTask);
-            connect(elabThread->getData(), &octaveInterface::workspaceUpdated, wndOctaveInterface, &mdiOctaveInterface::updateVarTable);
-        }
-#else
         if ((interfaceData!=nullptr)&&(wndOctaveInterface!=nullptr))
         {
             connect(interfaceData,&octaveInterface::signal_updated_variable,
@@ -261,7 +257,7 @@ void MainWindow::octaveInterfaceCreate()
             connect(interfaceData,&octaveInterface::signal_updated_variables,
                     wndOctaveInterface,&mdiOctaveInterface::updatedVars);
         }
-#endif
+
         connect(ui->actionOctaveScriptNew, &QAction::triggered,  this, &MainWindow::newOctaveScript);
         // Enable menus
         ui->menuOctaveScripts->setEnabled(true);
@@ -304,8 +300,8 @@ void MainWindow::createOctaveThread()
 
     if ((interfaceData!=nullptr)&&(wndOctaveInterface!=nullptr))
     {
-        connect(interfaceData,&octaveInterface::signal_updated_variable,    wndOctaveInterface,&mdiOctaveInterface::updatedSingleVar);
-        connect(interfaceData,&octaveInterface::signal_updated_variables,   wndOctaveInterface,&mdiOctaveInterface::updatedVars);
+        connect(interfaceData,&octaveInterface::signal_updated_variable,    wndOctaveInterface,&mdiOctaveInterface::updatedSingleVar, Qt::DirectConnection);
+        connect(interfaceData,&octaveInterface::signal_updated_variables,   wndOctaveInterface,&mdiOctaveInterface::updatedVars, Qt::DirectConnection);
     }
 }
 
@@ -942,6 +938,7 @@ void MainWindow::loadProject()
 
     project->save_project_file();
     ui->menuAdd->setEnabled(true);
+    ui->treeProject->resizeColumnToContents(0);
 
 }
 
@@ -970,6 +967,7 @@ void MainWindow::cloneProject()
     project = nullptr;
     wndOctaveInterface->updateScriptsProject(project);
     ui->treeProject->clear();
+    ui->treeProject->resizeColumnToContents(0);
 }
 //---------------------------------------------------------------
 // Close Project
@@ -2274,5 +2272,19 @@ void MainWindow::preacquisition_done_all()
         _radarTreeItems[dev]->setText(1,"running");
         _radarTreeItems[dev]->setForeground(1,b);
     }
+}
+//----------------------------------------------------
+/**
+ * @brief MainWindow::project_item_expanded
+ */
+void MainWindow::project_item_expanded(QTreeWidgetItem *item)
+{
+    ui->treeProject->resizeColumnToContents(0);
+
+}
+
+void MainWindow::project_item_collapsed(QTreeWidgetItem *item)
+{
+   ui->treeProject->resizeColumnToContents(0);
 }
 

@@ -46,8 +46,7 @@ private:
     void                        add_script_table_empty_row(QTableWidget* table);
     void                        init_parameter_table();
     void                        param_to_table_row(int row, radarParamPointer current_param, radarParamPointer default_value);
-    void                        current_param_to_table(int row, radarParamPointer current_value);
-    //void                        update_serial_output();
+    void                        current_param_to_table(int row, radarParamPointer current_value);    
     void                        update_read_value(int row);
     bool                        _b_transmitting;
     void                        connect_serial_updates();
@@ -67,7 +66,6 @@ public slots:
     void                        cbEnumIndexChange(int);
     void                        linkToOctaveChanged(Qt::CheckState);
     void                        compoundNameChanged(Qt::CheckState);
-//    void                        currentPlotChanged(int);
     void                        itemChanged(QTableWidgetItem* item);
     void                        cbInitScriptChanged(int index);
     void                        cbPostacqScriptChanged(int index);

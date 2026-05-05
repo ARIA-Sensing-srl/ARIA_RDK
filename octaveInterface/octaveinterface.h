@@ -45,9 +45,7 @@ private:
     QList<octintOperation>              _op_list;           // This is the list of operation to be executed (we may mix commands and scripts)
     octintOperation                     _op_current;
     QString                             _last_output;
-    octavews                            *_workspace;
 
-    std::pair<std::string, std::string> _var_immediate_update;  // This is the variable / filename associated with the pipe
     std::string                         _immediate_filename;
 	QString								_last_error;
 	QString								_last_warning;
@@ -61,11 +59,10 @@ private:
     void                                create_thread_connections();
     class radarInstance*                _current_device_owner;
     QString                             _last_mutex_owner ="";
-
+    bool                                _is_in_immediate_cycle = false;
+    class   radarProject*               _owner_project = nullptr;
 
 public:
-    static octaveInterface*             _octave_interface_instance; // We have ONE interface instance in the RDK.
-
     octaveInterface();
     ~octaveInterface();
     //----------------------------------------------------------------------------
@@ -77,8 +74,9 @@ public:
     const QString &                 operation_get__last_output() {return _last_output;}
     void                            operation_device_is_deleting(class radarInstance* device);
     void                            operation_wait_and_lock(const QString& fname="");
-    void                            operation_unlock();
+    void                            operation_unlock(const QString& fname = "");
     void                            operation_trylock();
+    void                            operation_set_radar_project(class radarProject* prj = nullptr) {_owner_project = prj;}
     //----------------------------------------------------------------------------
     // Main octave engine
     octave::interpreter*            engine_get_octave_engine();
@@ -91,6 +89,7 @@ public:
     void                            engine_pause();
     octaveThreadHandler::oth_status engine_get_status();
     void                            engine_reset_script(octaveScript* script);
+    bool                            engine_is_in_immediate_cycle() {return ! _immediate_filename.empty();}
 
     //----------------------------------------------------------------------------
     // Execution of scripts
@@ -110,19 +109,20 @@ public:
     //* Workspace commands
     //----------------------------------------------------------------------------
     void                            workspace_clear();
-    void                            workspace_append_var(QString name, const octave_value& val, bool internal= false);
-    void                            workspace_refresh();
-    octavews*                       workspace_get() {return _workspace;}
+    void                            workspace_append_var(QString name, const octave_value& val);
     bool                            workspace_save_to_file(QString filename);
-    void                            workspace_update_interpreter_internal_vars();
+    void                            variable_set_value(const std::string& varname, const octave_value& val);
+    octave_value                    variable_get_value(const std::string& varname);
+    bool                            variable_exists(const std::string& varname);
+    QStringList                     variable_get_names();
     //----------------------------------------------------------------------------
     //* Immediate update of radar variables
     //----------------------------------------------------------------------------
     void                            immediate_update_of_radar_var(const std::string& str, const std::string& filename);
     void                            immediate_inquiry_of_radar_var(const std::string& str, const std::string& filename);
     void                            immediate_command(const std::string& str, const std::string& filename);
-    void                            immediate_remove_interface_file();
-
+    void                            immediate_abort();
+    void                            immediate_done_success();
 
 public slots:
     void            handle_octave_thread_dbstop(const QString& fname, int line);

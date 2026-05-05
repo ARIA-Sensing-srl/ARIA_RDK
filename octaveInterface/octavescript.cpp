@@ -263,6 +263,7 @@ int octaveScript::breakpoint_get_line(int line)
     std::string fname = get_fullfilename().toStdString();
     octave::interpreter *interp = _octave_interface == nullptr ? nullptr : _octave_interface->engine_get_octave_engine();
     if (interp==nullptr) return -1;
+    _octave_interface->operation_wait_and_lock("breakpoint_get_line");
 
     octave::tree_evaluator& tw = interp->get_evaluator ();
 
@@ -305,7 +306,7 @@ int octaveScript::breakpoint_get_line(int line)
     catch(...)
     {
     }
-
+    _octave_interface->operation_unlock("breakpoint_get_line");
     return lineeq-1;
 
 }
@@ -336,7 +337,7 @@ int octaveScript::breakpoint_add (int line, const QString& cond)
     catch(...)
     {
     }
-    _octave_interface->operation_unlock();
+    _octave_interface->operation_unlock("breakpoint_add");
 
 
 
@@ -369,7 +370,7 @@ int octaveScript::breakpoint_remove (int line)
     catch(...)
     {
     }
-    _octave_interface->operation_unlock();
+    _octave_interface->operation_unlock("breakpoint_remove");
     return lineeq-1;
 }
 //--------------------------------------
@@ -384,7 +385,7 @@ void octaveScript::breakpoint_remove_all()
     octave::tree_evaluator& tw = interp->get_evaluator ();
     octave::bp_table& bptab = tw.get_bp_table ();
     std::string fname = get_fullfilename().toStdString();
-
+    _octave_interface->operation_wait_and_lock("breakpoint_remove_all");
     octave::bp_table::fname_bp_map bp_file = bptab.get_breakpoint_list(octave_value_list(fname));
 
     bool bp_was_there = false;
@@ -407,6 +408,8 @@ void octaveScript::breakpoint_remove_all()
     catch(...)
     {
     }
+
+    _octave_interface->operation_unlock("breakpoint_remove_all");
 }
 
 //--------------------------------------
@@ -442,7 +445,7 @@ bool octaveScript::breakpoint_at_line(int line, int& lineeq)
     {
         lineeq=0;
     }
-    _octave_interface->operation_unlock();
+
     bool bp_was_there = false;
 
     for (auto& bp_list : previous_bp)
@@ -458,7 +461,7 @@ bool octaveScript::breakpoint_at_line(int line, int& lineeq)
 
             if (bp_was_there) break;
         }
-    _octave_interface->operation_wait_and_lock("breakpoint_at_line");
+
     try
     {
         if (!bp_was_there) bptab.remove_breakpoint_from_file(fname,lineeq);
@@ -466,7 +469,7 @@ bool octaveScript::breakpoint_at_line(int line, int& lineeq)
     catch(...)
     {
     }
-    _octave_interface->operation_unlock();
+    _octave_interface->operation_unlock("breakpoint_at_line");
     lineeq--;
     return bp_was_there;
 }
@@ -481,7 +484,7 @@ bool octaveScript::breakpoints_has_any()
 {
     octave::interpreter *interp = _octave_interface == nullptr ? nullptr : _octave_interface->engine_get_octave_engine();
     if (interp==nullptr) return false;
-
+    _octave_interface->operation_wait_and_lock("breakpoints_has_any");
     octave::tree_evaluator& tw = interp->get_evaluator ();
     octave::bp_table& bptab = tw.get_bp_table ();
 
@@ -489,9 +492,9 @@ bool octaveScript::breakpoints_has_any()
     std::string fname = get_fullfilename().toStdString();
     octave_value_list bp_list;
     bp_list.append(charNDArray(fname));
-    _octave_interface->operation_wait_and_lock("breakpoints_has_any");
+
     octave::bp_table::fname_bp_map bpmap = bptab.get_breakpoint_list(bp_list);
-    _octave_interface->operation_unlock();
+    _octave_interface->operation_unlock("breakpoints_has_any");
 
     for (auto& bp_list : bpmap)
         if (bp_list.first == fname)

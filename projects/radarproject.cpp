@@ -10,6 +10,7 @@
 #include "radarinstance.h"
 #include "../scheduler/opscheduler.h"
 #include "octavews.h"
+#include "aria_rdk_interface_messages.h"
 //----------------------------------------------
 //----------------------------------------------
 // Project Item class
@@ -35,31 +36,27 @@ projectItem*     projectItem::create_new_item(projectItem* parent, projectItem* 
     return leaf;
 }
 
-void    radarProject::set_workspace(octavews* ws)
+void    radarProject::set_octave_interface(octaveInterface* oct_int)
 {
-    _workspace = ws;
-    if (_workspace == nullptr) return;
-    octaveInterface* interface = _workspace->data_interface();
-    if (interface == nullptr) return;
+    _octave_interface = oct_int;
+    if (_octave_interface == nullptr) return;
 
-#ifdef BIDIR_REALTIME
-    connect(interface, &octaveInterface::updatedVariable,  this, &radarProject::immediate_variable_updated);
-    connect(interface, &octaveInterface::updatedVariables, this, &radarProject::variables_updated);
-#else
-    connect(interface, &octaveInterface::signal_immediate_update_radar_variable,
-            this, &radarProject::immediate_variable_updated);
-    connect(interface, &octaveInterface::signal_immediate_inquiry_radar_variable,
-            this, &radarProject::immediate_inquiry);
-    connect(interface, &octaveInterface::signal_immediate_send_radar_command,
-            this, &radarProject::immediate_command);
-    connect(interface, &octaveInterface::signal_execution_error,
+    connect(_octave_interface, &octaveInterface::signal_immediate_update_radar_variable,
+            this, &radarProject::immediate_variable_updated, Qt::BlockingQueuedConnection);
+    connect(_octave_interface, &octaveInterface::signal_immediate_inquiry_radar_variable,
+            this, &radarProject::immediate_inquiry, Qt::BlockingQueuedConnection);
+    connect(_octave_interface, &octaveInterface::signal_immediate_send_radar_command,
+            this, &radarProject::immediate_command, Qt::BlockingQueuedConnection);
+    connect(_octave_interface, &octaveInterface::signal_execution_error,
             this, &radarProject::errorWhileRunning);
-#endif
+    //interface->operation_set_radar_project(this);
+
 
     QVector<radarInstance*> devices = get_available_radars();
     for (auto& device : devices)
         if (device !=nullptr)
-            device->attach_to_workspace(ws);
+            device->attach_to_interface(_octave_interface);
+
 }
 //---------------------------------------
 QVector<radarInstance*> radarProject::get_available_radars()
@@ -180,7 +177,7 @@ projectItem*     radarProject::load_radar_item(QDomElement& xml_node, projectIte
                 if (new_radar==nullptr)
                     return nullptr;
 
-                new_radar->attach_to_workspace(_workspace);
+                new_radar->attach_to_interface(_octave_interface);
 
                 new_radar->load_extra_project_item_data(xml_node);
                 add_radar_instance(new_radar);
@@ -568,9 +565,9 @@ folder::folder(QString foldername, QString basedir): projectItem(foldername, DT_
 // We assume that subpath of projectName does not exists or,
 // if it exists, it is empty
  // If not, create an empty project
-radarProject::radarProject(QString projectName,octavews* ws,bool newProject) : projectItem(nullptr)
+radarProject::radarProject(QString projectName, octaveInterface* oct_int ,bool newProject) : projectItem(nullptr)
 {
-    set_workspace(ws);
+    set_octave_interface(oct_int);
     _b_loading = true;
     load_project_file(projectName,newProject);
     _b_loading = false;
@@ -579,6 +576,9 @@ radarProject::radarProject(QString projectName,octavews* ws,bool newProject) : p
 //---------------------------------------------
 radarProject::~radarProject()
 {
+    if (_octave_interface!=nullptr)
+    _octave_interface->operation_set_radar_project(nullptr);
+
     QVector <opScheduler*> schedulers = get_available_scheduler();
     for (auto& scheduler : schedulers)
         if (scheduler != nullptr)
@@ -947,7 +947,7 @@ octaveScript*    radarProject::add_script(QString &filename, projectItem* pitem)
         QFile(filename).copy(new_file);
 
     octaveScript* new_script = new octaveScript(new_file,script_folder);
-    new_script->attach_to_dataengine(_workspace==nullptr? nullptr : _workspace->data_interface());
+    new_script->attach_to_dataengine(_octave_interface);
     //Use only fileName since path is defined by the project tree
     new_script->set_filename(filename,false);
 
@@ -1226,7 +1226,7 @@ void    radarProject::add_radar_instance(const QByteArray& uid, radarModule* mod
         _last_error = "Error while creating new radar";
         return;
     }
-    radar->attach_to_workspace(_workspace);
+    radar->attach_to_interface(_octave_interface);
     radar->set_uid(uid);
     radar->set_fixed_id(true);
     QVector<radarInstance*> radars = get_available_radars();
@@ -1259,7 +1259,7 @@ radarInstance*    radarProject::add_radar_instance(QString filename)
 {
     radarInstance* device = new radarInstance();
     if (device==nullptr) return nullptr;
-    device->attach_to_workspace(_workspace);
+    device->attach_to_interface(_octave_interface);
     device->set_filename(filename);
     device->set_temporary_project(this);
 
@@ -1313,7 +1313,7 @@ void    radarProject::add_radar_instance(radarInstance* radar_ptr)
                 }
     }
 
-    radar_ptr->attach_to_workspace(_workspace);
+    radar_ptr->attach_to_interface(_octave_interface);
 
     projectItem *pitem = get_folder(QString(cstr_radar_devices));
 
@@ -1526,26 +1526,64 @@ void    radarProject::errorWhileRunning()
 //-----------------------------------------------
 void    radarProject::immediate_variable_updated(const std::string& varname)
 {
+    int res;
+    bool b_success = true;
     QVector<radarInstance*> devices = get_available_radars();
     for (auto& device:devices)
         if (device!=nullptr)
-            device->immediate_update_variable(varname);
+        {
+            // Do all devices anyway
+            res = device->immediate_update_variable(varname);
+
+            if (res==-1)
+                b_success = false;
+        }
+
+    if (b_success)
+        _octave_interface->immediate_done_success();
+    else
+        _octave_interface->immediate_abort();
 }
 //-----------------------------------------------
 void    radarProject::immediate_inquiry(const std::string& varname)
 {
+    int res;
+    bool b_success = true;
+
     QVector<radarInstance*> devices = get_available_radars();
     for (auto& device:devices)
         if (device!=nullptr)
-            device->immediate_inquiry_variable(varname);
+        {
+            res = device->immediate_inquiry_variable(varname);
+            if (res==-1)
+                b_success = false;
+        }
+
+    if (b_success)
+        _octave_interface->immediate_done_success();
+    else
+        _octave_interface->immediate_abort();
+
 }
 //-----------------------------------------------
 void    radarProject::immediate_command(const std::string& varname)
 {
+    int res;
+    bool b_success = true;
     QVector<radarInstance*> devices = get_available_radars();
     for (auto& device:devices)
+    {
         if (device!=nullptr)
-            device->immediate_command(varname);
+        {
+            res = device->immediate_command(varname);
+            if (res==-1)
+                b_success = false;
+        }
+    }
+    if (b_success)
+        _octave_interface->immediate_done_success();
+    else
+        _octave_interface->immediate_abort();
 }
 
 //-----------------------------------------------
@@ -1634,7 +1672,7 @@ opScheduler*    radarProject::add_scheduler(QString filename)
 
     if (filename != new_file)
         QFile(filename).copy(new_file);
-    opScheduler* new_scheduler = new opScheduler(_workspace->data_interface());
+    opScheduler* new_scheduler = new opScheduler(_octave_interface);
 
     pitem->add_child(new_scheduler);
         //Use only fileName since path is defined by the project tree

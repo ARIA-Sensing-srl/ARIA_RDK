@@ -78,7 +78,7 @@ void octavews::merge_value_list(const string_vector& vars, bool octave_generated
 
         }
 
-        _data_interface->operation_unlock();
+        _data_interface->operation_unlock("merge_value_list");
         return;
     }
 
@@ -97,7 +97,7 @@ void octavews::merge_value_list(const string_vector& vars, bool octave_generated
             _internal_variables[vname] = values(s);
 
         }
-        _data_interface->operation_unlock();
+        _data_interface->operation_unlock("merge_value_list");
         return;
     }
 }
@@ -115,12 +115,12 @@ void octavews::remove_value_list(const string_vector& vars)
         if (vfound != _octave_variables.end())
             _octave_variables.erase(vfound);
     }
-    _data_interface->operation_unlock();
+    _data_interface->operation_unlock("remove_value_list");
 }
 
 void octavews::add_variable(const string& varname, bool octave_generated, const octave_value& value)
 {
-    _data_interface->operation_wait_and_lock();
+    _data_interface->operation_wait_and_lock("add_variable");
     oct_dataset::iterator vfound;
     if (octave_generated)
     {
@@ -141,7 +141,7 @@ void octavews::add_variable(const string& varname, bool octave_generated, const 
     else
         _internal_variables[varname] = value;
 
-    _data_interface->operation_unlock();
+    _data_interface->operation_unlock("add_variable");
 }
 
 void octavews::clear()
@@ -215,7 +215,7 @@ void            octavews::workspace_to_interpreter_noautolist()
             _oct_int->install_variable(var.first, var.second, true);
     }
 
-    _data_interface->operation_unlock();
+    _data_interface->operation_unlock("workspace_to_interpreter_noautolist");
 }
 
 void            octavews::workspace_to_interpreter()
@@ -224,29 +224,25 @@ void            octavews::workspace_to_interpreter()
     // Install only internal variables
     if (_oct_int==nullptr) return;
 
-
-
+    _data_interface->operation_wait_and_lock("workspace_to_interpreter");
     const oct_dataset& varx = _internal_variables;
     for (const auto& var : varx)
     {
-        _data_interface->operation_wait_and_lock();
+
 
         if (_oct_int->is_variable(var.first))
             _oct_int->assign(var.first, var.second);
         else
             _oct_int->install_variable(var.first, var.second, true);
-        _data_interface->operation_unlock();
-
         add_variable_to_updatelist(var.first);
     }
-
-
+    _data_interface->operation_unlock("workspace_to_interpreter");
 }
 
 // Update only workspace values from interpreter (e.g. immediate_update needs so)
 void            octavews::interpreter_to_workspace_update()
 {
-    _data_interface->operation_wait_and_lock();
+    _data_interface->operation_wait_and_lock("interpreter_to_workspace_update");
     if (_oct_int==nullptr)
         return;
     for (auto& var: _internal_variables)
@@ -254,7 +250,7 @@ void            octavews::interpreter_to_workspace_update()
 
     for (auto& var: _octave_variables)
         var.second = _oct_int->varval(var.first);
-    _data_interface->operation_unlock();
+    _data_interface->operation_unlock("interpreter_to_workspace_update");
 }
 
 void            octavews::interpreter_to_workspace()
@@ -276,13 +272,18 @@ void            octavews::interpreter_to_workspace()
         _octave_variables[varname] = val;
         add_variable_to_updatelist(varname);
     }
+    _data_interface->operation_unlock("interpreter_to_workspace");
 
-    _data_interface->operation_unlock();
 
     if (_data_interface!=nullptr)
+    {
+        _data_interface->operation_wait_and_lock("interpreter_to_workspace");
         emit _data_interface->signal_updated_variables(_updated_vars);
+        _data_interface->operation_unlock("interpreter_to_workspace");
+    }
 
     update_graphs();
+
 }
 
 
@@ -317,12 +318,16 @@ void            octavews::set_var_values(string_vector names, octave_value_list 
 
         _data_interface->operation_wait_and_lock("set_var_values");
         add_variable(varname,true, values(s));
-        _data_interface->operation_unlock();
+        _data_interface->operation_unlock("set_var_values");
 
         add_variable_to_updatelist(varname);
     }
     if (_data_interface!=nullptr)
+    {
+        _data_interface->operation_wait_and_lock("interpreter_to_workspace");
         emit _data_interface->signal_updated_variables(_updated_vars);
+        _data_interface->operation_unlock("interpreter_to_workspace");
+    }
     update_graphs();
     return;
 }
@@ -330,14 +335,14 @@ void            octavews::set_var_values(string_vector names, octave_value_list 
 
 void        octavews::update_after_set_variables()
 {
-    //_data_interface->operation_wait_and_lock();
+
     if (_data_interface!=nullptr)
         emit _data_interface->signal_updated_variables(_updated_vars);
 
     update_graphs();
 
     _updated_vars.clear();
-    //_data_interface->operation_unlock();
+
 }
 
 void        octavews::set_variable_no_immediate_update(const std::string& varname, const octave_value& value)
@@ -378,9 +383,13 @@ void        octavews::set_variable(const std::string& varname, const octave_valu
     }
     _data_interface->operation_wait_and_lock("set_variable");
     _oct_int->assign(varname,value);
-    _data_interface->operation_unlock();
+    _data_interface->operation_unlock("set_variable");
     if (_data_interface!=nullptr)
+    {
+        _data_interface->operation_wait_and_lock("interpreter_to_workspace");
         emit _data_interface->signal_updated_variable(varname);
+        _data_interface->operation_unlock("interpreter_to_workspace");
+    }
 
     update_graphs();
 }
@@ -409,7 +418,7 @@ string_vector     octavews::get_var_names(bool internal)
     for (const auto& var: refds)
         out.append(var.first);
 
-    _data_interface->operation_unlock();
+    _data_interface->operation_unlock("get_var_names");
     return out;
 }
 
@@ -452,8 +461,11 @@ void octavews::remove_graph(class wndPlot2d* graph)
 
 void octavews::update_graphs()
 {
+    _data_interface->operation_wait_and_lock("update_graphs");
     for (const auto& graph: _graphs2d)
         graph->update_workspace(this);
+
+    _data_interface->operation_unlock("update_graphs");
 }
 
 void octavews::add_variable_to_updatelist(std::string variable)

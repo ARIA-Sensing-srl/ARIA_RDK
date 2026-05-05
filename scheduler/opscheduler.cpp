@@ -15,10 +15,10 @@ opSchedulerOperations::opSchedulerOperations(radarInstance* device, octaveInterf
 {
     if (_device != nullptr)
     {
-        connect(_device, &radarInstance::init_params_done,  this, &opSchedulerOperations::init_params_done, Qt::QueuedConnection);
-        connect(_device, &radarInstance::init_scripts_done, this, &opSchedulerOperations::init_scripts_done,Qt::QueuedConnection);
-        connect(_device, &radarInstance::postacq_params_done,this, &opSchedulerOperations::postacq_params_done,Qt::QueuedConnection);
-        connect(_device, &radarInstance::postacq_scripts_done,this, &opSchedulerOperations::postacq_scripts_done,Qt::QueuedConnection);
+        connect(_device, &radarInstance::init_params_done,  this, &opSchedulerOperations::init_params_done, Qt::DirectConnection);
+        connect(_device, &radarInstance::init_scripts_done, this, &opSchedulerOperations::init_scripts_done,Qt::DirectConnection);
+        connect(_device, &radarInstance::postacq_params_done,this, &opSchedulerOperations::postacq_params_done,Qt::DirectConnection);
+        connect(_device, &radarInstance::postacq_scripts_done,this, &opSchedulerOperations::postacq_scripts_done,Qt::DirectConnection);
         connect(_device, &radarInstance::connection_done, this, &opSchedulerOperations::device_connected_done,Qt::QueuedConnection);
 
         connect(_device, &radarInstance::rx_timeout,         this, &opSchedulerOperations::error_during_comm,Qt::QueuedConnection);
