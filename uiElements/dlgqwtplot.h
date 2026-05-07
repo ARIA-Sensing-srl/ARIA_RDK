@@ -208,7 +208,7 @@ class dlgQWTPlot : public QDialog
 	Q_OBJECT
 
 public:
-	explicit dlgQWTPlot(QWidget *parent = nullptr, class mdiOctaveInterface* owner = nullptr, octavews* ws = nullptr, PLOT_TYPE pt = PT_NONE);
+    explicit dlgQWTPlot(QWidget *parent = nullptr, class mdiOctaveInterface* owner = nullptr, octaveInterface* oct_int = nullptr, PLOT_TYPE pt = PT_NONE);
 	~dlgQWTPlot();
 
 private:
@@ -229,7 +229,7 @@ public:
 
 public slots:
 	void update_data(const std::set<std::string>& varlist);
-	void update_workspace();
+    void update_all_data();
 	void zoomAll();
 	void cbContourChanged(Qt::CheckState state);
 	void cbColorMapChanged(int index);

@@ -12,6 +12,7 @@
 #include "octavews.h"
 #include "qgridlayout.h"
 #include <QKeyEvent>
+#include <octaveinterface.h>
 
 
 namespace Ui {
@@ -23,12 +24,12 @@ class wndPlot2d : public QDialog
     Q_OBJECT
 
 public:
-    explicit wndPlot2d(class   mdiOctaveInterface* parent = nullptr, octavews* ws=nullptr);
-    explicit wndPlot2d(class   MainWindow*         parent = nullptr, octavews* ws=nullptr);
+    explicit wndPlot2d(class   mdiOctaveInterface* parent = nullptr, octaveInterface* oct_int=nullptr);
+    explicit wndPlot2d(class   MainWindow*         parent = nullptr, octaveInterface* oct_int=nullptr);
     ~wndPlot2d();
     QGridLayout* _layout;
-    octavews*   get_workspace();
-    void        remove_workspace();
+    octaveInterface*   get_octave_interface();
+    void               remove_octave_interface();
     // 2D Plot
     int         add_plot(const QString& var, const QString& x=QString(""), int plot_id=-1);
     int         add_scatterplot(const QString& var, const QString& x=QString(""), int plot_id=-1);
@@ -38,20 +39,21 @@ public:
     int         add_boxplot(const QString& var, const QString& x=QString(""), int plot_id=-1);
     int         add_vector_plot(const QString& var_x, const QString& var_y, const QString& x=QString(""),const QString& y=QString(""), int plot_id=-1);
     int         add_density_plot(const QString& var_x, const QString& x=QString(""),const QString& y=QString(""), int plot_id=-1);
-    int         add_contour_plot(const QString& var_x, const QString& x=QString(""),const QString& y=QString(""), int plot_id=-1);
-    void        update_workspace(octavews* ws);
+
     void        clear_owners();
     QString     last_error() {return _last_error;}
 
     bool            has_var(const QString& str_name);
     void            remove_plot(QString var);
+public slots:
+    void        update_data();
 
 private:
     Ui::wndPlot2d *ui;
 
     void* graph;
     JKQTPGraph*                        create_graph(plot_descriptor& pl, JKQTPlotter* plotter);
-    octavews*                          _workspace;
+    octaveInterface*                   _octave_interface;
     int                                _nplot_x,_nplot_y, _total_plot;
     std::vector<plot_descriptor>       _plots;
     std::vector<JKQTPlotter*>          _plotters;   // List of widgets
@@ -79,15 +81,15 @@ private:
     void        default_indep_box_plotvect(const std::string& indep, const std::string& dep);
     void        clear_prev_var(std::string varname);
 
-    void        populate_plot(plot_descriptor pl);
-    void        populate_boxplot( plot_descriptor pl);
-    void        populate_area( plot_descriptor pl);
-    void        populate_barv( plot_descriptor pl);
-    void        populate_scatter( plot_descriptor pl);
-    void        populate_dens( plot_descriptor pl);
-    void        populate_contour( plot_descriptor pl);
-    void        populate_vect2d( plot_descriptor pl);
-    void        populate_vertarrows( plot_descriptor pl);
+    void        populate_plot(plot_descriptor& pl);
+    void        populate_boxplot( plot_descriptor& pl);
+    void        populate_area( plot_descriptor& pl);
+    void        populate_barv( plot_descriptor& pl);
+    void        populate_scatter( plot_descriptor& pl);
+    void        populate_dens( plot_descriptor& pl);
+    void        populate_contour( plot_descriptor& pl);
+    void        populate_vect2d( plot_descriptor& pl);
+    void        populate_vertarrows( plot_descriptor& pl);
 
     void        redraw(plot_descriptor& pl);
     void        clean(JKQTPlotter* main_plotter, plot_descriptor& pl);

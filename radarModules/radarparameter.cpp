@@ -251,7 +251,7 @@ void               radarParamBase::link_to_octave_interface(octaveInterface* oct
 {
     _octave_interface = oct_int;
 }
-octavews*          radarParamBase::get_octave_interface()
+octaveInterface*          radarParamBase::get_octave_interface()
 {
     return _octave_interface;
 }
@@ -2589,7 +2589,7 @@ template<> void radarParameter<uint8_t>::var_changed()
 {
     if (_octave_interface == nullptr) return;
     if (_var.isEmpty()) return;
-    uint8NDArray var_value = _octave_interface->var_value(_var.toStdString()).uint8_array_value();
+    uint8NDArray var_value = _octave_interface->variable_get_value(_var.toStdString()).uint8_array_value();
 
     for (int n=0; n < var_value.numel(); n++)
         if (!is_valid(var_value(n))) return;

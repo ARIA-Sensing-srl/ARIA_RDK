@@ -27,6 +27,7 @@ private:
     bool                _file_existing;  // if the file is missing this is just a placeholder.
     void                setValid(bool bValid = true);
     int                 _debug_line;
+    bool                _skip_workspace_update_after_exec = false;
 
     struct breakpoint_info
     {
@@ -75,24 +76,28 @@ public:
 
     //------------------------------------------------------
     // Parsing status
-    bool                    needParsing() {return b_need_parsing;};
+    bool                    needParsing() {return b_need_parsing;}
     void                    setParsed()   {b_need_parsing = false;}
 
-    //
+    //------------------------------------------------------
+    // Skip update after execution
+    bool                    skip_workspace_update() {return _skip_workspace_update_after_exec;}
+    void                    skip_workspace_update(bool skip) {_skip_workspace_update_after_exec = skip;}
+
 
     int   getCurrentDebugPosition() {return _debug_line; }
 signals:
     // Signals for script manager (e.g. editor)
     void                    script_stop(const QString& filename, int line);
     void                    script_run(const QString& filename );
-    void                    script_run_complete(const QString& filename);
+    void                    script_run_complete(const QString& filename, bool skip_workspace_update);
     void                    script_error(const QString& filename, const QString& strError, int line);
 
 public slots:
     // Slot to manage signals coming from the octaveInterface wrapper
     void                    do_interpreter_dbstop(const QString& fname, int line);
     void                    do_interpreter_dbrun(const QString& fname);
-    void                    do_interpreter_dbcomplete(const QString& fname);
+    void                    do_interpreter_dbcomplete(const QString& fname,bool skip_workspace_update);
     void                    do_interpreter_error(const QString& fname, const QString& error, int line);
     // Slot to manage requests from the GUI
     void                    do_request_pause();

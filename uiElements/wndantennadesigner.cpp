@@ -624,64 +624,9 @@ void wndAntennaDesigner::exportFF()
 	
 	NDArray impedance(dim_vector({1,1}),50.0);
 	antenna_struct.assign("impedance",octave_value(impedance));
-    de->workspace_get()->add_variable(name.toStdString(),false, antenna_struct);
+    de->variable_set_value(name.toStdString(), antenna_struct);
     emit de->signal_updated_variable(name.toStdString());
 
-
-
-
-/*
-
-    QString name = currentAntenna.get_name();
-    QFileInfo fi(name);
-    name = fi.fileName();
-
-    octave_value a(currentAntenna.getAzimuth());
-    QString azimuth_name(name+QString("_azimuth"));
-    azimuth_name=de->appendVariable(azimuth_name,a,true);
-
-    QString zenith_name(name+QString("_zenith"));
-    octave_value z(currentAntenna.getZenith());
-    zenith_name= de->appendVariable(zenith_name,z,true);
-
-    int freqid = ui->cbFreqSlider->sliderPosition();
-    int field  = ui->cbFieldSelect->currentIndex();
-    int cplx   = ui->cbComplexField->currentIndex();
-
-    octave_value fieldval;
-    QString fieldName = name;
-    switch (field)
-    {
-    case 0:  // Theta
-        fieldval = octave_value(currentAntenna.getEt(freqid));
-        fieldName+="_ETheta";
-        break;
-    case 1: // Phi
-        fieldval = octave_value(currentAntenna.getEp(freqid));
-        fieldName+="_EPhi";
-        break;
-    case 2: // Gain
-        switch (cplx)
-        {
-        case 4: // dB
-            fieldval = octave_value(dB_field(currentAntenna.getGain(freqid),false));
-            fieldName+="_Gain_dB";
-            break;
-        default:
-            fieldval = octave_value((currentAntenna.getGain(freqid)));
-            fieldName+="_Gain";
-            break;
-        }
-        break;
-    }
-    ComplexNDArray fv = fieldval.complex_array_value();
-    QStringList indep;
-
-    indep.append(azimuth_name);
-    indep.append(zenith_name);
-    de->get_workspace()->add_variable(fieldName.toStdString(),false, fieldval);
-    emit de->updatedVariable(fieldName.toStdString());
-*/
 }
 
 void wndAntennaDesigner::currentAntennaChanged(int index)

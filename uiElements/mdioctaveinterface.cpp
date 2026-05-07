@@ -190,22 +190,21 @@ void mdiOctaveInterface::handle_interpreter_execute_command_debug_done(const QSt
     ui->historyCommands->setTextColor( QColor( "white" ));
 }
 
-void mdiOctaveInterface::handle_interpreter_complete(const QString& command)
+void mdiOctaveInterface::handle_interpreter_complete(const QString& command,bool skip_workspace_update)
 {
     command_set_running(false);
 
     ui->LocalVars->setVisible(false);
-    updateLocalVar(true);
-    // Do we need to update the table?
-    if (_workspace==nullptr)
-        return;
 
-    //ui->outputCommands->append(_octave_interface->get_last_output());
+    if (!skip_workspace_update)
+    {
+        updateLocalVar(true);
 
-    ui->historyCommands->setTextColor( QColor( "white" ));
-    if ((!_skip_history_append)&&(!_force_skip_history_append))
-        ui->historyCommands->append(command);
-    _skip_history_append = false;
+        ui->historyCommands->setTextColor( QColor( "white" ));
+        if ((!_skip_history_append)&&(!_force_skip_history_append))
+            ui->historyCommands->append(command);
+        _skip_history_append = false;
+    }
 
     // Change the prompt
     ui->lblCommand->setText("Command >");
@@ -216,7 +215,7 @@ void mdiOctaveInterface::handle_interpreter_complete(const QString& command)
 void mdiOctaveInterface::handle_interpreter_error(const QString& command, const QString& error, int line)
 {
     command_set_running(false);
-    if (_workspace==nullptr)
+    if (_octave_interface==nullptr)
         return;
 
     ui->historyCommands->setTextColor( QColor( "red" ));
@@ -573,7 +572,7 @@ void  mdiOctaveInterface::updateVarTable()
         int row_found = -1;
         for (int row = 0; row < rmax; row++)
 		{
-            if (ui->workspaceList->item(n,1)==nullptr) continue;
+            if (ui->workspaceList->item(row,1)==nullptr) continue;
 			if (ui->workspaceList->item(row,1)->text()==v)
                 row_found = row;
 		}
@@ -586,10 +585,10 @@ void  mdiOctaveInterface::updateVarTable()
         {
             int n = ui->workspaceList->rowCount();
             ui->workspaceList->setRowCount(n+1);
-            add_variable_row(n, vstring, val, internal);
+            add_variable_row(n, vstring, val);
         }
         else
-            update_variable_row(row_found, vstring, val, internal);
+            update_variable_row(row_found, vstring, val);
 	}
 }
 
@@ -792,10 +791,11 @@ void mdiOctaveInterface::workspaceTableRightClick(QPoint pos)
 
 void mdiOctaveInterface::variablePlot()
 {
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
 
     QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
 
@@ -817,7 +817,9 @@ void mdiOctaveInterface::variablePlot()
 
 void mdiOctaveInterface::variablePlotAllInOne()
 {
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
@@ -847,7 +849,9 @@ void mdiOctaveInterface::variablePlotXData()
     if (indexList.count()<2)
         return;
 
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
@@ -882,11 +886,12 @@ void mdiOctaveInterface::variablePlotXData()
 
 void mdiOctaveInterface::variableScatterPlot()
 {
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
 
     _plot2d_children.append(wnd2d);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
 
     QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
 
@@ -908,10 +913,11 @@ void mdiOctaveInterface::variableScatterPlot()
 
 void mdiOctaveInterface::variableScatterPlotAllInOne()
 {
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
 
     QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
     int plot = -1;
@@ -938,7 +944,9 @@ void mdiOctaveInterface::variableScatterPlotXData()
     if (indexList.count()<2)
         return;
 
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
@@ -975,7 +983,9 @@ void mdiOctaveInterface::variableBarPlotAllInOne()
     if (indexList.count()<2)
         return;
 
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
@@ -1007,7 +1017,9 @@ void mdiOctaveInterface::variableBarPlotAllInOne()
 
 void mdiOctaveInterface::variableBarPlot()
 {
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
@@ -1036,7 +1048,9 @@ void mdiOctaveInterface::variableBarPlotXData()
     if (indexList.count()<2)
         return;
 
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
@@ -1070,7 +1084,9 @@ void mdiOctaveInterface::variableBarPlotXData()
 // Boxplot callback
 void mdiOctaveInterface::variableBoxPlot()
 {
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
@@ -1099,7 +1115,9 @@ void mdiOctaveInterface::variableBoxPlotAllInOne()
     if (indexList.count()<2)
         return;
 
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
@@ -1135,7 +1153,9 @@ void mdiOctaveInterface::variableBoxPlotXData()
     if (indexList.count()<2)
         return;
 
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
@@ -1168,7 +1188,9 @@ void mdiOctaveInterface::variableBoxPlotXData()
 // Area callback
 void mdiOctaveInterface::variableAreaPlot()
 {
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
@@ -1197,7 +1219,10 @@ void mdiOctaveInterface::variableAreaPlotAllInOne()
     if (indexList.count()<2)
         return;
 
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+
+
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
@@ -1233,7 +1258,9 @@ void mdiOctaveInterface::variableAreaPlotXData()
     if (indexList.count()<2)
         return;
 
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
@@ -1268,7 +1295,9 @@ void mdiOctaveInterface::variableAreaPlotXData()
 // Arrow callback
 void mdiOctaveInterface::variableArrowPlot()
 {
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
@@ -1297,7 +1326,10 @@ void mdiOctaveInterface::variableArrowPlotAllInOne()
     if (indexList.count()<2)
         return;
 
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+
+
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
@@ -1333,7 +1365,9 @@ void mdiOctaveInterface::variableArrowPlotXData()
     if (indexList.count()<2)
         return;
 
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
@@ -1366,7 +1400,9 @@ void mdiOctaveInterface::variableArrowPlotXData()
 // 7. Density
 void mdiOctaveInterface::variableDensityPlot()
 {
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
@@ -1392,7 +1428,9 @@ void mdiOctaveInterface::variableDensityPlot()
 
 void mdiOctaveInterface::variableDensityPlotXData()
 {
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
@@ -1435,7 +1473,9 @@ void mdiOctaveInterface::variableVectorPlot()
         return;
     }
 
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
@@ -1470,7 +1510,9 @@ void mdiOctaveInterface::variableVectorPlotXData()
         return;
     }
 
-    wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
@@ -1500,11 +1542,13 @@ void mdiOctaveInterface::variableVectorPlotXData()
 // ---------------------------------------------------------------------------------
 void mdiOctaveInterface::updatedSingleVar(const std::string& varname)
 {
+    return;
     if (varname.empty()) return;
+    if (_octave_interface==nullptr) return;
     QString vname = QString::fromStdString(varname);
 
-    octave_value var = _workspace->var_value(varname);
-    bool internal = _workspace->is_internal(varname);
+    octave_value var = _octave_interface->variable_get_value(varname);
+
     for (int n=0; n< ui->workspaceList->rowCount(); n++)
     {
         QTableWidgetItem* item = ui->workspaceList->item(n,1);
@@ -1555,15 +1599,13 @@ void mdiOctaveInterface::updatedSingleVar(const std::string& varname)
         for (const auto& child: _plot2d_children)
 		{
             if (child!=nullptr)
-                //if (child->isFullScreen())
-                child->update_workspace(_workspace);
+                child->update_data();
 		}
 
 		for (const auto& child: _plot_qwt_children)
 		{
 			if (child!=nullptr)
-				//if (child->isFullScreen())
-				child->update_workspace();
+                child->update_all_data();
 		}
 
         return;
@@ -1572,19 +1614,22 @@ void mdiOctaveInterface::updatedSingleVar(const std::string& varname)
     // Need to add a new row
     int nrow = ui->workspaceList->rowCount();
     ui->workspaceList->setRowCount(nrow+1);
-    add_variable_row(nrow,varname,var,internal);
+    add_variable_row(nrow,varname,var);
 
 }
 // ---------------------------------------------------------------------------------
 void mdiOctaveInterface::updatedVars(const std::set<std::string>& varlist)
 {
-    if (_workspace==nullptr) return;
+    return;
+    if (_octave_interface==nullptr) return;
     int n=0;
+    // Remove all rows that are missing in the octave dataset
     while (n < ui->workspaceList->rowCount())
     {
         QString vqname = ui->workspaceList->item(n,1)->text();
         std::string vname = vqname.toStdString();
-        if ((!_workspace->is_internal(vname))&&(!_workspace->is_octave(vname)))
+
+        if (!_octave_interface->variable_exists(vname))
         {
             ui->workspaceList->removeRow(n);
             for (auto child: _plot2d_children)
@@ -1613,7 +1658,7 @@ void mdiOctaveInterface::updatedVars(const std::set<std::string>& varlist)
 
 	for (const auto& child: _plot2d_children)
         if (child!=nullptr)
-            child->update_workspace(_workspace);
+            child->update_data();
 
 	for (const auto& child: _plot_qwt_children)
 	{
@@ -1645,7 +1690,7 @@ void    mdiOctaveInterface::delete_children(dlgQWTPlot* child)
 // ---------------------------------------------------------------------------------
 void mdiOctaveInterface::saveWorkspaceData()
 {
-    if ((_octave_interface == nullptr)||(_workspace==nullptr))
+    if (_octave_interface == nullptr)
     {
         QMessageBox::warning(this, "Warning", "No available workspace");
         return;
@@ -1663,15 +1708,15 @@ void mdiOctaveInterface::saveWorkspaceData()
         return;
 
     ariasdk_data_path = QFileInfo(dataFile).absolutePath()+QDir::separator();
-    _workspace->save_to_file(dataFile.toStdString());
+    _octave_interface->workspace_save_to_file(dataFile);
 }
 
 // ---------------------------------------------------------------------------------
 void mdiOctaveInterface::variableQwtPlot()
 {
-	dlgQWTPlot*  wnd2d = new dlgQWTPlot(this,this, _workspace, PTQWT_PLOT);
+    dlgQWTPlot*  wnd2d = new dlgQWTPlot(this,this, _octave_interface, PTQWT_PLOT);
 
-    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &dlgQWTPlot::update_workspace);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &dlgQWTPlot::update_all_data);
     connect(_octave_interface, &octaveInterface::signal_updated_variables, wnd2d, &dlgQWTPlot::update_data);
 
 	ui->mdiArea->addSubWindow(wnd2d);
@@ -1705,9 +1750,9 @@ void mdiOctaveInterface::variableQwtPlot()
 
 void mdiOctaveInterface::variableQwtPlotAllInOne()
 {
-	dlgQWTPlot*  wnd2d = new dlgQWTPlot(this,this, _workspace, PTQWT_PLOT);
+    dlgQWTPlot*  wnd2d = new dlgQWTPlot(this,this, _octave_interface, PTQWT_PLOT);
 
-    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &dlgQWTPlot::update_workspace);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &dlgQWTPlot::update_all_data);
     connect(_octave_interface, &octaveInterface::signal_updated_variables, wnd2d, &dlgQWTPlot::update_data);
 
 	ui->mdiArea->addSubWindow(wnd2d);
@@ -1742,9 +1787,9 @@ void mdiOctaveInterface::variableQwtPlotAllInOne()
 
 void mdiOctaveInterface::variableQwtPlotXData()
 {
-	dlgQWTPlot*  wnd2d = new dlgQWTPlot(this, this,_workspace, PTQWT_PLOT);
+    dlgQWTPlot*  wnd2d = new dlgQWTPlot(this, this,_octave_interface, PTQWT_PLOT);
 
-    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &dlgQWTPlot::update_workspace);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &dlgQWTPlot::update_all_data);
     connect(_octave_interface, &octaveInterface::signal_updated_variables, wnd2d, &dlgQWTPlot::update_data);
 
 	ui->mdiArea->addSubWindow(wnd2d);
@@ -1775,7 +1820,7 @@ void mdiOctaveInterface::variableQwtPlotXData()
 
 void mdiOctaveInterface::variableQwtScatterPlot()
 {
-	wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
 	ui->mdiArea->addSubWindow(wnd2d);
 	wnd2d->showMaximized();
 
@@ -1801,7 +1846,7 @@ void mdiOctaveInterface::variableQwtScatterPlot()
 
 void mdiOctaveInterface::variableQwtScatterPlotAllInOne()
 {
-	wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
 	ui->mdiArea->addSubWindow(wnd2d);
 	wnd2d->showMaximized();
 	_plot2d_children.append(wnd2d);
@@ -1831,7 +1876,7 @@ void mdiOctaveInterface::variableQwtScatterPlotXData()
 	if (indexList.count()<2)
 		return;
 
-	wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
 	ui->mdiArea->addSubWindow(wnd2d);
 	wnd2d->showMaximized();
 	_plot2d_children.append(wnd2d);
@@ -1864,9 +1909,9 @@ void mdiOctaveInterface::variableQwtScatterPlotXData()
 // 7. Qwt Density
 void mdiOctaveInterface::variableQwtDensityPlot()
 {
-	dlgQWTPlot*  wnd2d = new dlgQWTPlot(this, this,_workspace, PTQWT_DENSITY);
+    dlgQWTPlot*  wnd2d = new dlgQWTPlot(this, this,_octave_interface, PTQWT_DENSITY);
 
-    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &dlgQWTPlot::update_workspace);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &dlgQWTPlot::update_all_data);
     connect(_octave_interface, &octaveInterface::signal_updated_variables, wnd2d, &dlgQWTPlot::update_data);
 
 	ui->mdiArea->addSubWindow(wnd2d);
@@ -1894,7 +1939,7 @@ void mdiOctaveInterface::variableQwtDensityPlot()
 
 void mdiOctaveInterface::variableQwtDensityPlotXData()
 {
-	wndPlot2d*  wnd2d = new wndPlot2d(this, _workspace);
+    wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
 	ui->mdiArea->addSubWindow(wnd2d);
 	wnd2d->showMaximized();
 	_plot2d_children.append(wnd2d);

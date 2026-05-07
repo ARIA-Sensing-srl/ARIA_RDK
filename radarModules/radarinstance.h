@@ -74,9 +74,9 @@ public:
 
     radarInstance& operator = (radarInstance& radar);
 
-    void            attach_to_interface(octaveInterface *oct_int = nullptr);
-    octavews*       get_octave_interface(void);
-    QString         get_mapped_name(radarParamPointer param);
+    void                    attach_to_interface(octaveInterface *oct_int = nullptr);
+    octaveInterface*        get_octave_interface(void);
+    QString                 get_mapped_name(radarParamPointer param);
     QVector<radarParamPointer> get_cmdgrp_varlist(radarParamPointer param);
 
     void            create_variable(QString parameterName);

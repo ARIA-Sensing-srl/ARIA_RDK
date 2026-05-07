@@ -49,7 +49,7 @@ private:
     typedef enum {OTH_NA_WAIT, OTH_NA_STEP, OTH_NA_CONTINUE, OTH_NA_STOP} oth_next_action;
     oth_next_action                     _oth_next_action;   // Flag to tell what to do next, during a breakpoint wait cycle
 
-    void                                internal_execute_run(octaveScript* script, bool single_step);
+    void                                internal_execute_run(octaveScript* script, bool single_step, bool skip_workspace_update);
     // We need to add a Mutex to avoid race during breakpoint events
     mutable QMutex                      _sync;
     // Debug pipe management
@@ -58,6 +58,7 @@ private:
     FILE* input_stream= nullptr;
     QString             _last_cmd = "";
     bool                _is_db_cmd = false;
+    bool                _last_skip_workspace_update = false;
 
 public:
     octaveThreadHandler(octaveInterface* owner=nullptr);
@@ -67,7 +68,7 @@ public slots:
     //----------------------------------------------------------------------------
     // Execution of scripts
     void                            execute_continue(octaveScript* script);
-    void                            execute_run(octaveScript* script);
+    void                            execute_run(octaveScript* script,bool skip_workspace_update = false);
     void                            execute_step_in(octaveScript* script);
     void                            execute_step_out(octaveScript* script);
     void                            execute_stop(octaveScript* script);
@@ -97,7 +98,7 @@ public:
 public slots:
     void            handle_interpreter_dbstop(const QString& fname, int line);
     void            handle_interpreter_dbrun(const QString& fname);
-    void            handle_interpreter_dbcomplete(const QString& fname);
+    void            handle_interpreter_dbcomplete(const QString& fname, bool skip_workspace_update);
     void            handle_interpreter_dberror(const QString& command, int line);
     void            handle_interpreter_enter_debugger_event (const std::string& fcn_name,
                                                  const std::string& fcn_file_name,
@@ -113,7 +114,7 @@ signals:
     void            signal_handler_dbstop(const QString& fname, int line);
     void            signal_handler_dbstep_done(const QString& fname, int line);
     void            signal_handler_dbrun(const QString& fname);
-    void            signal_handler_dbcomplete(const QString& fname);
+    void            signal_handler_dbcomplete(const QString& fname, bool skip_workspace_update);
     void            signal_handler_dberror(const QString& fname, const QString& error, int line);
     void            signal_handler_cmd_complete_during_debug(const QString& cmd);
     void            finished();

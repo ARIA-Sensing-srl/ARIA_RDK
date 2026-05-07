@@ -45,12 +45,12 @@ wndRadarInstanceEditor::wndRadarInstanceEditor(radarInstance* radar, QVector<rad
     _b_transmitting(false),
     _scheduler(nullptr)
 {
-    octavews* ws = nullptr;
+    octaveInterface* oct_int = nullptr;
     if (available_models.count()>0)
     {
         if (_project==nullptr)
             _project= available_models[0]->get_root();
-        ws = _project->get_workspace();
+        oct_int = _project->get_octave_interface();
     }
 
     ui->setupUi(this);
@@ -64,7 +64,7 @@ wndRadarInstanceEditor::wndRadarInstanceEditor(radarInstance* radar, QVector<rad
             ui->cbAvailableModules->addItem(module->get_name());
             if (available_models.count() > 0)
             {
-                _radar_instance->attach_to_workspace(ws);
+                _radar_instance->attach_to_interface(oct_int);
             }
         }
         _backup = nullptr;
@@ -1489,7 +1489,7 @@ void    wndRadarInstanceEditor::run()
 {
     if (_scheduler == nullptr)
     {
-        _scheduler = new opScheduler(_radar_instance->get_workspace()->data_interface());
+        _scheduler = new opScheduler(_radar_instance->get_octave_interface());
         _scheduler->set_policy_on_error(HALT_ALL);
         _scheduler->set_policy_on_timeout(HALT_ON_TIMEOUT);
         _scheduler->add_radar(_radar_instance);
@@ -1518,8 +1518,6 @@ void    wndRadarInstanceEditor::run()
             mdiOctaveInterfaceWnd->execution_restore_history_update();
 
         _scheduler->stop();
-//        delete _scheduler;
-//        _scheduler = nullptr;
     }
     else
     {
@@ -1548,10 +1546,10 @@ void    wndRadarInstanceEditor::variable_updated(const std::string& varname)
 {
     if (varname.empty()) return;
     if (_radar_instance==nullptr) return;
-    octavews *ws = _project == nullptr? nullptr : _project->get_workspace();
-    if (ws == nullptr) return;
+    octaveInterface *oct_int = _project == nullptr? nullptr : _project->get_octave_interface();
+    if (oct_int == nullptr) return;
 
-    octave_value val = ws->var_value(varname);
+    octave_value val = oct_int->variable_get_value(varname);
 
     for (auto& param: _radar_instance->get_param_table())
     {
@@ -1781,6 +1779,7 @@ void    wndRadarInstanceEditor::init_error(radarInstance* device)
     // restore
     ui->teSerialOutput->setFontWeight( fw );
     ui->teSerialOutput->setTextColor( QColor("grey") );
+    scheduler_halted();
 }
 //----------------------------------------------------
 void wndRadarInstanceEditor::postacquisition_error(radarInstance* device)
@@ -1794,6 +1793,7 @@ void wndRadarInstanceEditor::postacquisition_error(radarInstance* device)
     // restore
     ui->teSerialOutput->setFontWeight( fw );
     ui->teSerialOutput->setTextColor( QColor("grey") );
+    scheduler_halted();
 }
 //----------------------------------------------------
 void wndRadarInstanceEditor::preacquisition_error(radarInstance* device)
@@ -1807,6 +1807,7 @@ void wndRadarInstanceEditor::preacquisition_error(radarInstance* device)
     // restore
     ui->teSerialOutput->setFontWeight( fw );
     ui->teSerialOutput->setTextColor( QColor("grey") );
+    scheduler_halted();
 }
 //----------------------------------------------------
 void wndRadarInstanceEditor::scheduler_timing_error()
@@ -1820,6 +1821,7 @@ void wndRadarInstanceEditor::scheduler_timing_error()
     // restore
     ui->teSerialOutput->setFontWeight( fw );
     ui->teSerialOutput->setTextColor( QColor("grey") );
+
 }
 //----------------------------------------------------
 void wndRadarInstanceEditor::postacquisition_done_all()

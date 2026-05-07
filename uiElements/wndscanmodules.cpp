@@ -97,7 +97,7 @@ void wndScanModules::scanRadarModules()
             radarProject * owner = module->get_root();
 
             if (owner != nullptr)
-                instance->attach_to_workspace(owner->get_workspace());
+                instance->attach_to_interface(_radar_project->get_octave_interface());
 
             instance->set_fixed_port(true);
             instance->set_fixed_id(false);
@@ -115,8 +115,11 @@ void wndScanModules::scanRadarModules()
                 _connected_radars[n].append(instance);
             }
             else
-                delete instance;
+            {
 
+                delete instance;
+                continue;
+            }
             instance->disconnect();
         }
     }
@@ -195,7 +198,7 @@ void wndScanModules::importRadar()
         QMessageBox::critical(this, "Error", "Error while creating new radar");
         return;
     }
-    newRadar->attach_to_workspace(_radar_project->get_workspace());
+    newRadar->attach_to_interface(_radar_project->get_octave_interface());
     newRadar->set_name(tentative_name);
     newRadar->set_filename(tentative_name);
 

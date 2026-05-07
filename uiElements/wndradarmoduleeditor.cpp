@@ -2752,7 +2752,7 @@ void wndRadarModuleEditor::createDevice()
 
     //_source is the module we have to use for the new radarInstance since we need to link to a project item
     radarInstance* new_device = new radarInstance(_source);
-    new_device->attach_to_workspace(_project->get_workspace());
+    new_device->attach_to_interface(_project->get_octave_interface());
     if (new_device==nullptr)
     {
         QMessageBox::critical(this,"Error","Error while creating virtual device");

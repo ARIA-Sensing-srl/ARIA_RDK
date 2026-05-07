@@ -17,7 +17,7 @@
 #include "jkqtplotter/graphs/jkqtpvectorfield.h"
 #include "jkqtplotter/graphs/jkqtpimpulses.h"
 #include "../mainwindow.h"
-
+#include <float.h>
 #include <ariautils.h>
 
 double Lerp(double v0, double v1, double t)
@@ -73,10 +73,10 @@ NDArray Quantile(const octave_value& inData)
 }
 
 
-wndPlot2d::wndPlot2d(mdiOctaveInterface* parent, octavews* ws) :
+wndPlot2d::wndPlot2d(mdiOctaveInterface* parent, octaveInterface* oct_int) :
     QDialog(parent),
     ui(new Ui::wndPlot2d),
-    _workspace(ws),
+    _octave_interface(oct_int),
     _nplot_x(0), _nplot_y(0), _total_plot(0),
     _plots(),
     _plotters(),
@@ -92,10 +92,10 @@ wndPlot2d::wndPlot2d(mdiOctaveInterface* parent, octavews* ws) :
 }
 
 
-wndPlot2d::wndPlot2d(MainWindow* parent, octavews* ws) :
+wndPlot2d::wndPlot2d(MainWindow* parent, octaveInterface* oct_int) :
     QDialog(parent),
     ui(new Ui::wndPlot2d),
-    _workspace(ws),
+    _octave_interface(oct_int),
     _nplot_x(0), _nplot_y(0), _total_plot(0),
     _plots(),
     _plotters(),
@@ -117,7 +117,7 @@ wndPlot2d::~wndPlot2d()
     if (_owner_mainWnd!=nullptr)
         _owner_mainWnd->delete_children(this);
 
-    remove_workspace();
+    remove_octave_interface();
     delete ui;
     delete _layout;
     clear_plots();
@@ -141,19 +141,25 @@ JKQTPDatastore* wndPlot2d::get_ds()
 // In populate_xxxx the pre-created graphs (e.g. a plot curve, a scatter serie etc.)
 // are linked to the data into the datastore
 //---------------------------------------------------------------------
-void wndPlot2d::populate_plot( plot_descriptor pl)
+void wndPlot2d::populate_plot( plot_descriptor& pl)
 {
     if (pl._ptype!=PTJK_PLOT) return;
 
     JKQTPDatastore* ds=get_ds();
     if (ds==nullptr) return;
-    if (_workspace==nullptr) return;
+    if (_octave_interface==nullptr) return;
     JKQTPlotter* plotter = _plotters[pl._plot_id];
     if (plotter==nullptr)
         return;
 
+    double ymin = DBL_MAX, xmin = DBL_MAX;
+    double ymax = -DBL_MAX, xmax = -DBL_MAX;
+    double smg0;
+
+
     for (size_t g=0; g < pl._graph.size(); g++)
     {
+
        // Data is already in the datastore, we just need to add the proper X-Y data to the graph
         JKQTPXYLineGraph* line_graph = (JKQTPXYLineGraph*) pl._graph[g];
         if (line_graph==nullptr)
@@ -192,20 +198,115 @@ void wndPlot2d::populate_plot( plot_descriptor pl)
 				}
             }
         }
+        double xgmin, xgmax, ygmin, ygmax;
+        line_graph->getXMinMax(xgmin, xgmax, smg0);
+        line_graph->getYMinMax(ygmin, ygmax, smg0);
+        if (xgmin < xmin)   xmin = xgmin;
+        if (xgmax > xmax)  xmax = xgmax;
+        if (ygmin < ymin)   ymin = ygmin;
+        if (ygmax > ymax)  ymax = ygmax;
+
+        //if (ui->cbZoom->currentIndex()
+
+    }
+
+    if (!pl._limit_set)
+    {
+        pl._limit_set = true;
+        pl._xmin = xmin;
+        pl._xmax = xmax;
+        pl._ymin = ymin;
+        pl._ymax = ymax;
+        double drx = 0.05*(pl._xmax - pl._xmin);
+        double dry = 0.05*(pl._ymax - pl._ymin);
+
+        plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+
+
+    }
+    else
+    {
+        double drx,dry;
+        // Update the limits according to the current policy
+        switch (ui->cbZoom->currentIndex())
+        {
+        case 0:
+            // Do nothing
+            break;
+        case 1:
+            // Full
+            pl._xmin = xmin;
+            pl._xmax = xmax;
+            pl._ymin = ymin;
+            pl._ymax = ymax;
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        case 2:
+
+            // Decaying maxhold
+            if (xmin < pl._xmin)
+                pl._xmin = xmin;
+            else
+                pl._xmin = 0.99*pl._xmin + 0.01*xmin;
+
+            if (xmax > pl._xmax)
+                pl._xmax = xmax;
+            else
+                pl._xmax = 0.99*pl._xmax + 0.01*xmax;
+
+            if (ymin < pl._ymin)
+                pl._ymin = ymin;
+            else
+                pl._ymin = 0.99*pl._ymin + 0.01*ymin;
+
+            if (ymax > pl._ymax)
+                pl._ymax = ymax;
+            else
+                pl._ymax = 0.99*pl._ymax + 0.01*ymax;
+
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        case 3:
+            // Min Max no decay
+            // Decaying maxhold
+            if (xmin < pl._xmin)
+                pl._xmin = xmin;
+
+            if (xmax > pl._xmax)
+                pl._xmax = xmax;
+
+            if (ymin < pl._ymin)
+                pl._ymin = ymin;
+
+            if (ymax > pl._ymax)
+                pl._ymax = ymax;
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        }
 
     }
     redraw(pl);
+
 }
 //---------------------------------------------------------------------
 // Populate box plot
 //---------------------------------------------------------------------
-void        wndPlot2d::populate_boxplot( plot_descriptor pl)
+void        wndPlot2d::populate_boxplot( plot_descriptor& pl)
 {
     if (pl._ptype!=PTJK_BOXPLOT) return;
 
     JKQTPDatastore* ds=get_ds();
     if (ds==nullptr) return;
-    if (_workspace==nullptr) return;
+    if (_octave_interface==nullptr) return;
     JKQTPlotter* plotter = _plotters[pl._plot_id];
     if (plotter==nullptr)
         return;
@@ -277,7 +378,106 @@ void        wndPlot2d::populate_boxplot( plot_descriptor pl)
     if (outlier_graph->getYColumn()==-1)
         outlier_graph->setYColumn(ds->getColumnNum(outlier_name));
 
-    plotter->zoomToFit();
+    double yb_min, yb_max, xb_min, xb_max, smg0;
+
+    boxplot_graph->getXMinMax(xb_min, xb_max ,smg0);
+    boxplot_graph->getYMinMax(yb_min, yb_max, smg0);
+
+    double yo_min, yo_max, xo_min, xo_max;
+
+    boxplot_graph->getXMinMax(xo_min, xo_max ,smg0);
+    boxplot_graph->getYMinMax(yo_min, yo_max, smg0);
+
+    double xmin = xb_min < xo_min ? xb_min : xo_min;
+    double ymin = yb_min < yo_min ? yb_min : yo_min;
+    double xmax = xb_max > xo_max ? xb_max : xo_max;
+    double ymax = yb_max > yo_max ? yb_max : yo_max;
+
+
+    if (!pl._limit_set)
+    {
+        pl._limit_set = true;
+        pl._xmin = xmin;
+        pl._xmax = xmax;
+        pl._ymin = ymin;
+        pl._ymax = ymax;
+        double drx = 0.05*(pl._xmax - pl._xmin);
+        double dry = 0.05*(pl._ymax - pl._ymin);
+
+        plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+
+    }
+    else
+    {
+        double drx,dry;
+        // Update the limits according to the current policy
+        switch (ui->cbZoom->currentIndex())
+        {
+        case 0:
+            // Do nothing
+            break;
+        case 1:
+            // Full
+            pl._xmin = xmin;
+            pl._xmax = xmax;
+            pl._ymin = ymin;
+            pl._ymax = ymax;
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        case 2:
+
+            // Decaying maxhold
+            if (xmin < pl._xmin)
+                pl._xmin = xmin;
+            else
+                pl._xmin = 0.99*pl._xmin + 0.01*xmin;
+
+            if (xmax > pl._xmax)
+                pl._xmax = xmax;
+            else
+                pl._xmax = 0.99*pl._xmax + 0.01*xmax;
+
+            if (ymin < pl._ymin)
+                pl._ymin = ymin;
+            else
+                pl._ymin = 0.99*pl._ymin + 0.01*ymin;
+
+            if (ymax > pl._ymax)
+                pl._ymax = ymax;
+            else
+                pl._ymax = 0.99*pl._ymax + 0.01*ymax;
+
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        case 3:
+            // Min Max no decay
+            // Decaying maxhold
+            if (xmin < pl._xmin)
+                pl._xmin = xmin;
+
+            if (xmax > pl._xmax)
+                pl._xmax = xmax;
+
+            if (ymin < pl._ymin)
+                pl._ymin = ymin;
+
+            if (ymax > pl._ymax)
+                pl._ymax = ymax;
+
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        }
+
+    }
 
     redraw(pl);
 
@@ -297,21 +497,28 @@ void        wndPlot2d::redraw(plot_descriptor& pl)
     else
 		plotter->redrawPlot();
 
+
+
 }
 
 //---------------------------------------------------------------------
 // Populate area plot
 //---------------------------------------------------------------------
 
-void        wndPlot2d::populate_area( plot_descriptor pl)
+void        wndPlot2d::populate_area( plot_descriptor& pl)
 {
     if (pl._ptype!=PTJK_AREA) return;
     JKQTPDatastore* ds=get_ds();
     if (ds==nullptr) return;
-    if (_workspace==nullptr) return;
+    if (_octave_interface==nullptr) return;
     JKQTPlotter* plotter = _plotters[pl._plot_id];
     if (plotter==nullptr)
         return;
+
+    double ymin = DBL_MAX, xmin = DBL_MAX;
+    double ymax = -DBL_MAX, xmax = -DBL_MAX;
+
+    double smg0;
 
     for (size_t g=0; g < pl._graph.size(); g++)
     {
@@ -361,23 +568,118 @@ void        wndPlot2d::populate_area( plot_descriptor pl)
                     filled_plot_graph->setYColumn(ds->getColumnNum(name));
             }
         }
-    }
 
+        double xgmin, xgmax, ygmin, ygmax;
+        filled_plot_graph->getXMinMax(xgmin, xgmax, smg0);
+        filled_plot_graph->getYMinMax(ygmin, ygmax, smg0);
+        if (xgmin < xmin)   xmin = xgmin;
+        if (xgmax > xmax)  xmax = xgmax;
+        if (ygmin < ymin)   ymin = ygmin;
+        if (ygmax > ymax)  ymax = ygmax;
+    }
+    if (!pl._limit_set)
+    {
+        pl._limit_set = true;
+        pl._xmin = xmin;
+        pl._xmax = xmax;
+        pl._ymin = ymin;
+        pl._ymax = ymax;
+        double drx = 0.05*(pl._xmax - pl._xmin);
+        double dry = 0.05*(pl._ymax - pl._ymin);
+
+        plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+
+    }
+    else
+    {
+        double drx,dry;
+        // Update the limits according to the current policy
+        switch (ui->cbZoom->currentIndex())
+        {
+        case 0:
+            // Do nothing
+            break;
+        case 1:
+            // Full
+            pl._xmin = xmin;
+            pl._xmax = xmax;
+            pl._ymin = ymin;
+            pl._ymax = ymax;
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        case 2:
+
+            // Decaying maxhold
+            if (xmin < pl._xmin)
+                pl._xmin = xmin;
+            else
+                pl._xmin = 0.99*pl._xmin + 0.01*xmin;
+
+            if (xmax > pl._xmax)
+                pl._xmax = xmax;
+            else
+                pl._xmax = 0.99*pl._xmax + 0.01*xmax;
+
+            if (ymin < pl._ymin)
+                pl._ymin = ymin;
+            else
+                pl._ymin = 0.99*pl._ymin + 0.01*ymin;
+
+            if (ymax > pl._ymax)
+                pl._ymax = ymax;
+            else
+                pl._ymax = 0.99*pl._ymax + 0.01*ymax;
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        case 3:
+            // Min Max no decay
+            // Decaying maxhold
+            if (xmin < pl._xmin)
+                pl._xmin = xmin;
+
+            if (xmax > pl._xmax)
+                pl._xmax = xmax;
+
+            if (ymin < pl._ymin)
+                pl._ymin = ymin;
+
+            if (ymax > pl._ymax)
+                pl._ymax = ymax;
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        }
+
+    }
     redraw(pl);
 }
 //---------------------------------------------------------------------
 // Populate vertical bars plot
 //---------------------------------------------------------------------
-void        wndPlot2d::populate_barv( plot_descriptor pl)
+void        wndPlot2d::populate_barv( plot_descriptor& pl)
 {
     if (pl._ptype!=PTJK_BARV) return;
 
     JKQTPDatastore* ds=get_ds();
     if (ds==nullptr) return;
-    if (_workspace==nullptr) return;
+    if (_octave_interface==nullptr) return;
     JKQTPlotter* plotter = _plotters[pl._plot_id];
     if (plotter==nullptr)
         return;
+
+    double ymin = DBL_MAX, xmin = DBL_MAX;
+    double ymax = -DBL_MAX, xmax = -DBL_MAX;
+
+    double smg0;
+
 
     for (size_t g=0; g < pl._graph.size(); g++)
     {
@@ -421,8 +723,99 @@ void        wndPlot2d::populate_barv( plot_descriptor pl)
                     barv_graph->setYColumn(ds->getColumnNum(name));
             }
         }
-    }
+        double xgmin, xgmax, ygmin, ygmax;
+        barv_graph->getXMinMax(xgmin, xgmax, smg0);
+        barv_graph->getYMinMax(ygmin, ygmax, smg0);
+        if (xgmin < xmin)   xmin = xgmin;
+        if (xgmax > xmax)  xmax = xgmax;
+        if (ygmin < ymin)   ymin = ygmin;
+        if (ygmax > ymax)  ymax = ygmax;
 
+    }
+    if (!pl._limit_set)
+    {
+        pl._limit_set = true;
+        pl._xmin = xmin;
+        pl._xmax = xmax;
+        pl._ymin = ymin;
+        pl._ymax = ymax;
+        double drx = 0.05*(pl._xmax - pl._xmin);
+        double dry = 0.05*(pl._ymax - pl._ymin);
+
+        plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+
+    }
+    else
+    {
+        double drx,dry;
+        // Update the limits according to the current policy
+        switch (ui->cbZoom->currentIndex())
+        {
+        case 0:
+            // Do nothing
+            break;
+        case 1:
+            // Full
+            pl._xmin = xmin;
+            pl._xmax = xmax;
+            pl._ymin = ymin;
+            pl._ymax = ymax;
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        case 2:
+
+            // Decaying maxhold
+            if (xmin < pl._xmin)
+                pl._xmin = xmin;
+            else
+                pl._xmin = 0.99*pl._xmin + 0.01*xmin;
+
+            if (xmax > pl._xmax)
+                pl._xmax = xmax;
+            else
+                pl._xmax = 0.99*pl._xmax + 0.01*xmax;
+
+            if (ymin < pl._ymin)
+                pl._ymin = ymin;
+            else
+                pl._ymin = 0.99*pl._ymin + 0.01*ymin;
+
+            if (ymax > pl._ymax)
+                pl._ymax = ymax;
+            else
+                pl._ymax = 0.99*pl._ymax + 0.01*ymax;
+
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        case 3:
+            // Min Max no decay
+            // Decaying maxhold
+            if (xmin < pl._xmin)
+                pl._xmin = xmin;
+
+            if (xmax > pl._xmax)
+                pl._xmax = xmax;
+
+            if (ymin < pl._ymin)
+                pl._ymin = ymin;
+
+            if (ymax > pl._ymax)
+                pl._ymax = ymax;
+
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        }
+
+    }
     redraw(pl);
 
 
@@ -430,16 +823,22 @@ void        wndPlot2d::populate_barv( plot_descriptor pl)
 //---------------------------------------------------------------------
 // Populate scatter plot
 //---------------------------------------------------------------------
-void        wndPlot2d::populate_scatter( plot_descriptor pl)
+void        wndPlot2d::populate_scatter( plot_descriptor& pl)
 {
     if (pl._ptype!=PTJK_SCATTER) return;
 
     JKQTPDatastore* ds=get_ds();
     if (ds==nullptr) return;
-    if (_workspace==nullptr) return;
+    if (_octave_interface==nullptr) return;
     JKQTPlotter* plotter = _plotters[pl._plot_id];
     if (plotter==nullptr)
         return;
+
+    double ymin = DBL_MAX, xmin = DBL_MAX;
+    double ymax = -DBL_MAX, xmax = -DBL_MAX;
+
+    double smg0;
+
 
     for (size_t g=0; g < pl._graph.size(); g++)
     {
@@ -483,22 +882,113 @@ void        wndPlot2d::populate_scatter( plot_descriptor pl)
                     scatter_graph->setYColumn(ds->getColumnNum(name));
             }
         }
-    }
 
+        double xgmin, xgmax, ygmin, ygmax;
+        scatter_graph->getXMinMax(xgmin, xgmax, smg0);
+        scatter_graph->getYMinMax(ygmin, ygmax, smg0);
+        if (xgmin < xmin)   xmin = xgmin;
+        if (xgmax > xmax)  xmax = xgmax;
+        if (ygmin < ymin)   ymin = ygmin;
+        if (ygmax > ymax)  ymax = ygmax;
+    }
+    if (!pl._limit_set)
+    {
+        pl._limit_set = true;
+        pl._xmin = xmin;
+        pl._xmax = xmax;
+        pl._ymin = ymin;
+        pl._ymax = ymax;
+
+        double drx = 0.05*(pl._xmax - pl._xmin);
+        double dry = 0.05*(pl._ymax - pl._ymin);
+
+        plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+
+    }
+    else
+    {
+        double drx,dry;
+        // Update the limits according to the current policy
+        switch (ui->cbZoom->currentIndex())
+        {
+        case 0:
+            // Do nothing
+            break;
+        case 1:
+            // Full
+            pl._xmin = xmin;
+            pl._xmax = xmax;
+            pl._ymin = ymin;
+            pl._ymax = ymax;
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        case 2:
+
+            // Decaying maxhold
+            if (xmin < pl._xmin)
+                pl._xmin = xmin;
+            else
+                pl._xmin = 0.99*pl._xmin + 0.01*xmin;
+
+            if (xmax > pl._xmax)
+                pl._xmax = xmax;
+            else
+                pl._xmax = 0.99*pl._xmax + 0.01*xmax;
+
+            if (ymin < pl._ymin)
+                pl._ymin = ymin;
+            else
+                pl._ymin = 0.99*pl._ymin + 0.01*ymin;
+
+            if (ymax > pl._ymax)
+                pl._ymax = ymax;
+            else
+                pl._ymax = 0.99*pl._ymax + 0.01*ymax;
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        case 3:
+            // Min Max no decay
+            // Decaying maxhold
+            if (xmin < pl._xmin)
+                pl._xmin = xmin;
+
+            if (xmax > pl._xmax)
+                pl._xmax = xmax;
+
+            if (ymin < pl._ymin)
+                pl._ymin = ymin;
+
+            if (ymax > pl._ymax)
+                pl._ymax = ymax;
+
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        }
+
+    }
     redraw(pl);
 }
 //---------------------------------------------------------------------
 // Populate density (heatmap) plot
 //---------------------------------------------------------------------
 
-void        wndPlot2d::populate_dens( plot_descriptor pl)
+void        wndPlot2d::populate_dens( plot_descriptor& pl)
 {
     if (pl._ptype!=PTJK_DENS) return;
 
      JKQTPDatastore* ds=get_ds();
 
     if (ds==nullptr) return;
-    if (_workspace==nullptr) return;
+    if (_octave_interface==nullptr) return;
     JKQTPlotter* plotter = _plotters[pl._plot_id];
     if (plotter==nullptr)
         return;
@@ -524,9 +1014,105 @@ void        wndPlot2d::populate_dens( plot_descriptor pl)
     double ymin = ds->get(var_y,0);
     double ymax = ds->get(var_y,1);
 
-
-	if (density_graph->getImageColumn()==-1)
+    int imageColumn = density_graph->getImageColumn();
+    if (imageColumn==-1)
         density_graph->setImageColumn(ds->getColumnNum(QString::fromStdString(pl._dep)));
+    double zmin, zmax;
+
+    density_graph->getDataMinMax(zmin,zmax);
+
+    if (!pl._limit_set)
+    {
+        pl._limit_set = true;
+        pl._xmin = xmin;
+        pl._xmax = xmax;
+        pl._ymin = ymin;
+        pl._ymax = ymax;
+        pl._zmin = zmin;
+        pl._zmax = zmax;
+        double drx = 0.05*(pl._xmax - pl._xmin);
+        double dry = 0.05*(pl._ymax - pl._ymin);
+        double drz = 0.05*(pl._zmax - pl._zmin);
+        plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+        density_graph->setImageMax(pl._zmax+drz);
+        density_graph->setImageMin(pl._zmin-drz);
+    }
+    else
+    {
+        double drx,dry,drz;
+        // Update the limits according to the current policy
+        switch (ui->cbZoom->currentIndex())
+        {
+        case 0:
+            // Do nothing
+            break;
+        case 1:
+            // Full
+            pl._xmin = xmin;
+            pl._xmax = xmax;
+            pl._ymin = ymin;
+            pl._ymax = ymax;
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+            drz = 0.05*(pl._zmax - pl._zmin);
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            density_graph->setImageMax(pl._zmax+drz);
+            density_graph->setImageMin(pl._zmin-drz);
+            break;
+        case 2:
+
+            // Decaying maxhold
+            if (xmin < pl._xmin)
+                pl._xmin = xmin;
+            else
+                pl._xmin = 0.99*pl._xmin + 0.01*xmin;
+
+            if (xmax > pl._xmax)
+                pl._xmax = xmax;
+            else
+                pl._xmax = 0.99*pl._xmax + 0.01*xmax;
+
+            if (ymin < pl._ymin)
+                pl._ymin = ymin;
+            else
+                pl._ymin = 0.99*pl._ymin + 0.01*ymin;
+
+            if (ymax > pl._ymax)
+                pl._ymax = ymax;
+            else
+                pl._ymax = 0.99*pl._ymax + 0.01*ymax;
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+            drz = 0.05*(pl._zmax - pl._zmin);
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            density_graph->setImageMax(pl._zmax+drz);
+            density_graph->setImageMin(pl._zmin-drz);
+            break;
+        case 3:
+            // Min Max no decay
+            // Decaying maxhold
+            if (xmin < pl._xmin)
+                pl._xmin = xmin;
+
+            if (xmax > pl._xmax)
+                pl._xmax = xmax;
+
+            if (ymin < pl._ymin)
+                pl._ymin = ymin;
+
+            if (ymax > pl._ymax)
+                pl._ymax = ymax;
+
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+            drz = 0.05*(pl._zmax - pl._zmin);
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            density_graph->setImageMax(pl._zmax+drz);
+            density_graph->setImageMin(pl._zmin-drz);
+            break;
+        }
+
+    }
 
 	redraw(pl);
 	return;
@@ -542,7 +1128,7 @@ void        wndPlot2d::populate_dens( plot_descriptor pl)
     plotter->getPlotter()->setMaintainAxisAspectRatio(true);
     density_graph->setTitle(QString::fromStdString(pl._dep));
     density_graph->getColorBarRightAxis()->setAxisLabel(QString::fromStdString(pl._dep)+ " intensity");
-	//plotter->addGraph(density_graph);
+
 
 
 
@@ -552,26 +1138,30 @@ void        wndPlot2d::populate_dens( plot_descriptor pl)
 // Populate contour (heatmap) plot
 //---------------------------------------------------------------------
 
-void        wndPlot2d::populate_contour( plot_descriptor pl)
+void        wndPlot2d::populate_contour( plot_descriptor& pl)
 {
     if (pl._ptype!=PTJK_VECT2D) return;
 }
 //---------------------------------------------------------------------
 // Populate 2D Vector plot
 //---------------------------------------------------------------------
-void        wndPlot2d::populate_vect2d( plot_descriptor pl)
+void        wndPlot2d::populate_vect2d( plot_descriptor& pl)
 {
     if (pl._ptype!=PTJK_VECT2D) return;
 
     JKQTPDatastore* ds=get_ds();
     if (ds==nullptr) return;
-    if (_workspace==nullptr) return;
+    if (_octave_interface==nullptr) return;
     JKQTPlotter* plotter = _plotters[pl._plot_id];
     if (plotter==nullptr)
         return;
 
     if (pl._graph.size()!=1)
         return;
+    double ymin = DBL_MAX, xmin = DBL_MAX;
+    double ymax = -DBL_MAX, xmax = -DBL_MAX;
+
+    double smg0;
 
 
     JKQTPVectorFieldGraph* vect_graph = (JKQTPVectorFieldGraph*)pl._graph[0];
@@ -598,18 +1188,92 @@ void        wndPlot2d::populate_vect2d( plot_descriptor pl)
 		vect_graph->setTitle(get_vector_full_name(pl._dep,pl._depy));
 	}
 
+    vect_graph->getXMinMax(xmin,xmax,smg0);
+    vect_graph->getYMinMax(ymin,ymax,smg0);
 
-/*
-    if ((!pl._indep_x.empty())&&(!pl._indep_y.empty()))
+    if (!pl._limit_set)
     {
-        QString xaxis_label = QString::fromStdString(pl._indep_x);
-        QString yaxis_label = QString::fromStdString(pl._indep_y);
+        pl._limit_set = true;
+        pl._xmin = xmin;
+        pl._xmax = xmax;
+        pl._ymin = ymin;
+        pl._ymax = ymax;
+        double drx = 0.05*(pl._xmax - pl._xmin);
+        double dry = 0.05*(pl._ymax - pl._ymin);
 
-        plotter->getXAxis()->setAxisLabel(xaxis_label);
-        plotter->getYAxis()->setAxisLabel(yaxis_label);
+        plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+
     }
-*/
-	//plotter->addGraph(vect_graph);
+    else
+    {
+        double drx,dry;
+        // Update the limits according to the current policy
+        switch (ui->cbZoom->currentIndex())
+        {
+        case 0:
+            // Do nothing
+            break;
+        case 1:
+            // Full
+            pl._xmin = xmin;
+            pl._xmax = xmax;
+            pl._ymin = ymin;
+            pl._ymax = ymax;
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        case 2:
+
+            // Decaying maxhold
+            if (xmin < pl._xmin)
+                pl._xmin = xmin;
+            else
+                pl._xmin = 0.99*pl._xmin + 0.01*xmin;
+
+            if (xmax > pl._xmax)
+                pl._xmax = xmax;
+            else
+                pl._xmax = 0.99*pl._xmax + 0.01*xmax;
+
+            if (ymin < pl._ymin)
+                pl._ymin = ymin;
+            else
+                pl._ymin = 0.99*pl._ymin + 0.01*ymin;
+
+            if (ymax > pl._ymax)
+                pl._ymax = ymax;
+            else
+                pl._ymax = 0.99*pl._ymax + 0.01*ymax;
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        case 3:
+            // Min Max no decay
+            // Decaying maxhold
+            if (xmin < pl._xmin)
+                pl._xmin = xmin;
+
+            if (xmax > pl._xmax)
+                pl._xmax = xmax;
+
+            if (ymin < pl._ymin)
+                pl._ymin = ymin;
+
+            if (ymax > pl._ymax)
+                pl._ymax = ymax;
+
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        }
+
+    }
 
     redraw(pl);
 }
@@ -617,16 +1281,20 @@ void        wndPlot2d::populate_vect2d( plot_descriptor pl)
 //---------------------------------------------------------------------
 // Populate vert. arrow (spectrum like)
 //---------------------------------------------------------------------
-void        wndPlot2d::populate_vertarrows( plot_descriptor pl)
+void        wndPlot2d::populate_vertarrows( plot_descriptor& pl)
 {
     if (pl._ptype!=PTJK_VERTARROWS) return;
 
     JKQTPDatastore* ds=get_ds();
     if (ds==nullptr) return;
-    if (_workspace==nullptr) return;
+    if (_octave_interface==nullptr) return;
     JKQTPlotter* plotter = _plotters[pl._plot_id];
     if (plotter==nullptr)
         return;
+    double ymin = DBL_MAX, xmin = DBL_MAX;
+    double ymax = -DBL_MAX, xmax = -DBL_MAX;
+
+    double smg0;
 
     for (size_t g=0; g < pl._graph.size(); g++)
     {
@@ -670,8 +1338,98 @@ void        wndPlot2d::populate_vertarrows( plot_descriptor pl)
                     arrow_graph->setYColumn(ds->getColumnNum(name));
             }
         }
-    }
 
+        double xgmin, xgmax, ygmin, ygmax;
+        arrow_graph->getXMinMax(xgmin, xgmax, smg0);
+        arrow_graph->getYMinMax(ygmin, ygmax, smg0);
+        if (xgmin < xmin)   xmin = xgmin;
+        if (xgmax > xmax)  xmax = xgmax;
+        if (ygmin < ymin)   ymin = ygmin;
+        if (ygmax > ymax)  ymax = ygmax;
+    }
+    if (!pl._limit_set)
+    {
+        pl._limit_set = true;
+        pl._xmin = xmin;
+        pl._xmax = xmax;
+        pl._ymin = ymin;
+        pl._ymax = ymax;
+        double drx = 0.05*(pl._xmax - pl._xmin);
+        double dry = 0.05*(pl._ymax - pl._ymin);
+
+        plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+
+    }
+    else
+    {
+        double drx,dry;
+        // Update the limits according to the current policy
+        switch (ui->cbZoom->currentIndex())
+        {
+        case 0:
+            // Do nothing
+            break;
+        case 1:
+            // Full
+            pl._xmin = xmin;
+            pl._xmax = xmax;
+            pl._ymin = ymin;
+            pl._ymax = ymax;
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        case 2:
+
+            // Decaying maxhold
+            if (xmin < pl._xmin)
+                pl._xmin = xmin;
+            else
+                pl._xmin = 0.99*pl._xmin + 0.01*xmin;
+
+            if (xmax > pl._xmax)
+                pl._xmax = xmax;
+            else
+                pl._xmax = 0.99*pl._xmax + 0.01*xmax;
+
+            if (ymin < pl._ymin)
+                pl._ymin = ymin;
+            else
+                pl._ymin = 0.99*pl._ymin + 0.01*ymin;
+
+            if (ymax > pl._ymax)
+                pl._ymax = ymax;
+            else
+                pl._ymax = 0.99*pl._ymax + 0.01*ymax;
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        case 3:
+            // Min Max no decay
+            // Decaying maxhold
+            if (xmin < pl._xmin)
+                pl._xmin = xmin;
+
+            if (xmax > pl._xmax)
+                pl._xmax = xmax;
+
+            if (ymin < pl._ymin)
+                pl._ymin = ymin;
+
+            if (ymax > pl._ymax)
+                pl._ymax = ymax;
+
+            drx = 0.05*(pl._xmax - pl._xmin);
+            dry = 0.05*(pl._ymax - pl._ymin);
+
+            plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
+            break;
+        }
+
+    }
     redraw(pl);
 }
 
@@ -687,7 +1445,7 @@ void wndPlot2d::update_grahs_per_dep_boxplot(plot_descriptor& pl, JKQTPlotter* p
     if (plotter==nullptr) return;
     // Check size
     // Get the number of graphs (_dep might be 2D)
-    const octave_value& val = _workspace->var_value(pl._dep);
+    const octave_value& val = _octave_interface->variable_get_value(pl._dep);
     if (val.ndims()!=2)
         return;
 
@@ -802,7 +1560,7 @@ void wndPlot2d::update_graphs_per_dep(plot_descriptor& pl, JKQTPlotter* plotter)
     if (plotter==nullptr) return;
     // Check size
     // Get the number of graphs (_dep might be 2D)
-    const octave_value& val = _workspace->var_value(pl._dep);
+    const octave_value& val = _octave_interface->variable_get_value(pl._dep);
 
     if ((val.ndims()<1)||(val.ndims()>2)) return;
 
@@ -859,9 +1617,9 @@ void wndPlot2d::update_graphs_per_dep(plot_descriptor& pl, JKQTPlotter* plotter)
 //---------------------------------------------------------------------
 int wndPlot2d::get_var_count(std::string vname)
 {
-    if (_workspace==nullptr) return 0;
+    if (_octave_interface==nullptr) return 0;
 
-    const octave_value& val = _workspace->var_value(vname);
+    const octave_value& val = _octave_interface->variable_get_value(vname);
     if ((val.ndims()<1)||(val.ndims()>2)) return 0;
     int nd0 = val.dims()(0);
     int nd1 = val.dims()(1);
@@ -874,9 +1632,9 @@ int wndPlot2d::get_var_count(std::string vname)
 //---------------------------------------------------------------------
 int wndPlot2d::get_var_length(std::string vname)
 {
-    if (_workspace==nullptr) return 0;
+    if (_octave_interface==nullptr) return 0;
 
-    const octave_value& val = _workspace->var_value(vname);
+    const octave_value& val = _octave_interface->variable_get_value(vname);
     if ((val.ndims()<1)||(val.ndims()>2)) return 0;
     int nd0 = val.dims()(0);
     int nd1 = val.dims()(1);
@@ -889,7 +1647,7 @@ int wndPlot2d::get_var_length(std::string vname)
 //---------------------------------------------------------------------
 QString wndPlot2d::get_var_name(std::string vname, int order)
 {
-    if (_workspace==nullptr) return "";
+    if (_octave_interface==nullptr) return "";
     int var_size = get_var_count(vname);
     if ((var_size==1)||(order<0))
         return QString::fromStdString(vname);
@@ -944,7 +1702,7 @@ void wndPlot2d::clear_plots()
 //---------------------------------------------------------------------
 void wndPlot2d::create_plots()
 {
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
 
     //clear_plots();
 
@@ -1107,7 +1865,7 @@ int wndPlot2d::add_plot(const QString& var, const QString& x, int plot_id)
     if (plot_id >= _total_plot)
         plot_id = -1;
 
-    if (_workspace==nullptr) return -1;
+    if (_octave_interface==nullptr) return -1;
     if (var.isEmpty()) return -1;
 
     if (plot_id == -1)
@@ -1129,6 +1887,7 @@ int wndPlot2d::add_plot(const QString& var, const QString& x, int plot_id)
     pl._plot_id = plot_id;
     pl._graph = std::vector<void*>();
     pl._init_zoom = false;
+    pl._limit_set = false;
 
     _plots.emplace_back(pl);
     // Create plots. The datastore is the
@@ -1164,7 +1923,7 @@ int wndPlot2d::add_scatterplot(const QString& var, const QString& x, int plot_id
     if (plot_id >= _total_plot)
         plot_id = -1;
 
-    if (_workspace==nullptr) return -1;
+    if (_octave_interface==nullptr) return -1;
     if (var.isEmpty()) return -1;
 
     if (plot_id == -1)
@@ -1185,7 +1944,8 @@ int wndPlot2d::add_scatterplot(const QString& var, const QString& x, int plot_id
     pl._options = "";
     pl._plot_id = plot_id;
     pl._graph = std::vector<void*>();
-
+    pl._limit_set = false;
+    pl._init_zoom = false;
     _plots.emplace_back(pl);
     // Create plots. The datastore is the
     create_plots();
@@ -1218,7 +1978,7 @@ int wndPlot2d::add_boxplot(const QString& var, const QString& x, int plot_id)
     if (plot_id >= _total_plot)
         plot_id = -1;
 
-    if (_workspace==nullptr) return -1;
+    if (_octave_interface==nullptr) return -1;
     if (var.isEmpty()) return -1;
 
     if (plot_id == -1)
@@ -1238,6 +1998,8 @@ int wndPlot2d::add_boxplot(const QString& var, const QString& x, int plot_id)
     pl._options = "";
     pl._plot_id = plot_id;
     pl._graph = std::vector<void*>();
+    pl._limit_set = false;
+    pl._init_zoom = false;
 
     _plots.emplace_back(pl);
     // Create plots. The datastore is the
@@ -1273,7 +2035,7 @@ int wndPlot2d::add_vector_plot(const QString& var_x, const QString& var_y, const
     if (plot_id >= _total_plot)
         plot_id = -1;
 
-    if (_workspace==nullptr) return -1;
+    if (_octave_interface==nullptr) return -1;
     if (var_x.isEmpty()) return -1;
     if (var_y.isEmpty()) return -1;
     if (plot_id == -1)
@@ -1295,6 +2057,8 @@ int wndPlot2d::add_vector_plot(const QString& var_x, const QString& var_y, const
     pl._options = "";
     pl._plot_id = plot_id;
     pl._graph = std::vector<void*>();
+    pl._limit_set = false;
+    pl._init_zoom = false;
 
     _plots.emplace_back(pl);
 
@@ -1325,7 +2089,7 @@ int wndPlot2d::add_density_plot(const QString& var_x, const QString& x,const QSt
     if (plot_id >= _total_plot)
         plot_id = -1;
 
-    if (_workspace==nullptr) return -1;
+    if (_octave_interface==nullptr) return -1;
     if (var_x.isEmpty()) return -1;
     if (plot_id == -1)
     {
@@ -1346,6 +2110,8 @@ int wndPlot2d::add_density_plot(const QString& var_x, const QString& x,const QSt
     pl._options = "";
     pl._plot_id = plot_id;
     pl._graph = std::vector<void*>();
+    pl._limit_set = false;
+    pl._init_zoom = false;
 
     _plots.emplace_back(pl);
 
@@ -1374,7 +2140,7 @@ int wndPlot2d::add_barplot(const QString& var, const QString& x, int plot_id)
     if (plot_id >= _total_plot)
         plot_id = -1;
 
-    if (_workspace==nullptr) return -1;
+    if (_octave_interface==nullptr) return -1;
     if (var.isEmpty()) return -1;
 
     if (plot_id == -1)
@@ -1395,6 +2161,8 @@ int wndPlot2d::add_barplot(const QString& var, const QString& x, int plot_id)
     pl._options = "";
     pl._plot_id = plot_id;
     pl._graph = std::vector<void*>();
+    pl._limit_set = false;
+    pl._init_zoom = false;
 
     _plots.emplace_back(pl);
     // Create plots. The datastore is the
@@ -1466,7 +2234,7 @@ int wndPlot2d::add_areaplot(const QString& var, const QString& x, int plot_id)
     if (plot_id >= _total_plot)
         plot_id = -1;
 
-    if (_workspace==nullptr) return -1;
+    if (_octave_interface==nullptr) return -1;
     if (var.isEmpty()) return -1;
 
     if (plot_id == -1)
@@ -1487,6 +2255,8 @@ int wndPlot2d::add_areaplot(const QString& var, const QString& x, int plot_id)
     pl._options = "";
     pl._plot_id = plot_id;
     pl._graph = std::vector<void*>();
+    pl._limit_set = false;
+    pl._init_zoom = false;
 
     _plots.emplace_back(pl);
     // Create plots. The datastore is the
@@ -1519,7 +2289,7 @@ int wndPlot2d::add_arrowplot(const QString& var, const QString& x, int plot_id)
     if (plot_id >= _total_plot)
         plot_id = -1;
 
-    if (_workspace==nullptr) return -1;
+    if (_octave_interface==nullptr) return -1;
     if (var.isEmpty()) return -1;
 
     if (plot_id == -1)
@@ -1539,6 +2309,8 @@ int wndPlot2d::add_arrowplot(const QString& var, const QString& x, int plot_id)
     pl._options = "";
     pl._plot_id = plot_id;
     pl._graph = std::vector<void*>();
+    pl._limit_set = false;
+    pl._init_zoom = false;
 
     _plots.emplace_back(pl);
     // Create plots. The datastore is the
@@ -1565,195 +2337,153 @@ int wndPlot2d::add_arrowplot(const QString& var, const QString& x, int plot_id)
 //---------------------------------------------------------------------
 // Return current workspace
 //---------------------------------------------------------------------
-octavews*   wndPlot2d::get_workspace()
+octaveInterface*   wndPlot2d::get_octave_interface()
 {
-    return _workspace;
+    return _octave_interface;
 }
 
 //---------------------------------------------------------------------
 // Unlink to previous workspace
 //---------------------------------------------------------------------
-void        wndPlot2d::remove_workspace()
+void        wndPlot2d::remove_octave_interface()
 {
-    if (_workspace!=nullptr)
-        _workspace->remove_graph(this);
+    //if (_workspace!=nullptr)
+    //    _workspace->remove_graph(this);
 
-    _workspace = nullptr;
+    _octave_interface = nullptr;
 }
 
 //---------------------------------------------------------------------
 // Data has been updated
 //---------------------------------------------------------------------
-void wndPlot2d::update_workspace(octavews* ws)
+void wndPlot2d::update_data()
 {
     // Check if the workspace that has been updated is the one
     // to which this graph is attached to
-    if (ws!=_workspace) return;
-
-    std::set<std::string> vars_to_update = ws->get_updated_variables();
+    if (_octave_interface==nullptr) return;
+    std::vector<plot_descriptor> plots_to_delete;
     for (auto& plot : _plots)
     {
-        if ((plot._ptype != PTJK_BOXPLOT)&&(plot._ptype!=PTJK_VECT2D)&&(plot._ptype!=PTJK_DENS)&&(plot._ptype!=PTJK_CONTOUR))
-        {
-            bool update = false;
-            const octave_value& val = ws->var_value(plot._dep);
-            dim_vector vdim = val.dims();
-            int number_of_dims = val.ndims() - vdim.num_ones();
-            std::string vname= plot._dep;
+        bool b_must_delete_plot = false;
 
-            vname = plot._dep;
-            if (!vname.empty())
+        if ((plot._ptype != PTJK_BOXPLOT)&&(plot._ptype!=PTJK_VECT2D)&&
+            (plot._ptype!=PTJK_DENS)&&(plot._ptype!=PTJK_CONTOUR))
+        { // These are the 2D plots
+            std::string yname = plot._dep;
+            std::string xname = plot._indep_x;
+            // If the variable is deleted, delete the plot regardless of the fact
+            // that this is the dep or independent axis
+            if (!_octave_interface->variable_exists(yname))
+                b_must_delete_plot = true;
+
+            if ((!xname.empty())&&(!_octave_interface->variable_exists(xname)))
+                b_must_delete_plot = true;
+
+            if (b_must_delete_plot)
             {
-                clear_prev_var(vname);
-                if (vars_to_update.find(vname)!=vars_to_update.end())
-                {
-                    octave_to_plotdata(vname);
-                    update = true;
-                }
-            }
-            vname = plot._indep_x;
-            if (!vname.empty())
-            {
-                if (vars_to_update.find(vname)!=vars_to_update.end())
-                {
-                    clear_prev_var(vname);
-                    octave_to_plotdata(vname);
-                    update = true;
-                }
+                plots_to_delete.push_back(plot);
             }
             else
-                default_indep_vect(vname, plot._dep);
-
-            if (number_of_dims>1)
             {
-                vname= plot._indep_y;
-                if (!vname.empty())
+                // Update dep.
+                clear_prev_var(yname);
+                octave_to_plotdata(yname);
+
+                // Update indep x (if set)
+                if (!xname.empty())
                 {
-                    if (vars_to_update.find(vname)!=vars_to_update.end())
-                    {
-                        clear_prev_var(vname);
-                        octave_to_plotdata(vname);
-                        update = true;
-                    }
+                    clear_prev_var(xname);
+                    octave_to_plotdata(xname);
                 }
                 else
-                    default_indep_vect(vname, plot._dep);
-            }
+                    default_indep_vect(xname, plot._dep);
 
-            if (number_of_dims > 2)
-            {
-                vname= plot._indep_z;
-                if (!vname.empty())
-                {
-                    if (vars_to_update.find(vname)!=vars_to_update.end())
-                    {
-                        clear_prev_var(vname);
-                        octave_to_plotdata(vname);
-                        update = true;
-                    }
-                }
-                else
-                    default_indep_vect(vname, plot._dep);
-            }
-
-            if (update)
-            {
                 update_graphs_per_dep(plot, _plotters[plot._plot_id]);
             }
         } // BoxPlot case
         if (plot._ptype == PTJK_BOXPLOT)
         {
-            bool update = false;
-            std::string vname = plot._indep_x;
-            if (!vname.empty())
+
+            std::string yname = plot._dep;
+            std::string xname = plot._indep_x;
+            // If the variable is deleted, delete the plot regardless of the fact
+            // that this is the dep or independent axis
+            if (!_octave_interface->variable_exists(yname))
+                b_must_delete_plot = true;
+
+            if ((!xname.empty())&&(!_octave_interface->variable_exists(xname)))
+                b_must_delete_plot = true;
+
+            if (b_must_delete_plot)
             {
-                if (vars_to_update.find(vname)!=vars_to_update.end())
-                {
-                    clear_prev_var(vname);
-                    octave_to_plotdata(vname);
-                    update = true;
-                }
+                plots_to_delete.push_back(plot);
             }
             else
-                default_indep_box_plotvect(vname, plot._dep);
-
-            vname = plot._dep;
-            if (!vname.empty())
             {
-                if (vars_to_update.find(vname)!=vars_to_update.end())
-                {
-                    clear_prev_var(vname);
-                    octave_to_box_plotdata(plot._dep, get_var_indep_name(plot._indep_x, plot._dep, 0).toStdString());
-                    update = true;
-                }
-            }
+                // Update dep.
+                clear_prev_var(yname);
+                clear_prev_var(xname);
+                // Update indep x (if set)
+                if (!xname.empty())
+                    octave_to_plotdata(xname);
+                else
+                    default_indep_box_plotvect(xname, plot._dep);
 
-            if (update)
+                octave_to_box_plotdata(plot._dep,plot._indep_x);
+
                 update_grahs_per_dep_boxplot(plot, _plotters[plot._plot_id]);
+            }
         }
         // Quiver case
         if (plot._ptype==PTJK_VECT2D)
         {
-            bool update = false;
-            std::string vname = plot._indep_x;
-            if (!vname.empty())
-            {
-                if (vars_to_update.find(vname)!=vars_to_update.end())
-                    update = true;
-            }
-            vname = plot._indep_y;
-            if (!vname.empty())
-            {
-                if (vars_to_update.find(vname)!=vars_to_update.end())
-                    update = true;
-            }
+            std::string dx_name = plot._dep;
+            std::string dy_name = plot._depy;
+            std::string xname = plot._indep_x;
+            std::string yname = plot._indep_y;
+            // If the variable is deleted, delete the plot regardless of the fact
+            // that this is the dep or independent axis
+            if (!_octave_interface->variable_exists(dx_name))
+                b_must_delete_plot = true;
 
-            vname = plot._dep;
-            if (!vname.empty())
-            {
-                if (vars_to_update.find(vname)!=vars_to_update.end())
-                    update = true;
-            }
+            if (!_octave_interface->variable_exists(dy_name))
+                b_must_delete_plot = true;
 
-            vname = plot._depy;
-            if (!vname.empty())
-            {
-                if (vars_to_update.find(vname)!=vars_to_update.end())
-                    update = true;
-            }
+            if ((!xname.empty())&&(!_octave_interface->variable_exists(xname)))
+                b_must_delete_plot = true;
 
-            if (update)
+            if ((!yname.empty())&&(!_octave_interface->variable_exists(yname)))
+                b_must_delete_plot = true;
+            if (b_must_delete_plot)
+            {
+                plots_to_delete.push_back(plot);
+            }
+            else
             {
                 octave_to_vectordata(plot._dep, plot._depy, plot._indep_y, plot._indep_x);
             }
-
         }
         // Density case
         if (plot._ptype==PTJK_DENS)
         {
-            bool update = false;
-            std::string vname = plot._indep_x;
-            if (!vname.empty())
-            {
-                if (vars_to_update.find(vname)!=vars_to_update.end())
-                    update = true;
-            }
-            vname = plot._indep_y;
-            if (!vname.empty())
-            {
-                if (vars_to_update.find(vname)!=vars_to_update.end())
-                    update = true;
-            }
 
-            vname = plot._dep;
-            if (!vname.empty())
+            std::string v_name = plot._dep;
+            std::string xname = plot._indep_x;
+            std::string yname = plot._indep_y;
+
+            if (!_octave_interface->variable_exists(v_name))
+                b_must_delete_plot = true;
+
+            if ((!xname.empty())&&(!_octave_interface->variable_exists(xname)))
+                b_must_delete_plot = true;
+
+            if ((!yname.empty())&&(!_octave_interface->variable_exists(yname)))
+                b_must_delete_plot = true;
+            if (b_must_delete_plot)
             {
-                if (vars_to_update.find(vname)!=vars_to_update.end())
-                    update = true;
+                plots_to_delete.push_back(plot);
             }
-
-
-            if (update)
+            else
             {
                 octave_to_densitydata(plot._dep, plot._indep_y, plot._indep_x);
             }
@@ -1777,7 +2507,7 @@ void wndPlot2d::clear_prev_var(std::string varname)
 {
     JKQTPDatastore* ds=get_ds();
     if (ds==nullptr) return;
-    if (_workspace==nullptr) return;
+    if (_octave_interface==nullptr) return;
 
     int var_id = ds->getColumnNum(QString::fromStdString(varname));
     // if dim is the same we don't need to erase anything
@@ -1824,7 +2554,7 @@ void wndPlot2d::default_indep_vect_vectorfield(const std::string& indep, const s
     JKQTPDatastore* ds=get_ds();
 
     if (ds==nullptr) return;
-    if (_workspace == nullptr) return;
+    if (_octave_interface == nullptr) return;
     if ((dim!=0)&&(dim!=1)) return;
 
     QString indep_name = get_var_indep_name(indep,get_vector_full_name(dep,depy).toStdString(), dim);
@@ -1833,7 +2563,7 @@ void wndPlot2d::default_indep_vect_vectorfield(const std::string& indep, const s
     if (var_id == -1)
         var_id = ds->addColumn(indep_name);
 
-    dim_vector dims = _workspace->var_value(dep).dims();
+    dim_vector dims = _octave_interface->variable_get_value(dep).dims();
 
     int length = dims(dim);
 
@@ -1878,7 +2608,7 @@ void wndPlot2d::default_indep_box_plotvect(const std::string& indep, const std::
 
     if (ds==nullptr) return;
 
-    if (_workspace==nullptr) return;
+    if (_octave_interface==nullptr) return;
 
     QString indep_name = get_var_indep_name(indep,dep, 0);
 
@@ -1886,7 +2616,7 @@ void wndPlot2d::default_indep_box_plotvect(const std::string& indep, const std::
     if (var_id == -1)
         var_id = ds->addColumn(indep_name);
 
-    int length = _workspace->var_value(dep).dims()(0);
+    int length = _octave_interface->variable_get_value(dep).dims()(0);
 
 	if (ds->getRows(var_id)!=length)
 		ds->resizeColumn(var_id, length);
@@ -1906,10 +2636,10 @@ void wndPlot2d::octave_to_box_plotdata(std::string varname, std::string indep)
     JKQTPDatastore* ds=get_ds();
     if (ds==nullptr) return;
 
-    if (_workspace==nullptr) return;
+    if (_octave_interface==nullptr) return;
 
 
-    octave_value val = _workspace->var_value(varname);
+    octave_value val = _octave_interface->variable_get_value(varname);
 
     dim_vector   dims = val.dims();
 
@@ -2081,10 +2811,10 @@ void wndPlot2d::octave_to_plotdata(std::string varname)
     JKQTPDatastore* ds=get_ds();
     if (ds==nullptr) return;
 
-    if (_workspace==nullptr) return;
+    if (_octave_interface==nullptr) return;
 
 
-    octave_value val = _workspace->var_value(varname);
+    octave_value val = _octave_interface->variable_get_value(varname);
 
     dim_vector   dims = val.dims();
 
@@ -2171,10 +2901,10 @@ void wndPlot2d::octave_to_vectordata(std::string varname_x, std::string varname_
     JKQTPDatastore* ds=get_ds();
     if (ds==nullptr) return;
 
-    if (_workspace==nullptr) return;
+    if (_octave_interface==nullptr) return;
 
-    NDArray val_x = _workspace->var_value(varname_x).array_value();
-    NDArray val_y = _workspace->var_value(varname_y).array_value();
+    NDArray val_x = _octave_interface->variable_get_value(varname_x).array_value();
+    NDArray val_y = _octave_interface->variable_get_value(varname_y).array_value();
 
     if (val_x.ndims()!=2)
     {
@@ -2201,7 +2931,7 @@ void wndPlot2d::octave_to_vectordata(std::string varname_x, std::string varname_
 
     if (!xname.empty())
     {
-        dim_vector dims_var_x= _workspace->var_value(xname).dims();
+        dim_vector dims_var_x= _octave_interface->variable_get_value(xname).dims();
 
         if ((dims_var_x(0)!=1)&&(dims_var_x(1)!=1))
         {
@@ -2219,7 +2949,7 @@ void wndPlot2d::octave_to_vectordata(std::string varname_x, std::string varname_
 
     if (!yname.empty())
     {
-        dim_vector dims_var_y= _workspace->var_value(yname).dims();
+        dim_vector dims_var_y= _octave_interface->variable_get_value(yname).dims();
 
         if ((dims_var_y(0)!=1)&&(dims_var_y(1)!=1))
         {
@@ -2263,8 +2993,8 @@ void wndPlot2d::octave_to_vectordata(std::string varname_x, std::string varname_
 
     if ((!xname.empty())&&(!yname.empty()))
     {
-        NDArray val_xdata = _workspace->var_value(xname).array_value();
-        NDArray val_ydata = _workspace->var_value(yname).array_value();
+        NDArray val_xdata = _octave_interface->variable_get_value(xname).array_value();
+        NDArray val_ydata = _octave_interface->variable_get_value(yname).array_value();
         // The JTKQ is row major
         for (size_t row = 0, n=0; row < nRows; row++)
             for (size_t col = 0 ; col < nCols; col++, n++)
@@ -2322,10 +3052,11 @@ void wndPlot2d::octave_to_densitydata(std::string varname_x,  std::string yname,
     JKQTPDatastore* ds=get_ds();
     if (ds==nullptr) return;
 
-    if (_workspace==nullptr) return;
+    if (_octave_interface==nullptr) return;
 
-    const octave_value& data = _workspace->var_value(varname_x);
-    NDArray val_x = data.is_complex_matrix() || data.is_complex_scalar() ? data.abs().array_value() : data.array_value();
+    const octave_value& data = _octave_interface->variable_get_value(varname_x);
+    NDArray val_x = data.is_complex_matrix() || data.is_complex_scalar() || data.iscomplex() ?
+                    data.abs().array_value() : data.array_value();
 
 
     if (val_x.ndims()!=2)
@@ -2339,7 +3070,7 @@ void wndPlot2d::octave_to_densitydata(std::string varname_x,  std::string yname,
 
     if (!xname.empty())
     {
-        dim_vector dims_var_x= _workspace->var_value(xname).dims();
+        dim_vector dims_var_x= _octave_interface->variable_get_value(xname).dims();
 
         if ((dims_var_x(0)!=1)&&(dims_var_x(1)!=1))
         {
@@ -2356,7 +3087,7 @@ void wndPlot2d::octave_to_densitydata(std::string varname_x,  std::string yname,
 
     if (!yname.empty())
     {
-        dim_vector dims_var_y= _workspace->var_value(yname).dims();
+        dim_vector dims_var_y= _octave_interface->variable_get_value(yname).dims();
 
         if ((dims_var_y(0)!=1)&&(dims_var_y(1)!=1))
         {
@@ -2394,7 +3125,7 @@ void wndPlot2d::octave_to_densitydata(std::string varname_x,  std::string yname,
     }
     else
     {
-        NDArray x = _workspace->var_value(xname).array_value();
+        NDArray x = _octave_interface->variable_get_value(xname).array_value();
         ds->set(x_id,0,x(0));
         ds->set(x_id,1,x(1));
     }
@@ -2409,7 +3140,7 @@ void wndPlot2d::octave_to_densitydata(std::string varname_x,  std::string yname,
     }
     else
     {
-        NDArray y = _workspace->var_value(yname).array_value();
+        NDArray y = _octave_interface->variable_get_value(yname).array_value();
         ds->set(y_id,0,y(0));
         ds->set(y_id,1,y(1));
     }

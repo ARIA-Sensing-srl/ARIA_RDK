@@ -72,8 +72,8 @@ void plotData_plot::remove_var(QString var)
 void plotData_plot::set_data_plot(QString var_name, QString x_name)
 {
 	clean_data();
-	if (workspace()==nullptr) return;
-	octave_value yov = workspace()->var_value(var_name.toStdString());
+    if (get_octave_interface()==nullptr) return;
+    octave_value yov = get_octave_interface()->variable_get_value(var_name.toStdString());
 
 	if (yov.ndims()!=2) return;
 
@@ -82,7 +82,7 @@ void plotData_plot::set_data_plot(QString var_name, QString x_name)
 
 	if (!x_name.isEmpty())
 	{
-		x = workspace()->var_value(x_name.toStdString());
+        x = get_octave_interface()->variable_get_value(x_name.toStdString());
 		xlength = x.numel();
 
 		size_t rows = yov.dims()(0);
@@ -298,7 +298,7 @@ bool	plotData_plot::fill_data_x(QString vname, const NDArray& data)
 
 bool	plotData_plot::update_data(const std::set<std::string>& varlist)
 {
-	if (workspace()==nullptr) return false;
+    if (get_octave_interface()==nullptr) return false;
 
 	QString xname="";
 	bool bAnyVarModified = false;
@@ -309,9 +309,10 @@ bool	plotData_plot::update_data(const std::set<std::string>& varlist)
 		// Check if it is an y value
 		if (curve!=curves.end())
 		{
-			octave_value data = workspace()->var_value(var);
+            octave_value data = get_octave_interface()->variable_get_value(var);
 
-			NDArray y = data.iscomplex() ? data.complex_array_value().abs() : workspace()->var_value(var).array_value();
+            NDArray y = data.iscomplex() ? data.complex_array_value().abs() :
+                            get_octave_interface()->variable_get_value(var).array_value();
 			// Check if we already have the x
 			std::map<QString,QString>::iterator xy_map = x_y.find(varname);
 			if (xy_map!=x_y.end())
@@ -325,7 +326,7 @@ bool	plotData_plot::update_data(const std::set<std::string>& varlist)
 		auto xarray = xvals.find(varname);
 		if (xarray!=xvals.end())
 		{
-			NDArray x = workspace()->var_value(var).array_value();
+            NDArray x = get_octave_interface()->variable_get_value(var).array_value();
 
 			fill_data_x(varname, x);
 
@@ -337,7 +338,7 @@ bool	plotData_plot::update_data(const std::set<std::string>& varlist)
 
 bool	plotData_plot::update_data()
 {
-	if (workspace()==nullptr) return false;
+    if (get_octave_interface()==nullptr) return false;
 
 	for (auto& curve: curves)
 	{
@@ -348,9 +349,10 @@ bool	plotData_plot::update_data()
 		if (xy_found != x_y.end())
 			xname = xy_found->second;
 
-		octave_value data = workspace()->var_value(yname.toStdString());
+        octave_value data = get_octave_interface()->variable_get_value(yname.toStdString());
 
-		NDArray y = data.iscomplex() ? data.complex_array_value().abs() : workspace()->var_value(yname.toStdString()).array_value();
+        NDArray y = data.iscomplex() ? data.complex_array_value().abs() :
+                        get_octave_interface()->variable_get_value(yname.toStdString()).array_value();
 
 		manage_data_curve(yname, xname, y.dim1(), y.dim2());
 		fill_data_y(yname, y);
@@ -358,7 +360,7 @@ bool	plotData_plot::update_data()
 		if (xy_found!=x_y.end())
 		{
 			NDArray x;
-			x = workspace()->var_value(xname.toStdString()).array_value();
+            x = get_octave_interface()->variable_get_value(xname.toStdString()).array_value();
 			fill_data_x(xname, x);
 		}
 	}
@@ -478,7 +480,7 @@ void    plotData_plot::update_min_max(QwtPlot_MinMaxUpdate policy)
 
 //--------------------------------------------------------------------------
 // Density raster
-plotData_Density::plotData_Density(octavews* ws, QwtPlot* parent) : QwtRasterData(), plotData(ws,parent,PTQWT_DENSITY),
+plotData_Density::plotData_Density(octaveInterface* oct_int, QwtPlot* parent) : QwtRasterData(), plotData(oct_int,parent,PTQWT_DENSITY),
 	xaxis({"",ArraySize({0,nullptr})}),
 	yaxis({"",ArraySize({0,nullptr})}),
 	zvalues("",ArraySize({0,nullptr})),
@@ -796,13 +798,13 @@ void plotData_Density::set_data_plot(QString var_name, QString x_name, QString y
 {
 	clean_data();
 
-	if (workspace()==nullptr) return;
+    if (get_octave_interface()==nullptr) return;
 
-	octave_value zov = workspace()->var_value(var_name.toStdString());
+    octave_value zov = get_octave_interface()->variable_get_value(var_name.toStdString());
 
 	if (!x_name.isEmpty())
 	{
-		octave_value xov = workspace()->var_value(x_name.toStdString());
+        octave_value xov = get_octave_interface()->variable_get_value(x_name.toStdString());
 		if (xov.iscomplex())
 			return;
 
@@ -821,7 +823,7 @@ void plotData_Density::set_data_plot(QString var_name, QString x_name, QString y
 
 	if (!y_name.isEmpty())
 	{
-		octave_value yov = workspace()->var_value(y_name.toStdString());
+        octave_value yov = get_octave_interface()->variable_get_value(y_name.toStdString());
 		if (yov.iscomplex())
 			return;
 
@@ -852,11 +854,12 @@ void plotData_Density::set_data_plot(QString var_name, QString x_name, QString y
 bool plotData_Density::update_data(const std::set<std::string>& varlist)
 {
 	bool bModified = false;
+    if (get_octave_interface()==nullptr) return false;
 	for (auto& var: varlist)
 	{
 		if (var == xaxis.first.toStdString())
 		{
-			octave_value xov = workspace()->var_value(xaxis.first.toStdString());
+            octave_value xov = get_octave_interface()->variable_get_value(xaxis.first.toStdString());
 			if (xov.iscomplex())
 				return false;
 			fill_data_x(xov.array_value());
@@ -866,7 +869,7 @@ bool plotData_Density::update_data(const std::set<std::string>& varlist)
 
 		if (var == yaxis.first.toStdString())
 		{
-			octave_value yov = workspace()->var_value(yaxis.first.toStdString());
+            octave_value yov = get_octave_interface()->variable_get_value(yaxis.first.toStdString());
 			if (yov.iscomplex())
 				return false;
 			fill_data_y(yov.array_value());
@@ -876,7 +879,7 @@ bool plotData_Density::update_data(const std::set<std::string>& varlist)
 
 		if (var == zvalues.first.toStdString())
 		{
-			octave_value zov = workspace()->var_value(zvalues.first.toStdString());
+            octave_value zov = get_octave_interface()->variable_get_value(zvalues.first.toStdString());
 			if (zov.iscomplex())
 				return false;
 			fill_data_y(zov.iscomplex() ? zov.complex_array_value().abs() : zov.array_value());
@@ -921,7 +924,8 @@ bool plotData_Density::update_data(const std::set<std::string>& varlist)
 
 bool plotData_Density::update_data()
 {
-	octave_value zov = workspace()->var_value(zvalues.first.toStdString());
+    if (get_octave_interface()==nullptr) return false;
+    octave_value zov = get_octave_interface()->variable_get_value(zvalues.first.toStdString());
 	if (xaxis.first.isEmpty())
 	{
 		size_t currentSizeX = xaxis.second.first;
@@ -939,7 +943,7 @@ bool plotData_Density::update_data()
 	}
 	else
 	{
-		octave_value xov = workspace()->var_value(xaxis.first.toStdString());
+        octave_value xov = get_octave_interface()->variable_get_value(xaxis.first.toStdString());
 		if (xov.iscomplex())
 			return false;
 		fill_data_x(xov.array_value());
@@ -962,7 +966,7 @@ bool plotData_Density::update_data()
 	}
 	else
 	{
-		octave_value yov = workspace()->var_value(yaxis.first.toStdString());
+        octave_value yov = get_octave_interface()->variable_get_value(yaxis.first.toStdString());
 		if (yov.iscomplex())
 			return false;
 

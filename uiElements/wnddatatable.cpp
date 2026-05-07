@@ -58,7 +58,7 @@ void wnddatatable::exportToCSV()
 }
 void wnddatatable::exportToMat()
 {
-    if ((dataInterface == nullptr)||(dataInterface->workspace_get()==nullptr))
+    if (dataInterface == nullptr)
     {
         QMessageBox::warning(this, "Warning", "No available workspace");
         return;
@@ -77,7 +77,7 @@ void wnddatatable::exportToMat()
 
     ariasdk_data_path = QFileInfo(dataFile).absolutePath()+QDir::separator();
 
-    dataInterface->workspace_get()->save_to_file(dataFile.toStdString());
+    dataInterface->workspace_save_to_file(dataFile);
 
 }
 
@@ -96,7 +96,7 @@ void wnddatatable::updateTable()
         return;
     }
 
-    if ((!dataInterface->workspace_get()->is_internal(varName))&&(!dataInterface->workspace_get()->is_octave(varName)))
+    if (!dataInterface->variable_exists(varName))
     {
         ui->dataTable->clear();
         QPalette palette = ui->label->palette();
@@ -108,7 +108,7 @@ void wnddatatable::updateTable()
         return;
     }
     ui->leWarning->setVisible(false);
-    octave_value& val = dataInterface->workspace_get()->var_value(varName);
+    const octave_value& val = dataInterface->variable_get_value(varName);
 
     if ((val.ndims()>2)||(val.ndims()==0))
     {

@@ -48,7 +48,7 @@ octavews::~octavews()
     for (const auto& graph:_graphs2d)
     {
         if (graph!=nullptr)
-            graph->remove_workspace();
+            graph->remove_octave_interface();
     }
     _b_deleting = false;
     clear();
@@ -463,7 +463,7 @@ void octavews::update_graphs()
 {
     _data_interface->operation_wait_and_lock("update_graphs");
     for (const auto& graph: _graphs2d)
-        graph->update_workspace(this);
+        graph->update_data();
 
     _data_interface->operation_unlock("update_graphs");
 }

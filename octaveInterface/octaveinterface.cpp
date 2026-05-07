@@ -281,7 +281,6 @@ bool octaveInterface::operation_append_command(const QString &newCommand)
     {
         if (_octave_thread_handler!=nullptr)
         {
-            //operation_wait_and_lock();
             _octave_thread_handler->execute_send_command_during_debug(newCommand);
         }
         return true;
@@ -306,7 +305,7 @@ bool octaveInterface::operation_append_command(const QString &newCommand)
  * @return true if we started a new operation
  */
 
-bool octaveInterface::operation_append_script(octaveScript* script)
+bool octaveInterface::operation_append_script(octaveScript* script, bool hide_history)
 {
     _last_output = "";
     if (script==nullptr) return false;
@@ -314,6 +313,7 @@ bool octaveInterface::operation_append_script(octaveScript* script)
     new_op._op_type = OIP_SCRIPT;
     new_op._operation.script = script;
     new_op._op_owner = nullptr;
+    new_op._b_hide_feedback = hide_history;
     //const QMutexLocker locker(&_sync);
     _op_list.append(new_op);
 
@@ -340,6 +340,7 @@ bool octaveInterface::operation_append_script_list(const QVector<octaveScript*> 
             new_op._op_type = OIP_SCRIPT;
             new_op._op_owner= owner;
             new_op._operation.script = script;
+            new_op._b_hide_feedback = script->skip_workspace_update();
             _op_list.append(new_op);
         }
     }
@@ -396,7 +397,7 @@ bool octaveInterface::operation_execute_next_in_queue()
         //const QMutexLocker locker(&_sync);
         _op_list.removeFirst();
 
-        emit signal_execute_run(script);
+        emit signal_execute_run(script, op._b_hide_feedback);
     }
 
     return true;
@@ -446,16 +447,7 @@ void    octaveInterface::operation_unlock(const QString& fname)
 {
     _sync.unlock();
     _locked = 0;
-    if (!_last_mutex_owner.isEmpty())
-    {
-        if (_last_mutex_owner!=fname)
-        {
-            int c=2;
-            c = c+1;
-
-        }
-        _last_mutex_owner = fname;
-    }
+     _last_mutex_owner = fname;
 }
 
 //-----------------------------
@@ -503,10 +495,10 @@ void            octaveInterface::workspace_append_var(QString name, const octave
  */
 bool    octaveInterface::workspace_save_to_file(QString filename)
 {
-    if (_octave_engine==nullptr) return;
+    if (_octave_engine==nullptr) return false;
     operation_wait_and_lock("workspace_save_to_file");
 
-    octave_value_list val_input({octave_value("-v7.3"),octave_value(filename.toStdString())});
+    octave_value_list val_input(std::list({octave_value("-v7.3"),octave_value(filename.toStdString())}));
     _octave_engine->feval("save",val_input);
 
     operation_unlock("workspace_save_to_file");
@@ -568,7 +560,7 @@ QStringList octaveInterface::variable_get_names()
 
     int v =0;
     for (auto varname : varnames)
-        out(v++)= QString::fromStdString(varname);
+        out[v++]= QString::fromStdString(varname);
 
     return out;
 }
@@ -625,7 +617,7 @@ void octaveInterface::execute_continue(octaveScript* script)
 
     if (_octave_thread_handler->engine_get_status()==octaveThreadHandler::OTH_IDLE)
     {
-        emit signal_execute_run(script);
+        emit signal_execute_run(script, script->skip_workspace_update());
         return;
     }
 
@@ -653,7 +645,7 @@ void octaveInterface::execute_run(octaveScript* script)
     if (_octave_thread_handler->engine_get_status()!=octaveThreadHandler::OTH_IDLE)
         return;
 
-    emit signal_execute_run(script);
+    emit signal_execute_run(script,script->skip_workspace_update());
 }
 //---------------------------------------
 /**
@@ -727,8 +719,10 @@ void            octaveInterface::execute_feval(QString command, const string_vec
     // Build inputs
 
     operation_wait_and_lock("execute_feval");
-    octave_value_list in(input);
+    octave_value_list in;
     int nout = output.numel();
+    for (int n=0; n < nout; n++)
+        in(n) = octave_value(input[n]);
 
     octave_value_list outval = _octave_engine->feval(command.toLatin1(),in,nout);
 
@@ -867,13 +861,14 @@ void    octaveInterface::immediate_command(const std::string& str, const std::st
  * @brief octaveInterface::handle_interpreter_dbcomplete
  * @param fname
  */
-void  octaveInterface::handle_octave_thread_dbcomplete(const QString& fname)
+void  octaveInterface::handle_octave_thread_dbcomplete(const QString& fname, bool skip_workspace_update)
 {
-    // Announce the update of the workspace
-    emit signal_workspace_updated();
+    // Announce the update of the workspace (only when needed)
+    if (!skip_workspace_update)
+        emit signal_workspace_updated();
 
     // This is a signal that goes into EVERY slot.
-    emit signal_interface_execute_dbcomplete(fname);
+    emit signal_interface_execute_dbcomplete(fname, skip_workspace_update);
 
     // We have completed a script of an owner. If we don't have any further left from
     // the same owner, we may signal that we are done with it.
@@ -931,11 +926,9 @@ void octaveInterface::handle_octave_thread_dbstop(const QString& fname, int line
     // This function signal to the UX the situation of the octave which is in
     // stand-by waiting for next step
     // Transfer data to the workspace
-    //if (_workspace!=nullptr)
-    //    _workspace->interpreter_to_workspace();
 
     // Announce the update of the workspace
-    //emit signal_workspace_updated();
+    emit signal_workspace_updated();
 
     //
     emit signal_interface_execute_dbstop(fname,line);

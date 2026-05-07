@@ -540,10 +540,10 @@ void octaveScript::do_interpreter_dbrun(const QString& fname)
  * @brief octaveScript::do_interpreter_dbcomplete
  * @param fname
  */
-void octaveScript::do_interpreter_dbcomplete(const QString& fname)
+void octaveScript::do_interpreter_dbcomplete(const QString& fname, bool skip_workspace_update)
 {
     _debug_line = -1;
-    emit script_run_complete(fname);
+    emit script_run_complete(fname, skip_workspace_update);
 }
 //------------------------------------------------------------------------
 /**

@@ -14,7 +14,7 @@
 
 
 
-dlgQWTPlot::dlgQWTPlot(QWidget *parent, mdiOctaveInterface* owner, octavews* ws, PLOT_TYPE pt)
+dlgQWTPlot::dlgQWTPlot(QWidget *parent, mdiOctaveInterface* owner, octaveInterface* oct_int, PLOT_TYPE pt)
 	: QDialog(parent)
 	, ui(new Ui::dlgQWTPlot)
 	, _owner(owner)
@@ -29,7 +29,7 @@ dlgQWTPlot::dlgQWTPlot(QWidget *parent, mdiOctaveInterface* owner, octavews* ws,
 	case PTQWT_PLOT:
 	case PTQWT_SCATTER:
 	{
-		_plotdata = std::make_shared<plotData_plot>(ws,ui->plot);
+        _plotdata = std::make_shared<plotData_plot>(oct_int,ui->plot);
 		_plotgrid = new QwtPlotGrid();
 		ui->plot->setCanvasBackground( Qt::white );
 		//ui->plot->setAxisScale( QwtAxis::YLeft, 0.0, 10.0 );
@@ -57,7 +57,7 @@ dlgQWTPlot::dlgQWTPlot(QWidget *parent, mdiOctaveInterface* owner, octavews* ws,
 
 	case PTQWT_DENSITY:
 	{
-		_plotdata = std::make_shared<plotData_Density>(ws);
+        _plotdata = std::make_shared<plotData_Density>(oct_int);
 		delete ui->plot;
 		ui->plot =_density_plot_ref= new QwtDensityPlot(this,(plotData_Density*)_plotdata.get());
 		ui->plot->setObjectName("plot");
@@ -84,7 +84,7 @@ dlgQWTPlot::dlgQWTPlot(QWidget *parent, mdiOctaveInterface* owner, octavews* ws,
 		break;
 	}
 	default:
-		_plotdata = std::make_shared<plotData>(ws, ui->plot);
+        _plotdata = std::make_shared<plotData>(oct_int, ui->plot);
 	}
 
 
@@ -209,7 +209,7 @@ void dlgQWTPlot::update_data(const std::set<std::string>& varlist)
 	}
 }
 
-void dlgQWTPlot::update_workspace()
+void dlgQWTPlot::update_all_data()
 {
 	if (_plotdata==nullptr) return;
 	if (_plotdata->update_data())

@@ -23,7 +23,19 @@ struct plot_descriptor
     std::vector<void*> _graph;      // Link to graph(s) (more than one if variable is 2D)
     int             _plot_id;       // Plot id (e.g. subplotting)
     bool            _init_zoom;
+    bool            _limit_set;
+    double          _xmin, _xmax,
+                    _ymin, _ymax,
+                    _zmin, _zmax;
     plot_descriptor() : _graph() {}
+    bool operator ==(const plot_descriptor& p2) {
+        return (_ptype == p2._ptype) &&
+               (_indep_x==p2._indep_x) &&
+               (_indep_y==p2._indep_y) &&
+               (_indep_z==p2._indep_z) &&
+               (_dep == p2._dep) &&
+               (_depy == p2._depy);
+    }
 };
 
 

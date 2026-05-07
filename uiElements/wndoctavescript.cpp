@@ -300,7 +300,7 @@ void wndOctaveScript::scriptRunning(const QString& filename)
 /**
  * @brief wndOctaveScript::scriptDone
  */
-void    wndOctaveScript::scriptDone(const QString& filename)
+void    wndOctaveScript::scriptDone(const QString& , bool)
 {
     ui->textScript->markerDeleteAll(marker::debugger_position);
 
@@ -555,7 +555,7 @@ void wndOctaveScript::run_file()
     if (_b_modified)
         if (!save_file()) return;
 
-
+    _script->skip_workspace_update(false);
     if (_data_interface==nullptr) return;
     breakpoint_update_all();
     _script->do_request_run();

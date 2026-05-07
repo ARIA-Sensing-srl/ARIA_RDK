@@ -185,7 +185,7 @@ void octaveThreadHandler::execute_continue(octaveScript* script)
         _debug_line = -1;
         _running_script = script;
 
-        internal_execute_run(script, false);
+        internal_execute_run(script, false, false);
         // We need
     }
 
@@ -209,7 +209,7 @@ void octaveThreadHandler::execute_continue(octaveScript* script)
  * @param script
  * @param single_step
  */
-void octaveThreadHandler::internal_execute_run(octaveScript* script, bool single_step)
+void octaveThreadHandler::internal_execute_run(octaveScript* script, bool single_step, bool skip_workspace_update)
 {
 
     if (_octave_engine==nullptr) return;
@@ -218,9 +218,9 @@ void octaveThreadHandler::internal_execute_run(octaveScript* script, bool single
     if (_oth_status!=OTH_IDLE)
         return;
 
-
-
     QString fname = script==nullptr? "ScriptDeleted":script->get_fullfilename();
+
+    _last_skip_workspace_update = skip_workspace_update;
 
     try
     {
@@ -285,7 +285,7 @@ void octaveThreadHandler::internal_execute_run(octaveScript* script, bool single
     _running_script = nullptr;
     _debug_script_fname = "";
     _debug_line = -1;
-    handle_interpreter_dbcomplete(fname);
+    handle_interpreter_dbcomplete(fname,_last_skip_workspace_update);
 }
 //-----------------------------
 /**
@@ -293,9 +293,9 @@ void octaveThreadHandler::internal_execute_run(octaveScript* script, bool single
  * @param script
  * @return
  */
-void octaveThreadHandler::execute_run(octaveScript* script)
-{
-    internal_execute_run(script, false);
+void octaveThreadHandler::execute_run(octaveScript* script, bool skip_workspace_update)
+{    
+    internal_execute_run(script, false, skip_workspace_update);
     return;
 }
 //------------------------------------------------------
@@ -320,7 +320,7 @@ void octaveThreadHandler::execute_step_in(octaveScript* script)
         _debug_script_fname = script->get_fullfilename();
         _debug_line = -1;
 
-        internal_execute_run(script, true);
+        internal_execute_run(script, true, false);
         // We need
     }
 
@@ -426,7 +426,7 @@ void octaveThreadHandler::execute_feval_ovl(QString command, octave_value_list& 
     _oth_status = OTH_IDLE;
     _parse_result = OTH_LR_OK;
 
-    handle_interpreter_dbcomplete(command);
+    handle_interpreter_dbcomplete(command, false);
 
     return;
 }
@@ -464,11 +464,9 @@ void     octaveThreadHandler::execute_eval_string(QString command)
     try
     {
         octave::flush_stdout();
-        // Update all workspace variables into the interpreter workspace
-        _owner->workspace_update_interpreter_internal_vars();
-        {
-            _oth_status = OTH_RUNNING;
-        }
+
+        _oth_status = OTH_RUNNING;
+
         // Signal the start of the operation
         emit signal_handler_dbrun(command);
 
@@ -505,7 +503,7 @@ void     octaveThreadHandler::execute_eval_string(QString command)
     _oth_status     = OTH_IDLE;
     _parse_result   = OTH_LR_OK;
 
-    handle_interpreter_dbcomplete(command);
+    handle_interpreter_dbcomplete(command,false);
 }
 //-----------------------------------------------------
 /**
@@ -593,14 +591,14 @@ void            octaveThreadHandler::handle_interpreter_dbrun(const QString& fna
  * @brief octaveThreadHandler::handle_interpreter_dbcomplete
  * @param fname
  */
-void            octaveThreadHandler::handle_interpreter_dbcomplete(const QString& fname)
+void            octaveThreadHandler::handle_interpreter_dbcomplete(const QString& fname, bool skip_workspace_update)
 {
     _owner->operation_unlock("handle_interpreter_dbcomplete");
     _running_script = nullptr;
     _debug_script_fname = "";
     _debug_line = -1;
 
-    emit signal_handler_dbcomplete(fname);
+    emit signal_handler_dbcomplete(fname,skip_workspace_update);
 }
 
 //------------------------------------------------------

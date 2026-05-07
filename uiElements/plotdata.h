@@ -4,7 +4,7 @@
 #include <plotdescriptor.h>
 #include "octavews.h"
 #include <qwt_symbol.h>
-
+#include <octaveinterface.h>
 #include <QwtColorMap>
 #include <QwtPlotSpectrogram>
 #include <QwtScaleWidget>
@@ -25,18 +25,18 @@ enum QwtPlot_MinMaxUpdate {CUSTOM=0, FULL=1, MAXHOLD=2, MAXHOLD_NODECAY=3};
 class plotData
 {
 private:
-	PLOT_TYPE       _ptype;
-	octavews*		_ws;
-	QwtPlot*		_owner;
+    PLOT_TYPE               _ptype;
+    octaveInterface*		_octave_interface;
+    QwtPlot*                _owner;
 public:
-	plotData(octavews* ws=nullptr, QwtPlot* parent=nullptr, PLOT_TYPE pt = PT_NONE) {_ws = ws; _ptype = pt; _owner = parent;}
+    plotData(octaveInterface* oct_int=nullptr, QwtPlot* parent=nullptr, PLOT_TYPE pt = PT_NONE) {_octave_interface=oct_int; _ptype = pt; _owner = parent;}
 	virtual ~plotData() {};
 	// Simple plots
 	virtual void set_data_plot(QString var_name, QString x_name) {};
 	virtual void set_data_plot(QStringList var_name, QStringList x_name) {};
 	virtual void set_data_plot(QString var_name, QString x_name, QString y_name) {};
 	virtual void clean_data() {};
-	inline octavews* workspace() {return _ws;}
+    inline octaveInterface* get_octave_interface() {return _octave_interface;}
 	inline QwtPlot* parent()  {return _owner;}
 	virtual bool		has_var_in_list(const QStringList& var_changed) {return false;}
 	virtual bool		has_var_in_list(const QString& var_changed) {return false;}
@@ -73,7 +73,8 @@ private:
 	bool	fill_data_y(QString vname, const NDArray& data);
 	bool	fill_data_x(QString vname, const NDArray& data);
 public:
-	plotData_plot(octavews* ws = nullptr, QwtPlot* parent=nullptr) : plotData(ws,parent,PTQWT_PLOT), curves(), xvals() {gc =  gc = Qt::green; style = Qt::SolidLine; symbol = QwtSymbol::Ellipse; objSymbol=nullptr;}
+    plotData_plot(octaveInterface* oct_int = nullptr, QwtPlot* parent=nullptr) :
+        plotData(oct_int,parent,PTQWT_PLOT), curves(), xvals() {gc =  gc = Qt::green; style = Qt::SolidLine; symbol = QwtSymbol::Ellipse; objSymbol=nullptr;}
 	~plotData_plot();
 	void    update_min_max(QwtPlot_MinMaxUpdate policy = FULL) override;
 	void set_data_plot(QString var_name, QString x_name) override;
@@ -114,7 +115,7 @@ private:
 	void	fill_data_z(const NDArray &zdata);
 
 public:
-	plotData_Density(octavews* ws = nullptr, QwtPlot* parent=nullptr);
+    plotData_Density(octaveInterface* oct_int = nullptr, QwtPlot* parent=nullptr);
 	~plotData_Density();
 	void    update_min_max(QwtPlot_MinMaxUpdate policy = FULL) override;
 	void set_data_plot(QString var_name, QString x_name) override {};

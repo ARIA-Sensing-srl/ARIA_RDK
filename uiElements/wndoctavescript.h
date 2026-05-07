@@ -127,7 +127,7 @@ public slots:
     void file_has_changed (const QString& path, bool do_close = false);
     void            scriptIdle(const QString& filename);
     void            scriptRunning(const QString& filename );
-    void            scriptDone(const QString& filename );
+    void            scriptDone(const QString& filename, bool skip_workspace_update);
     void            scriptError(const QString& filename,const QString& strError, int line);
     void            scriptPaused(const QString& filename, int line);
 

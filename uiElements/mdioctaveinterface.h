@@ -122,7 +122,7 @@ public slots:
     // Breakpoints management
     void handle_interpreter_busy(const QString& currentCmd);
     void handle_interpreter_debug(const QString& fname, int line);
-    void handle_interpreter_complete(const QString& fname);
+    void handle_interpreter_complete(const QString& fname,bool skip_workspace_update);
     void handle_interpreter_error(const QString& command, const QString& error, int line);
     void handle_interpreter_execute_command_debug_done(const QString& command);
     void keyPressEvent(QKeyEvent *e) {

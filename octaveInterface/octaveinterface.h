@@ -25,6 +25,7 @@ enum octintOperationType{OIP_STRING, OIP_SCRIPT};
 
 typedef struct {
     octintOperationType       _op_type;
+    bool                      _b_hide_feedback;
     class radarInstance*      _op_owner;    // When adding a list of commands, we add the owner so that we can notify it
                                             // when we are done with the entire sequence
     union
@@ -68,7 +69,7 @@ public:
     //----------------------------------------------------------------------------
     // Operations
     bool                            operation_append_command(const QString &strCommand);
-    bool                            operation_append_script(octaveScript* script);
+    bool                            operation_append_script(octaveScript* script, bool hide_history = false);
     bool                            operation_append_script_list(const QVector<octaveScript*> script_list, class radarInstance* owner=nullptr);
     bool                            operation_execute_next_in_queue();
     const QString &                 operation_get__last_output() {return _last_output;}
@@ -97,7 +98,7 @@ public:
     void                            execute_continue(octaveScript* script);
     void                            execute_run(octaveScript* script);
     void                            execute_step_in(octaveScript* script);
-    void                            execute_stop(octaveScript* script);
+    void                            execute_stop(octaveScript* script=nullptr);
     void                            execute_step_out(octaveScript* script);
     void                            execute_feval(QString command, octave_value_list& in, int n_outputs);
     void                            execute_feval(QString command, const string_vector& input, const string_vector& output); // NB we may have empty in some output var
@@ -128,7 +129,7 @@ public slots:
     void            handle_octave_thread_dbstop(const QString& fname, int line);
     void            handle_octave_thread_dbstep_done(const QString& fname, int line);
     void            handle_octave_thread_dbrun(const QString& fname);
-    void            handle_octave_thread_dbcomplete(const QString& fname);
+    void            handle_octave_thread_dbcomplete(const QString& fname, bool skip_workspace_update);
     void            handle_octave_thread_dberror(const QString& command, const QString& error,int line);
     void            handle_octave_thread_cmd_debug_done(const QString& cmd);
 signals:
@@ -147,7 +148,7 @@ signals:
 
     // Signals for the thread handler
     void            signal_execute_continue(octaveScript* script);
-    void            signal_execute_run(octaveScript* script);
+    void            signal_execute_run(octaveScript* script, bool hide_from_feedback);
     void            signal_execute_step_in(octaveScript* script);
     void            signal_execute_step_out(octaveScript* script);
     void            signal_execute_stop(octaveScript* script);
@@ -162,7 +163,7 @@ signals:
     // Breakpoint management (for higher level management)
     void            signal_interface_execute_dbstop(const QString& fname, int line);
     void            signal_interface_execute_dbrun(const QString& fname);
-    void            signal_interface_execute_dbcomplete(const QString& fname);
+    void            signal_interface_execute_dbcomplete(const QString& fname, bool skip_history_update);
     void            signal_interface_execute_dberror(const QString& fname, const QString& error, int line);
     void            signal_interface_execute_dbbusy(const QString& commandname);
     void            signal_interface_execute_command_debug_done(const QString& cmd);

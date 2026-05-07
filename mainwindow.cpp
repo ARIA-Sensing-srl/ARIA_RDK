@@ -153,15 +153,18 @@ MainWindow::MainWindow(QWidget *parent)
     _multiradarScheduler->set_policy_on_timeout(HALT_ON_TIMEOUT);
 
     connect(_multiradarScheduler, &opScheduler::running,                  this, &MainWindow::scheduler_running);
-    connect(_multiradarScheduler, &opScheduler::halted,                   this, &MainWindow::scheduler_halted);
+    connect(_multiradarScheduler, &opScheduler::halted,                   this, &MainWindow::scheduler_halted);    
     connect(_multiradarScheduler, &opScheduler::connection_done,          this, &MainWindow::connection_done);
     connect(_multiradarScheduler, &opScheduler::connection_done_all,      this, &MainWindow::connection_done_all);
     connect(_multiradarScheduler, &opScheduler::connection_error,         this, &MainWindow::connection_error);
     connect(_multiradarScheduler, &opScheduler::init_done,                this, &MainWindow::init_done);
     connect(_multiradarScheduler, &opScheduler::init_done_all,            this, &MainWindow::init_done_all);
     connect(_multiradarScheduler, &opScheduler::init_error,               this, &MainWindow::init_error);
+
     connect(_multiradarScheduler, &opScheduler::postacquisition_error,    this, &MainWindow::postacquisition_error);
     connect(_multiradarScheduler, &opScheduler::postacquisition_done_all, this, &MainWindow::postacquisition_done_all);
+
+
 
     connect(ui->treeProject, &QTreeWidget::itemExpanded, this, &MainWindow::project_item_expanded);
     connect(ui->treeProject, &QTreeWidget::itemCollapsed, this, &MainWindow::project_item_collapsed);
@@ -398,7 +401,7 @@ void MainWindow::newProject()
     ariasdk_projects_path.setPath(QFileInfo(projectFile).absolutePath());
 
 
-    project = new radarProject(projectFile,interfaceData==nullptr ? nullptr : interfaceData->workspace_get(),true);
+    project = new radarProject(projectFile,interfaceData,true);
 
     updateProjectTree();
 
@@ -920,7 +923,7 @@ void MainWindow::loadProject()
         ui->menuAdd->setEnabled(false);
     }
 
-    project = new radarProject(projectFile,interfaceData==nullptr ? nullptr : interfaceData->workspace_get(), false);
+    project = new radarProject(projectFile,interfaceData, false);
 
     wndOctaveInterface->updateScriptsProject(project);
 

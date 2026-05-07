@@ -5,4 +5,5 @@
 /.qtcreator/
 /octave/
 /variables/
-
+/backup_source/
+/output/

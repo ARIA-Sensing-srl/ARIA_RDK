@@ -222,7 +222,7 @@ public:
      QString                get_alias_octave_name();
      void                   unset_alias_octave_name();
      void                   link_to_octave_interface(octaveInterface* oct_int = nullptr);
-     octavews*              get_octave_interface();
+     octaveInterface*              get_octave_interface();
 
      virtual void           var_changed() = 0;
 

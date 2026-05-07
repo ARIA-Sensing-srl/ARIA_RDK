@@ -165,7 +165,7 @@ void            radarInstance::attach_to_interface(octaveInterface *oct_int)
 }
 
 //-----------------------------------------------
-octavews*  radarInstance::get_octave_interface(void)
+octaveInterface*  radarInstance::get_octave_interface(void)
 {
     return _octave_interface;
 }
@@ -1233,6 +1233,24 @@ void  radarInstance::clear_params_update_lists()
 //--------------------------------------------------
 bool radarInstance::init_pre()
 {
+
+    // Prepare the scripts update flag
+    for (auto script : _init_scripts)
+    {
+        if (script == nullptr) continue;
+        script->skip_workspace_update(false);
+    }
+
+    for (auto script : _post_acquisition_scripts)
+    {
+        if (script == nullptr) continue;
+        script->skip_workspace_update(true);
+    }
+    // Set the last one as the one to update the workspace and the GUI
+    if (_post_acquisition_scripts.size()>0)
+        (*(_post_acquisition_scripts.rbegin()))->skip_workspace_update(false);
+
+
     if (_octave_interface == nullptr)
         return false;
 
@@ -1336,14 +1354,12 @@ void radarInstance::export_to_octave()
         _octave_interface->variable_set_value(get_mapped_name(param).toStdString(),   param->get_value());
 
     }
-
-    _workspace->workspace_to_interpreter();
 }
 
 //--------------------------------------------------
 void radarInstance::import_from_octave()
 {
-    if (_workspace == nullptr)
+    if (_octave_interface == nullptr)
         return;
 }
 //--------------------------------------------------
@@ -1984,12 +2000,12 @@ void    radarInstance::param_is_updated(radarParamPointer param)
         for (auto& param : _params_updated)
             if ((param!=nullptr)&&(param->is_linked_to_octave()))
             {
-                _workspace->set_variable_no_immediate_update(get_mapped_name(param).toStdString(),   param->get_value());
-                _workspace->add_variable_to_updatelist(get_mapped_name(param).toStdString());
+                _octave_interface->variable_set_value(get_mapped_name(param).toStdString(),   param->get_value());
+                //_workspace->add_variable_to_updatelist(get_mapped_name(param).toStdString());
             }
-
-        _workspace->workspace_to_interpreter_noautolist();
-        _workspace->update_after_set_variables();
+        // CHECK
+        //_workspace->workspace_to_interpreter_noautolist();
+        //_workspace->update_after_set_variables();
 #endif
         emit all_params_updated();
     // Check operations
