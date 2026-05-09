@@ -237,17 +237,17 @@ void mdiOctaveInterface::cleanHistory()
 void mdiOctaveInterface::update_octave_interface()
 {
     connect(interfaceData, &octaveInterface::signal_interface_execute_dbcomplete,
-            this, &mdiOctaveInterface::handle_interpreter_complete,Qt::QueuedConnection);
+            this, &mdiOctaveInterface::handle_interpreter_complete,Qt::DirectConnection);
     connect(interfaceData, &octaveInterface::signal_interface_execute_dberror,
-            this, &mdiOctaveInterface::handle_interpreter_error,Qt::QueuedConnection);
+            this, &mdiOctaveInterface::handle_interpreter_error,Qt::DirectConnection);
     connect(interfaceData, &octaveInterface::signal_workspace_updated,
             this, &mdiOctaveInterface::updateVarTable, Qt::DirectConnection); // TBD DirectConnection?
     connect(interfaceData, &octaveInterface::signal_interface_execute_dbbusy,
-            this, &mdiOctaveInterface::handle_interpreter_busy,Qt::QueuedConnection);
+            this, &mdiOctaveInterface::handle_interpreter_busy,Qt::DirectConnection);
     connect(interfaceData, &octaveInterface::signal_interface_execute_dbstop,
-            this, &mdiOctaveInterface::handle_interpreter_debug,Qt::QueuedConnection);
+            this, &mdiOctaveInterface::handle_interpreter_debug,Qt::DirectConnection);
     connect(interfaceData, &octaveInterface::signal_interface_execute_command_debug_done,
-            this, &mdiOctaveInterface::handle_interpreter_execute_command_debug_done,Qt::QueuedConnection);
+            this, &mdiOctaveInterface::handle_interpreter_execute_command_debug_done);
 
     _octave_interface = interfaceData;
 
@@ -795,7 +795,7 @@ void mdiOctaveInterface::variablePlot()
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
-    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data, Qt::DirectConnection);
 
     QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
 
@@ -818,7 +818,7 @@ void mdiOctaveInterface::variablePlot()
 void mdiOctaveInterface::variablePlotAllInOne()
 {
     wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
-    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data, Qt::DirectConnection);
 
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();

@@ -78,6 +78,7 @@ public:
     void                            operation_unlock(const QString& fname = "");
     void                            operation_trylock();
     void                            operation_set_radar_project(class radarProject* prj = nullptr) {_owner_project = prj;}
+    bool                            operation_queue_is_empty() {return _op_list.isEmpty();}
     //----------------------------------------------------------------------------
     // Main octave engine
     octave::interpreter*            engine_get_octave_engine();

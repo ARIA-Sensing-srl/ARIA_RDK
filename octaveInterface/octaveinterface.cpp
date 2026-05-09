@@ -57,8 +57,10 @@ octaveInterface::octaveInterface() :
     QString	octavePath  = QFileInfo(currentPath, QString("../share/")).absolutePath()+"/";
     try
     {
+        operation_wait_and_lock("start");
         octave_value_list  pathList = _octave_engine->feval("genpath", std::list<octave_value>({charNDArray(octavePath.toUtf8())}));
         _octave_engine->feval("addpath", pathList);
+        operation_unlock("start");
     }
     catch(...)
     {
@@ -127,6 +129,7 @@ void octaveInterface::create_thread_connections()
 
     connect(_octave_thread, &QThread::finished, _octave_thread, &QObject::deleteLater, Qt::DirectConnection);
     // Connect signals to the thread handler
+
     connect(this, &octaveInterface::signal_execute_continue, _octave_thread_handler, &octaveThreadHandler::execute_continue);
     connect(this, &octaveInterface::signal_execute_run,      _octave_thread_handler, &octaveThreadHandler::execute_run);
     connect(this, &octaveInterface::signal_execute_step_in,  _octave_thread_handler, &octaveThreadHandler::execute_step_in);
@@ -137,14 +140,14 @@ void octaveInterface::create_thread_connections()
     connect(this, &octaveInterface::signal_execute_command,  _octave_thread_handler, &octaveThreadHandler::execute_eval_string);
     connect(this, &octaveInterface::signal_engine_init,      _octave_thread_handler, &octaveThreadHandler::engine_init_and_start, Qt::DirectConnection);
     // Connected signals from the handler to this
-    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbstop,        this, &octaveInterface::handle_octave_thread_dbstop, Qt::DirectConnection);
-    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbstep_done,   this, &octaveInterface::handle_octave_thread_dbstep_done, Qt::DirectConnection);
-    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbrun,         this, &octaveInterface::handle_octave_thread_dbrun, Qt::DirectConnection);
+    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbstop,        this, &octaveInterface::handle_octave_thread_dbstop, Qt::BlockingQueuedConnection);
+    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbstep_done,   this, &octaveInterface::handle_octave_thread_dbstep_done);
+    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbrun,         this, &octaveInterface::handle_octave_thread_dbrun);
     connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbcomplete,    this, &octaveInterface::handle_octave_thread_dbcomplete, Qt::DirectConnection);
-    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dberror,       this, &octaveInterface::handle_octave_thread_dberror, Qt::DirectConnection);
+    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dberror,       this, &octaveInterface::handle_octave_thread_dberror);
     connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_cmd_complete_during_debug,
-                                                                                        this, &octaveInterface::handle_octave_thread_cmd_debug_done, Qt::DirectConnection);
-    connect(_octave_thread_handler, &octaveThreadHandler::finished, _octave_thread_handler,   &octaveThreadHandler::deleteLater, Qt::DirectConnection);
+            this, &octaveInterface::handle_octave_thread_cmd_debug_done);
+    connect(_octave_thread_handler, &octaveThreadHandler::finished, _octave_thread_handler,   &octaveThreadHandler::deleteLater);
 
 
 }
@@ -309,6 +312,7 @@ bool octaveInterface::operation_append_script(octaveScript* script, bool hide_hi
 {
     _last_output = "";
     if (script==nullptr) return false;
+    operation_wait_and_lock("operation_append_script");
     octintOperation new_op;
     new_op._op_type = OIP_SCRIPT;
     new_op._operation.script = script;
@@ -316,6 +320,7 @@ bool octaveInterface::operation_append_script(octaveScript* script, bool hide_hi
     new_op._b_hide_feedback = hide_history;
     //const QMutexLocker locker(&_sync);
     _op_list.append(new_op);
+    operation_wait_and_lock("operation_append_script");
 
     return operation_execute_next_in_queue();
 }
@@ -330,7 +335,7 @@ bool octaveInterface::operation_append_script_list(const QVector<octaveScript*> 
 {
     _last_output = "";
     if (script_list.empty()) return false;
-
+    operation_wait_and_lock("operation_append_script_list");
     for (auto script : script_list)
     {
         if (script!=nullptr)
@@ -344,8 +349,8 @@ bool octaveInterface::operation_append_script_list(const QVector<octaveScript*> 
             _op_list.append(new_op);
         }
     }
-
-    if (_op_list.empty()) return false;
+        operation_unlock("operation_append_script_list");
+    if (_op_list.isEmpty()) return false;
 
     return operation_execute_next_in_queue();
 }
@@ -362,13 +367,7 @@ bool octaveInterface::operation_execute_next_in_queue()
     // halted @ some breakpoint (unless the engine is already running)
 
     if (_op_list.isEmpty())
-    {
-        emit signal_operation_all_ops_done();
-        if (_current_device_owner!=nullptr)
-            _current_device_owner->octave_engine_scripts_done();
-
         return true;
-    }
 
     if (_octave_thread_handler==nullptr) return false;
 
@@ -385,9 +384,10 @@ bool octaveInterface::operation_execute_next_in_queue()
         // The string was created during queuing so let's delete it
         delete op._operation.command;
         //const QMutexLocker locker(&_sync);
+        operation_wait_and_lock("operation_remove_first");
         _op_list.removeFirst();
+        operation_unlock("operation_remove_first");
         emit signal_execute_command(str_command);
-
     }
     if (op._op_type == OIP_SCRIPT)
     {
@@ -395,8 +395,9 @@ bool octaveInterface::operation_execute_next_in_queue()
         octaveScript* script = op._operation.script;
         if (script==nullptr) return false;
         //const QMutexLocker locker(&_sync);
+        operation_wait_and_lock("operation_remove_first");
         _op_list.removeFirst();
-
+        operation_unlock("operation_remove_first");
         emit signal_execute_run(script, op._b_hide_feedback);
     }
 
@@ -427,7 +428,7 @@ void    octaveInterface::operation_wait_and_lock(const QString& fname)
 {
     _sync.lock();
     _locked =1;
-    _last_mutex_owner = fname;
+    _last_mutex_owner = "";
 }
 //-----------------------------
 /**
@@ -610,7 +611,7 @@ void octaveInterface::execute_continue(octaveScript* script)
     _octave_engine->get_evaluator().set_break_on_next_statement(false);
 
     if (_octave_thread_handler->engine_get_status()==octaveThreadHandler::OTH_DEBUG)
-    {
+    {        
         _octave_thread_handler->execute_continue(script);
         return;
     }
@@ -883,13 +884,11 @@ void  octaveInterface::handle_octave_thread_dbcomplete(const QString& fname, boo
                 break;
             }
         }
-        //
-        if (!b_any_left)
-            _current_device_owner->octave_engine_scripts_done();
     }
-
-    // Go with the next operation (if any)
-    if (!_op_list.empty())
+    if (_op_list.isEmpty())
+        emit signal_operation_all_ops_done();
+    else
+        // Go with the next operation (if any)
         operation_execute_next_in_queue();
 }
 //-----------------------------

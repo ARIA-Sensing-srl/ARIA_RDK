@@ -57,6 +57,13 @@ radarInstance::radarInstance(radarInstance& radar) : radarModule(radar.get_uid()
 
     operator = (radar);
 }
+
+
+void    radarInstance::connect_octave_interface()
+{
+    if (_octave_interface==nullptr) return;
+    connect(_octave_interface, &octaveInterface::signal_operation_all_ops_done, this, &radarInstance::octave_engine_scripts_done, Qt::DirectConnection);
+}
 //-----------------------------------------------
 radarInstance& radarInstance::operator = (radarInstance& radar)
 {
@@ -77,6 +84,8 @@ radarInstance& radarInstance::operator = (radarInstance& radar)
     _expected_portname = radar._expected_portname;
     _fixed_serial_port = radar._fixed_serial_port;
     _fixed_id = radar._fixed_id;
+
+    connect_octave_interface();
 
     return *this;
 }
@@ -101,6 +110,7 @@ void radarInstance::initSerialPortTimer()
         _serialport->clear();
         _serialport->flush();
     }
+
 }
 //-----------------------------------------------
 void radarInstance::clearSerialPortTimer()
@@ -162,6 +172,8 @@ void            radarInstance::attach_to_interface(octaveInterface *oct_int)
     for (const auto& param: px)
         if (param!=nullptr)
             param->link_to_octave_interface(_octave_interface);
+
+    connect_octave_interface();
 }
 
 //-----------------------------------------------
@@ -1260,7 +1272,7 @@ bool radarInstance::init_pre()
     _radar_operation = RADAROP_INIT_PARAMS;
 
     emit all_params_updated();
-    emit_operation_done();
+    //emit_operation_done();
 
 
     return true;
@@ -1304,7 +1316,7 @@ bool radarInstance::postacquisition_pre()
     _radar_operation = RADAROP_POSTACQ_PARAMS;
 
     emit all_params_updated();
-    emit_operation_done();
+    //emit_operation_done();
 
     return true;
 }
@@ -1316,6 +1328,8 @@ bool radarInstance::postacquisition_scripts()
         return false;
 
     _radar_operation = RADAROP_POSTACQ_SCRIPTS;
+    if (!_octave_interface->operation_queue_is_empty())
+        return true;
 
     _octave_interface->operation_append_script_list(_post_acquisition_scripts,this);
 
@@ -1970,9 +1984,9 @@ bool    radarInstance::transmit_param_non_blocking(const QVector<radarParamPoint
 //---------------------------------------------------
 void radarInstance::emit_operation_done()
 {
-    if (_radar_operation == RADAROP_INIT_PARAMS)    {emit init_params_done(); return;}
+    //if (_radar_operation == RADAROP_INIT_PARAMS)    {emit init_params_done(); return;}
     if (_radar_operation == RADAROP_INIT_SCRIPTS)   {emit init_scripts_done(); return;}
-    if (_radar_operation == RADAROP_POSTACQ_PARAMS) {emit postacq_params_done(); return;}
+    //if (_radar_operation == RADAROP_POSTACQ_PARAMS) {emit postacq_params_done(); return;}
     if (_radar_operation == RADAROP_POSTACQ_SCRIPTS) {emit postacq_scripts_done(); return;}
     _radar_operation = RADAROP_NONE;
 
@@ -2009,7 +2023,7 @@ void    radarInstance::param_is_updated(radarParamPointer param)
 #endif
         emit all_params_updated();
     // Check operations
-        emit_operation_done();
+        //emit_operation_done();
     }
     else
     {

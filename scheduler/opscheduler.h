@@ -17,14 +17,9 @@
 #include <parse.h>
 #include <radarproject.h>
 
-enum SCHEDULER_STATUS{IDLE,
-                        INIT_PRE_START,
-                        INIT_PRE_DONE,
-                        INIT_SCRIPTS_STARTS,
+enum SCHEDULER_STATUS{  IDLE,
+                        INIT_SCRIPTS_START,
                         INIT_SCRIPTS_DONE,
-                        ACQUISITION_PARAM_START,
-                        ACQUISITION_PARAM_DONE,
-                        ACQUISITION_SCRIPTS_START,
                         ACQUISITION_SCRIPTS_DONE,
                         ACQUISTION_RESTART,
                         HALT
@@ -46,6 +41,7 @@ public:
 
     void                 connect_device();
     void                 init_device();
+    void                 pre_acquisition();
     void                 post_acquisition();
     void                 set_idle();
     void                 halt();
@@ -54,9 +50,7 @@ public slots:
     //void   radar_device_updated();
     void   error_during_comm(const QString&);
     void   device_connected_done();
-    void   init_params_done();
     void   init_scripts_done();
-    void   postacq_params_done();
     void   postacq_scripts_done();
 
 signals:

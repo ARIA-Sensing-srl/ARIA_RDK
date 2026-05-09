@@ -15,11 +15,10 @@ opSchedulerOperations::opSchedulerOperations(radarInstance* device, octaveInterf
 {
     if (_device != nullptr)
     {
-        connect(_device, &radarInstance::init_params_done,  this, &opSchedulerOperations::init_params_done, Qt::DirectConnection);
-        connect(_device, &radarInstance::init_scripts_done, this, &opSchedulerOperations::init_scripts_done,Qt::DirectConnection);
-        connect(_device, &radarInstance::postacq_params_done,this, &opSchedulerOperations::postacq_params_done,Qt::DirectConnection);
-        connect(_device, &radarInstance::postacq_scripts_done,this, &opSchedulerOperations::postacq_scripts_done,Qt::DirectConnection);
-        connect(_device, &radarInstance::connection_done, this, &opSchedulerOperations::device_connected_done,Qt::QueuedConnection);
+
+        connect(_device, &radarInstance::init_scripts_done,     this, &opSchedulerOperations::init_scripts_done,Qt::DirectConnection);
+        connect(_device, &radarInstance::postacq_scripts_done,  this, &opSchedulerOperations::postacq_scripts_done,Qt::DirectConnection);
+        connect(_device, &radarInstance::connection_done,       this, &opSchedulerOperations::device_connected_done,Qt::QueuedConnection);
 
         connect(_device, &radarInstance::rx_timeout,         this, &opSchedulerOperations::error_during_comm,Qt::QueuedConnection);
         connect(_device, &radarInstance::tx_timeout,         this, &opSchedulerOperations::error_during_comm,Qt::QueuedConnection);
@@ -34,31 +33,16 @@ void   opSchedulerOperations::device_connected_done()
 }
 
 //---------------------------
-void   opSchedulerOperations::init_params_done()
-{
-    if (_status != INIT_PRE_START) return;
-    _status = INIT_PRE_DONE;
-    init_device();
-
-}
-//---------------------------
 void   opSchedulerOperations::init_scripts_done()
 {
-    if (_status != INIT_SCRIPTS_STARTS) return;
+    if (_status != INIT_SCRIPTS_START) return;
     _status = INIT_SCRIPTS_DONE;
-    init_device();
-}
-//---------------------------
-void   opSchedulerOperations::postacq_params_done()
-{
-    if (_status != ACQUISITION_PARAM_START) return;
-    _status = ACQUISITION_PARAM_DONE;
-    post_acquisition();
+    pre_acquisition();
 }
 //---------------------------
 void   opSchedulerOperations::postacq_scripts_done()
 {
-    if (_status != ACQUISITION_SCRIPTS_START) return;
+    if (_status != ACQUISTION_RESTART) return;
     _status = ACQUISITION_SCRIPTS_DONE;
     post_acquisition();
 
@@ -67,13 +51,13 @@ void   opSchedulerOperations::postacq_scripts_done()
 void   opSchedulerOperations::error_during_comm(const QString&)
 {
     if (_status == IDLE)                {_status = IDLE; emit error_on_connection(_device);}
-    if ((_status == INIT_PRE_START)||(_status== INIT_SCRIPTS_STARTS)||( _status == INIT_PRE_DONE))
+    if (_status == INIT_SCRIPTS_START)
     {
         _status = IDLE;
         emit initError(this);
     }
 
-    if ((_status== ACQUISITION_PARAM_START)||( _status == ACQUISITION_PARAM_DONE)||(_status==ACQUISITION_SCRIPTS_START))
+    if ((_status== ACQUISTION_RESTART)||(_status==ACQUISITION_SCRIPTS_DONE))
     {
         _status = IDLE;
         emit postAcquisitionError(this);
@@ -116,26 +100,26 @@ void    opSchedulerOperations::init_device()
     {
         if (_status == IDLE)
         {
-            _status = INIT_PRE_START;
+            _status = INIT_SCRIPTS_START;
             // Catch early errors
 
             if (!_device->init_pre())
                 emit initError(this);
+            // Call for execution of init_scripts
+            if (!_device->init_scripts())
+            {
+                emit initError(this);
+                return;
+            }
+
 
             return;
         }
 
-        if (_status == INIT_PRE_DONE)
-        {
-            _status = INIT_SCRIPTS_STARTS;
-            if (!_device->init_scripts())
-                emit initError(this);
-            else
-            {
-                _status = INIT_SCRIPTS_DONE;
-                emit initDone(this);
-            }
-
+        if (_status == INIT_SCRIPTS_START)
+        {            
+            _status = INIT_SCRIPTS_DONE;
+            emit initDone(this);
             return;
         }
 
@@ -164,6 +148,12 @@ void opSchedulerOperations::halt()
     //if (_status==HALT) _device->disconnect(); //_status=IDLE;} else {_device->disconnect(); _status=HALT;}
 }
 //----------------------------------------------------------------
+void    opSchedulerOperations::pre_acquisition()
+{
+    if (_status!=INIT_SCRIPTS_DONE) return;
+    _status = ACQUISTION_RESTART;
+    emit postacq_scripts_done();
+}
 void    opSchedulerOperations::post_acquisition()
 {
     if (_status == HALT)
@@ -173,27 +163,26 @@ void    opSchedulerOperations::post_acquisition()
     }
     if (_device != nullptr)
     {
-        if (_status == ACQUISITION_PARAM_DONE)
+        if (_status == INIT_SCRIPTS_DONE)
+           emit initDone(this);
+
+        if (_status == ACQUISTION_RESTART)
         {
-            _status = ACQUISITION_SCRIPTS_START;
             if (!_device->postacquisition_scripts())
                 emit postAcquisitionError(this);
+
             return;
-        }
-
-        if ((_status == INIT_SCRIPTS_DONE)||(_status == ACQUISTION_RESTART))
-        {
-            _status = ACQUISITION_PARAM_START;
-            // Catch early errors
-            if (!_device->postacquisition_pre())
-                emit postAcquisitionError(this);
-
         }
 
         if (_status == ACQUISITION_SCRIPTS_DONE)
         {
             _status = ACQUISTION_RESTART;
             emit postAcquisitionDone(this);
+
+            /* Enable this if the acquisition
+             * if (!_device->postacquisition_scripts())
+                emit postAcquisitionError(this);
+            */
 
             return;
         }
@@ -469,7 +458,7 @@ void opScheduler::acquisition_loop()
 
         for (auto &worker:_workers)
         {
-            worker->post_acquisition();
+            worker->pre_acquisition();
         }
         return;
     }
@@ -484,14 +473,6 @@ void opScheduler::acquisition_loop()
     // Here we have all ACQUISTION_RESTART
     if (status.contains(ACQUISTION_RESTART))
     {
-        if (_run_scripts)
-        {
-            for (auto& script: _scripts)
-            {
-
-            }
-            _run_scripts = false;
-        }
         if ((is_timed())&&(!_timer_done)) return;
 
         if (is_timed())

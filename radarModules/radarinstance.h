@@ -63,6 +63,7 @@ private:
     OPERATION                   _radar_operation;
 
     void                        update_param_internal_copy(radarParamPointer param, octave_value val);
+    void                        connect_octave_interface();
 public:
     radarInstance(radarModule* module=nullptr);
     radarInstance(radarInstance& radar);

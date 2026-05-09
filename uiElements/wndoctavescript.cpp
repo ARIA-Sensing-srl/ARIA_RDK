@@ -262,7 +262,7 @@ void wndOctaveScript::setInterpreterConnections()
     if (_data_interface==nullptr) return;
     if (_data_interface->engine_get_octave_engine()==nullptr) return;
     // This connections are used to enable / disable actions
-    connect(_data_interface, &octaveInterface::signal_workspace_updated,    this, &wndOctaveScript::update_tips);
+    connect(_data_interface, &octaveInterface::signal_workspace_updated,    this, &wndOctaveScript::update_tips, Qt::DirectConnection);
 
 
 }
@@ -1122,10 +1122,17 @@ void wndOctaveScript::update_path()
     QFileInfo fi(_script->get_fullfilename());
 
     QString cname = fi.absolutePath();
+    if (((cname[cname.length()-1]!=QDir::separator())&&(m_current_directory[m_current_directory.length()-1]==QDir::separator())))
+        cname+= QDir::separator();
+    if (((cname[cname.length()-1]==QDir::separator())&&(m_current_directory[m_current_directory.length()-1]!=QDir::separator())))
+        m_current_directory+=QDir::separator();
+
 
     if (cname != m_current_directory)
     {
+        _data_interface->operation_wait_and_lock("update_path");
         _data_interface->engine_get_octave_engine()->chdir(cname.toStdString());
+        _data_interface->operation_unlock("update_path");
         m_current_directory = cname;
     }
 }
@@ -1138,6 +1145,10 @@ void wndOctaveScript::update_path()
  */
 void wndOctaveScript::toggle_breakpoint (int line)
 {
+    if (line < 0)
+        return;
+
+
     update_path();
     // To get the actual line number, we need to have a file-saved script.
     if (_b_modified)

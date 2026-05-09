@@ -183,7 +183,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         uiElements/wndradarmoduleeditor.h uiElements/wndradarmoduleeditor.cpp uiElements/wndradarmoduleeditor.ui
         octaveInterface/octaveinterface.h octaveInterface/octaveinterface.cpp
         radarModules/radarmodule.h radarModules/radarmodule.cpp
-        octaveInterface/octavews.h octaveInterface/octavews.cpp
+
         radarModules/antenna.h radarModules/antenna.cpp
         radarModules/radarinstance.h radarModules/radarinstance.cpp
         radarModules/antennainstance.h radarModules/antennainstance.cpp

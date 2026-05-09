@@ -142,6 +142,7 @@ void octaveScript::set_text(const QString& input_text)
         octave::interpreter *interp = _octave_interface == nullptr ? nullptr : _octave_interface->engine_get_octave_engine();
         if (interp!=nullptr)
         {
+            _octave_interface->operation_wait_and_lock("set_text");
             // If the text has been changed, we need to tell Octave that we need to parse again
             // the source file.
             octave::tree_evaluator& tw = interp->get_evaluator ();
@@ -153,6 +154,7 @@ void octaveScript::set_text(const QString& input_text)
             catch(...)
             {
             }
+            _octave_interface->operation_unlock("set_text");
         }
     }
 }
@@ -216,7 +218,7 @@ int  octaveScript::breakpoint_toggle(int line, const QString& cond)
 {
     octave::interpreter *interp = _octave_interface == nullptr ? nullptr : _octave_interface->engine_get_octave_engine();
     if (interp==nullptr) return -1;
-
+    _octave_interface->operation_wait_and_lock("breakpoint_toggle");
     octave::tree_evaluator& tw = interp->get_evaluator ();
     octave::bp_table& bptab = tw.get_bp_table ();
 
@@ -246,7 +248,7 @@ int  octaveScript::breakpoint_toggle(int line, const QString& cond)
         }
     // If the breakpoint was already there, remove it from the file.
     if (bp_was_there) bptab.remove_breakpoint_from_file(fname, lineeq);
-
+    _octave_interface->operation_unlock("breakpoint_toggle");
     return lineeq-1;
 }
 //--------------------------------------
