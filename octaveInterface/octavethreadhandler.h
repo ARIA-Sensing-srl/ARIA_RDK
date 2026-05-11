@@ -34,7 +34,7 @@ public:
 
 private:
 
-    oth_status                          _oth_status;
+    oth_status                           _oth_status;
     octave::interpreter                 *_octave_engine;    // This is the main _octave_engine
     std::shared_ptr<rdk_event_manager>  _events;
     octaveScript*                       _running_script;
@@ -59,6 +59,7 @@ private:
     QString             _last_cmd = "";
     bool                _is_db_cmd = false;
     bool                _last_skip_workspace_update = false;
+
 
 public:
     octaveThreadHandler(octaveInterface* owner=nullptr);

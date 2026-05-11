@@ -608,7 +608,7 @@ void octaveScript::do_request_step_out()
 
 void octaveScript::do_request_continue()
 {
-    if (_debug_line<0) return;
+    //if (_debug_line<0) return;
     if (_octave_interface==nullptr) return;
     if (_octave_interface->engine_get_octave_engine()==nullptr) return;
     _octave_interface->execute_continue(this);

@@ -545,8 +545,11 @@ void wndOctaveScript::request_step()
 void wndOctaveScript::run_file()
 {
     update_path();
-    int db_line = _script->getCurrentDebugPosition();
-    if (db_line>=0)
+
+    //int db_line = _script->getCurrentDebugPosition();
+    //if (db_line>=0)
+    // Allow for continue request
+    if (_data_interface->engine_get_status()==octaveThreadHandler::OTH_DEBUG)
     {
         _script->do_request_continue();
         return;

@@ -140,7 +140,7 @@ void octaveInterface::create_thread_connections()
     connect(this, &octaveInterface::signal_execute_command,  _octave_thread_handler, &octaveThreadHandler::execute_eval_string);
     connect(this, &octaveInterface::signal_engine_init,      _octave_thread_handler, &octaveThreadHandler::engine_init_and_start, Qt::DirectConnection);
     // Connected signals from the handler to this
-    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbstop,        this, &octaveInterface::handle_octave_thread_dbstop, Qt::BlockingQueuedConnection);
+    connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbstop,        this, &octaveInterface::handle_octave_thread_dbstop);
     connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbstep_done,   this, &octaveInterface::handle_octave_thread_dbstep_done);
     connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbrun,         this, &octaveInterface::handle_octave_thread_dbrun);
     connect(_octave_thread_handler, &octaveThreadHandler::signal_handler_dbcomplete,    this, &octaveInterface::handle_octave_thread_dbcomplete, Qt::DirectConnection);
@@ -428,7 +428,7 @@ void    octaveInterface::operation_wait_and_lock(const QString& fname)
 {
     _sync.lock();
     _locked =1;
-    _last_mutex_owner = "";
+    _last_mutex_owner = fname;
 }
 //-----------------------------
 /**
@@ -518,7 +518,7 @@ void        octaveInterface::variable_set_value(const std::string& varname, cons
     if (_octave_engine->is_variable(varname))
         _octave_engine->assign(varname, val);
     else
-        _octave_engine->install_variable(varname, val,true);
+        _octave_engine->install_variable(varname, val,false);
 
 }
 //---------------------------------------
@@ -554,8 +554,9 @@ QStringList octaveInterface::variable_get_names()
 {
     if (_octave_engine==nullptr) return QStringList();
 
-    std::list<std::string> varnames = _octave_engine->variable_names();
-
+    std::list<std::string> varnames       = _octave_engine->variable_names();
+    std::list<std::string> topvarnames    = _octave_engine->top_level_variable_names();
+    std::list<std::string> globalvarname  = _octave_engine->top_level_variable_names();
     QStringList out;
     out.resize(varnames.size());
 
@@ -606,8 +607,8 @@ void octaveInterface::execute_continue(octaveScript* script)
 
     if (_octave_engine==nullptr)
         return;
-    _octave_engine->get_evaluator().server_mode(false);
-    _octave_engine->get_evaluator().set_dbstep_flag(-1);
+    //_octave_engine->get_evaluator().server_mode(false);
+    //_octave_engine->get_evaluator().set_dbstep_flag(-1);
     _octave_engine->get_evaluator().set_break_on_next_statement(false);
 
     if (_octave_thread_handler->engine_get_status()==octaveThreadHandler::OTH_DEBUG)

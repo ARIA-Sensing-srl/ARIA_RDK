@@ -550,8 +550,9 @@ void mdiOctaveInterface::clear_and_init_var_table()
 void  mdiOctaveInterface::updateVarTable()
 {
     if (_octave_interface == nullptr) return;
-
+    _octave_interface->operation_wait_and_lock("mdi::updateVarTable");
     QStringList vars = _octave_interface->variable_get_names();
+
 
 	// Remove unnecessary rows
 	int n=0;
@@ -565,11 +566,12 @@ void  mdiOctaveInterface::updateVarTable()
 			ui->workspaceList->removeRow(n);
 	}
 
-	int rmax = ui->workspaceList->rowCount();
+
 
     for (auto& v: vars)
 	{
         int row_found = -1;
+        int rmax = ui->workspaceList->rowCount();
         for (int row = 0; row < rmax; row++)
 		{
             if (ui->workspaceList->item(row,1)==nullptr) continue;
@@ -581,6 +583,7 @@ void  mdiOctaveInterface::updateVarTable()
         std::string vstring     = v.toStdString();
         octave_value val        = _octave_interface->variable_get_value(vstring);
 
+
         if (row_found == -1)
         {
             int n = ui->workspaceList->rowCount();
@@ -590,6 +593,7 @@ void  mdiOctaveInterface::updateVarTable()
         else
             update_variable_row(row_found, vstring, val);
 	}
+    _octave_interface->operation_unlock("mdi::updateVarTable");
 }
 
 void mdiOctaveInterface::viewDataInTable()
