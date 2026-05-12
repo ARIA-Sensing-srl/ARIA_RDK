@@ -515,7 +515,7 @@ void        octaveInterface::variable_set_value(const std::string& varname, cons
 {
     if (_octave_engine==nullptr) return;
 
-    if (_octave_engine->is_variable(varname))
+    if (variable_exists(varname))
         _octave_engine->assign(varname, val);
     else
         _octave_engine->install_variable(varname, val,false);
@@ -527,12 +527,66 @@ void        octaveInterface::variable_set_value(const std::string& varname, cons
  * @param varname
  * @return
  */
-octave_value octaveInterface::variable_get_value(const std::string& varname)
+octave_value    octaveInterface::variable_get_value(const std::string& varname)
+{
+    int context = -1;
+    return variable_get_value(varname, context);
+}
+//---------------------------------------
+/**
+ * @brief octaveInterface::variable_get_value
+ * @param varname
+ * @param context: if -1, search for all contexts (0 = global, 1 = top, 2 = local)
+ * At output, context is assigned the value of the context where we found the variable. If no
+ * variable is found, assign -2 and return value is an empty octave value
+ * @return
+ */
+octave_value octaveInterface::variable_get_value(const std::string& varname, int& context)
 {
     if (_octave_engine==nullptr) return octave_value();
+    // Search for "local". Yes, if we are not at top level.
+    if (!_octave_engine->at_top_level())
+        if ((context == -1)||(context == 2))
+        {
+            std::list vars = _octave_engine->variable_names();
+            for (auto v : vars)
+            {
+                if ( v == varname)
+                {
+                    context = 2;
+                    return _octave_engine->varval(varname);
+                }
+            }
+        }
+    // Search for top variables
+    if ((context == -1)||(context == 1))
+    {
+        std::list vars = _octave_engine->top_level_variable_names();
+        for (auto v : vars)
+        {
+            if ( v == varname)
+            {
+                context = 1;
+                return _octave_engine->top_level_varval(varname);
+            }
+        }
+    }
+    // Search for top
+    if ((context == -1)||(context == 0))
+    {
+        std::list vars = _octave_engine->global_variable_names();
+        for (auto v : vars)
+        {
+            if ( v == varname)
+            {
+                context = 0;
+                return _octave_engine->global_varval(varname);
+            }
+        }
+    }
 
-    if (_octave_engine->is_variable(varname))
-        return _octave_engine->varval(varname);
+    context = -2;
+
     return octave_value();
 }
 //---------------------------------------
@@ -543,7 +597,15 @@ octave_value octaveInterface::variable_get_value(const std::string& varname)
  */
 bool octaveInterface::variable_exists(const std::string& varname)
 {
-    return ((_octave_engine!=nullptr)&&(_octave_engine->is_variable(varname)));
+    if (_octave_engine==nullptr) return false;
+    std::list<std::string> global_variables = _octave_engine->global_variable_names();
+    for (auto v: global_variables)
+        if (v==varname)
+            return true;
+
+    if (_octave_engine->is_variable(varname)) return true;
+    if (_octave_engine->is_local_variable(varname)) return true;
+    return false;
 }
 //---------------------------------------
 /**
@@ -556,13 +618,19 @@ QStringList octaveInterface::variable_get_names()
 
     std::list<std::string> varnames       = _octave_engine->variable_names();
     std::list<std::string> topvarnames    = _octave_engine->top_level_variable_names();
-    std::list<std::string> globalvarname  = _octave_engine->top_level_variable_names();
+    std::list<std::string> globalvarnames  = _octave_engine->global_variable_names();
     QStringList out;
-    out.resize(varnames.size());
+    out.resize(varnames.size()+globalvarnames.size()+ _octave_engine->at_top_level() ? 0 : varnames.size());
 
-    int v =0;
-    for (auto varname : varnames)
-        out[v++]= QString::fromStdString(varname);
+    if (_octave_engine->at_top_level())
+        for (auto varname : varnames)
+            out.push_back(QString::fromStdString(varname));
+
+    for (auto varname : topvarnames)
+        out.push_back(QString::fromStdString(varname));
+
+    for (auto varname : globalvarnames)
+      out.push_back(QString::fromStdString(varname));
 
     return out;
 }

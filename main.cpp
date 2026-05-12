@@ -14,11 +14,20 @@
 #include <QtGlobal>
 #include <QFile>
 #include <QTextStream>
+#include <QSplashScreen>
 
 QString          m_current_directory;
 
 int main(int argc, char *argv[])
 {
+    QApplication a(argc, argv);
+
+    QPixmap pixmap(":/icons/ARIA_Splash.jpg");
+    QSplashScreen splash(pixmap);
+    splash.show();
+    a.processEvents();
+
+
 	QString currentPath = QDir::currentPath();
     m_current_directory = currentPath;
     QString tmpPath = QFileInfo(currentPath, QString("../octave/toolboxes/tmp/")).absolutePath();
@@ -45,7 +54,8 @@ int main(int argc, char *argv[])
 	qputenv("ROOT_PATH",currentPath.toUtf8());
 #endif
 
-    QApplication a(argc, argv);
+
+
     QIcon icon(":/icons/ARIA_Logo.ico");
     a.setWindowIcon(icon);
 	QTranslator translator;

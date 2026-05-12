@@ -114,6 +114,7 @@ public:
     void                            workspace_append_var(QString name, const octave_value& val);
     bool                            workspace_save_to_file(QString filename);
     void                            variable_set_value(const std::string& varname, const octave_value& val);
+    octave_value                    variable_get_value(const std::string& varname, int& context); // Context = 0 (global), 1 (top), 2 ("local"?)
     octave_value                    variable_get_value(const std::string& varname);
     bool                            variable_exists(const std::string& varname);
     QStringList                     variable_get_names();

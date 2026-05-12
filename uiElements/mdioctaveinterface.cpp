@@ -581,8 +581,8 @@ void  mdiOctaveInterface::updateVarTable()
 
 
         std::string vstring     = v.toStdString();
-        octave_value val        = _octave_interface->variable_get_value(vstring);
-
+        int context = -1;
+        octave_value val        = _octave_interface->variable_get_value(vstring,context);
 
         if (row_found == -1)
         {
@@ -799,7 +799,7 @@ void mdiOctaveInterface::variablePlot()
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
     _plot2d_children.append(wnd2d);
-    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data, Qt::DirectConnection);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
 
     QModelIndexList indexList = ui->workspaceList->selectionModel()->selectedRows();
 
@@ -822,7 +822,7 @@ void mdiOctaveInterface::variablePlot()
 void mdiOctaveInterface::variablePlotAllInOne()
 {
     wndPlot2d*  wnd2d = new wndPlot2d(this, _octave_interface);
-    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data, Qt::DirectConnection);
+    connect(_octave_interface, &octaveInterface::signal_workspace_updated, wnd2d, &wndPlot2d::update_data);
 
     ui->mdiArea->addSubWindow(wnd2d);
     wnd2d->showMaximized();
@@ -1550,8 +1550,8 @@ void mdiOctaveInterface::updatedSingleVar(const std::string& varname)
     if (varname.empty()) return;
     if (_octave_interface==nullptr) return;
     QString vname = QString::fromStdString(varname);
-
-    octave_value var = _octave_interface->variable_get_value(varname);
+    int context = -1;
+    octave_value var = _octave_interface->variable_get_value(varname,context);
 
     for (int n=0; n< ui->workspaceList->rowCount(); n++)
     {

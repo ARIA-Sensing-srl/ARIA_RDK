@@ -17,7 +17,8 @@
 dlgQWTPlot::dlgQWTPlot(QWidget *parent, mdiOctaveInterface* owner, octaveInterface* oct_int, PLOT_TYPE pt)
 	: QDialog(parent)
 	, ui(new Ui::dlgQWTPlot)
-	, _owner(owner)
+    , _owner(owner)
+    , _octave_interface(oct_int)
 {
 	ui->setupUi(this);
 	zoomer = nullptr;
@@ -211,7 +212,9 @@ void dlgQWTPlot::update_data(const std::set<std::string>& varlist)
 
 void dlgQWTPlot::update_all_data()
 {
+
 	if (_plotdata==nullptr) return;
+    _octave_interface->operation_wait_and_lock("qwtplot update all");
 	if (_plotdata->update_data())
 	{
 		if ((_plotdata->get_plot_type()==PTQWT_PLOT)||(_plotdata->get_plot_type()==PTQWT_SCATTER))
@@ -253,6 +256,7 @@ void dlgQWTPlot::update_all_data()
 			ui->plot->replot();
 		}
 	}
+    _octave_interface->operation_unlock("qwt update all");
 
 }
 

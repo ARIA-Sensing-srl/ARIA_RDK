@@ -87,7 +87,6 @@ protected:
 
         QString msg = QString::fromStdString(m_string);
         QString varname="";
-        QString filepath="";
 
         int n_update = msg.lastIndexOf(QString::fromStdString(str_message_immediate_update));
         int n_inquiry= msg.lastIndexOf(QString::fromStdString(str_message_immediate_inquiry));
@@ -138,13 +137,14 @@ protected:
                 QString msg = QString::fromStdString(tmp);
                 if (b_any_command) msg.clear();
                 if ((!b_any_command)&&(!b_any_plot))
-                    emit sendLogString(msg);
+                    if (!(msg.simplified().isEmpty()))
+                        emit sendLogString(msg);
+
                 m_string.erase(m_string.begin(), m_string.begin() + pos + 1);
             }
         }
         if ((octInt!=nullptr)&&(!varname.isEmpty()))
-        {
-            m_interface_file = "";
+        {            
             if (b_immediate_update)
 				octInt->immediate_update_of_radar_var(varname.toStdString(),m_interface_file);
             if (b_immediate_inquiry)

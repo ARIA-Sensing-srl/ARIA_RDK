@@ -33,5 +33,6 @@
         <file>file-line-icon.png</file>
         <file>download-icon.png</file>
         <file>data-transfer-icon.png</file>
+        <file>ARIA_Splash.jpg</file>
     </qresource>
 </RCC>

@@ -81,7 +81,7 @@ void plotData_plot::set_data_plot(QString var_name, QString x_name)
 	octave_value x;
 
 	if (!x_name.isEmpty())
-	{
+    {
         x = get_octave_interface()->variable_get_value(x_name.toStdString());
 		xlength = x.numel();
 
@@ -308,7 +308,7 @@ bool	plotData_plot::update_data(const std::set<std::string>& varlist)
 		auto curve = curves.find(varname);
 		// Check if it is an y value
 		if (curve!=curves.end())
-		{
+        {
             octave_value data = get_octave_interface()->variable_get_value(var);
 
             NDArray y = data.iscomplex() ? data.complex_array_value().abs() :
@@ -325,7 +325,7 @@ bool	plotData_plot::update_data(const std::set<std::string>& varlist)
 		}
 		auto xarray = xvals.find(varname);
 		if (xarray!=xvals.end())
-		{
+        {
             NDArray x = get_octave_interface()->variable_get_value(var).array_value();
 
 			fill_data_x(varname, x);
@@ -358,7 +358,7 @@ bool	plotData_plot::update_data()
 		fill_data_y(yname, y);
 
 		if (xy_found!=x_y.end())
-		{
+        {
 			NDArray x;
             x = get_octave_interface()->variable_get_value(xname.toStdString()).array_value();
 			fill_data_x(xname, x);
@@ -942,7 +942,7 @@ bool plotData_Density::update_data()
 		}
 	}
 	else
-	{
+    {
         octave_value xov = get_octave_interface()->variable_get_value(xaxis.first.toStdString());
 		if (xov.iscomplex())
 			return false;

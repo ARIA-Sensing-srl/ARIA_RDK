@@ -1009,17 +1009,28 @@ void        wndPlot2d::populate_dens( plot_descriptor& pl)
 
     int Nx = (int)(ds->get(var_x,2));
     int Ny = (int)(ds->get(var_y,2));
-    double xmin = ds->get(var_x,0);
-    double xmax = ds->get(var_x,1);
-    double ymin = ds->get(var_y,0);
-    double ymax = ds->get(var_y,1);
-
+    double xmin,xmax,smg0;
+    density_graph->getXMinMax(xmin,xmax,smg0);
+    double ymin,ymax;
+    density_graph->getYMinMax(ymin,ymax,smg0);
     int imageColumn = density_graph->getImageColumn();
     if (imageColumn==-1)
         density_graph->setImageColumn(ds->getColumnNum(QString::fromStdString(pl._dep)));
     double zmin, zmax;
+    zmax = -DBL_MAX;
+    zmin = DBL_MAX;
+    double *imageData = ds->getColumnPointer(imageColumn);
+    size_t numPoints = ds->getRows(imageColumn);
+    for (size_t n=0; n < numPoints; n++)
+    {
+        if ((*imageData)<zmin) zmin = *imageData;
+        if ((*imageData)>zmax) zmax = *imageData;
+        imageData++;
+    }
 
-    density_graph->getDataMinMax(zmin,zmax);
+
+    //zmin = density_graph->getImageMin();
+    //zmax = density_graph->getImageMax();
 
     if (!pl._limit_set)
     {
@@ -1032,10 +1043,12 @@ void        wndPlot2d::populate_dens( plot_descriptor& pl)
         pl._zmax = zmax;
         double drx = 0.05*(pl._xmax - pl._xmin);
         double dry = 0.05*(pl._ymax - pl._ymin);
-        double drz = 0.05*(pl._zmax - pl._zmin);
+        double drz = 0;//0.05*(pl._zmax - pl._zmin);
         plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
-        density_graph->setImageMax(pl._zmax+drz);
+//        density_graph->colorBarRightAxis->setMax(pl._zmax+drz);
+//        density_graph->colorBarRightAxis->setMin(pl._zmax+drz);
         density_graph->setImageMin(pl._zmin-drz);
+        density_graph->setImageMax(pl._zmax+drz);
     }
     else
     {
@@ -1052,12 +1065,18 @@ void        wndPlot2d::populate_dens( plot_descriptor& pl)
             pl._xmax = xmax;
             pl._ymin = ymin;
             pl._ymax = ymax;
+            pl._zmin = zmin;
+            pl._zmax = zmax;
+
             drx = 0.05*(pl._xmax - pl._xmin);
             dry = 0.05*(pl._ymax - pl._ymin);
-            drz = 0.05*(pl._zmax - pl._zmin);
+            drz = 0;//0.05*(pl._zmax - pl._zmin);
+
             plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
-            density_graph->setImageMax(pl._zmax+drz);
+            //        density_graph->colorBarRightAxis->setMax(pl._zmax+drz);
+            //        density_graph->colorBarRightAxis->setMin(pl._zmax+drz);
             density_graph->setImageMin(pl._zmin-drz);
+            density_graph->setImageMax(pl._zmax+drz);
             break;
         case 2:
 
@@ -1081,12 +1100,27 @@ void        wndPlot2d::populate_dens( plot_descriptor& pl)
                 pl._ymax = ymax;
             else
                 pl._ymax = 0.99*pl._ymax + 0.01*ymax;
+
+            if (zmin < pl._zmin)
+                pl._zmin = zmin;
+            else
+                pl._zmin = 0.99*pl._zmin + 0.01*zmin;
+
+            if (zmax > pl._zmax)
+                pl._zmax = zmax;
+            else
+                pl._zmax = 0.99*pl._zmax + 0.01*zmax;
+
+
+
             drx = 0.05*(pl._xmax - pl._xmin);
             dry = 0.05*(pl._ymax - pl._ymin);
-            drz = 0.05*(pl._zmax - pl._zmin);
+            drz = 0;//0.05*(pl._zmax - pl._zmin);
             plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
-            density_graph->setImageMax(pl._zmax+drz);
+            //        density_graph->colorBarRightAxis->setMax(pl._zmax+drz);
+            //        density_graph->colorBarRightAxis->setMin(pl._zmax+drz);
             density_graph->setImageMin(pl._zmin-drz);
+            density_graph->setImageMax(pl._zmax+drz);
             break;
         case 3:
             // Min Max no decay
@@ -1103,12 +1137,20 @@ void        wndPlot2d::populate_dens( plot_descriptor& pl)
             if (ymax > pl._ymax)
                 pl._ymax = ymax;
 
+            if (zmin < pl._zmin)
+                pl._zmin = zmin;
+
+            if (zmax > pl._zmax)
+                pl._zmax = zmax;
+
             drx = 0.05*(pl._xmax - pl._xmin);
             dry = 0.05*(pl._ymax - pl._ymin);
-            drz = 0.05*(pl._zmax - pl._zmin);
+            drz = 0;//0.05*(pl._zmax - pl._zmin);
             plotter->setXY(pl._xmin-drx,pl._xmax+drx,pl._ymin-dry,pl._ymax+dry);
-            density_graph->setImageMax(pl._zmax+drz);
+            //        density_graph->colorBarRightAxis->setMax(pl._zmax+drz);
+            //        density_graph->colorBarRightAxis->setMin(pl._zmax+drz);
             density_graph->setImageMin(pl._zmin-drz);
+            density_graph->setImageMax(pl._zmax+drz);
             break;
         }
 
@@ -1116,23 +1158,6 @@ void        wndPlot2d::populate_dens( plot_descriptor& pl)
 
 	redraw(pl);
 	return;
-
-    density_graph->setNx(Nx);
-    density_graph->setNy(Ny);
-    density_graph->setX(xmin);
-    density_graph->setY(ymin);
-    density_graph->setWidth(xmax-xmin);
-    density_graph->setHeight(ymax-ymin);
-
-    plotter->getPlotter()->setMaintainAspectRatio(true);
-    plotter->getPlotter()->setMaintainAxisAspectRatio(true);
-    density_graph->setTitle(QString::fromStdString(pl._dep));
-    density_graph->getColorBarRightAxis()->setAxisLabel(QString::fromStdString(pl._dep)+ " intensity");
-
-
-
-
-
 }
 //---------------------------------------------------------------------
 // Populate contour (heatmap) plot
@@ -1794,7 +1819,7 @@ JKQTPGraph*    wndPlot2d::create_graph(plot_descriptor& pl, JKQTPlotter* plotter
     {
         JKQTPColumnMathImage* dens_graph =  new JKQTPColumnMathImage(plotter);
         dens_graph->setColorPalette(JKQTPMathImageMATLAB);
-        dens_graph->setAutoImageRange(true);
+        dens_graph->setAutoImageRange(false);
         return dens_graph;
     }
     case PTJK_VECT2D:
@@ -2185,7 +2210,39 @@ int wndPlot2d::add_barplot(const QString& var, const QString& x, int plot_id)
 
     return plot_id;
 }
-
+/**
+ * @brief wndPlot2d::remove_plots
+ * @param plots_to_del
+ */
+void wndPlot2d::remove_plots(const std::vector<plot_descriptor>& plots_to_del)
+{
+    bool bredraw = false;
+    for (auto plot_to_del_iter = plots_to_del.begin(); plot_to_del_iter != plots_to_del.end(); plot_to_del_iter++)
+    {
+        plot_descriptor plot_to_del = *plot_to_del_iter;
+        auto plot_iter = _plots.begin();
+        while (plot_iter != _plots.end())
+        {
+            plot_descriptor& plot = *(plot_iter);
+            if (plot == plot_to_del)
+            {
+                JKQTPlotter* plotter = _plotters[plot._plot_id];
+                if (plotter!=nullptr)
+                    clean(plotter, plot);
+                _plots.erase(plot_iter);
+                bredraw = true;
+            }
+            else
+                plot_iter++;
+        }
+    }
+    if (bredraw)
+        update_plots();
+}
+/**
+ * @brief wndPlot2d::remove_plot
+ * @param var
+ */
 void wndPlot2d::remove_plot(QString var)
 {
     std::string str_name_str = var.toStdString();
@@ -2361,6 +2418,7 @@ void wndPlot2d::update_data()
     // Check if the workspace that has been updated is the one
     // to which this graph is attached to
     if (_octave_interface==nullptr) return;
+    _octave_interface->operation_wait_and_lock("wndPlot2d update data");
     std::vector<plot_descriptor> plots_to_delete;
     for (auto& plot : _plots)
     {
@@ -2495,7 +2553,11 @@ void wndPlot2d::update_data()
         }
     }
 
+    // Remove
+
+    remove_plots(plots_to_delete);
     update_plots();
+    _octave_interface->operation_unlock("wndPlot2d update data");
 }
 
 //---------------------------------------------------------------------

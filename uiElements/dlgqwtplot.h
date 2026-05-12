@@ -218,6 +218,7 @@ private:
 	QwtPlotZoomer*				zoomer;
 	QwtDensityPlot*				_density_plot_ref;
 	class mdiOctaveInterface*	_owner;
+    octaveInterface*            _octave_interface;
 public:
 	PLOT_TYPE get_plot_type() {return _plotdata==nullptr ? PT_NONE : _plotdata->get_plot_type();}
 	void assign_vars(QStringList xvars, QStringList yvars);

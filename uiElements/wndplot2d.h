@@ -45,6 +45,7 @@ public:
 
     bool            has_var(const QString& str_name);
     void            remove_plot(QString var);
+    void            remove_plots(const std::vector<plot_descriptor>& plots_to_del);
 public slots:
     void        update_data();
 
